@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 3: Tausch-Protokoll (vor S4, Nutzerentscheidung)
+
+- `core/fsops.py`, `core/ops.py`, `core/conflict_files.py`, `core/safe_write.py` mit Tests (fremde Schreiber an jeder kritischen Grenze).
+- Befund Windows: Ein Sperr-Handle mit `DELETE`-Zugriff blockiert auch das eigene spätere Lesen (Python öffnet ohne `FILE_SHARE_DELETE`). Für den Rename genügt der Share-Mode, das Handle fordert jetzt nur Lesezugriff an. Der Test bestätigt, dass ein fremder Schreiber während des Tauschs blockiert wird.
+- Fehler im eigenen Entwurf vor dem Test korrigiert: Beim Rücktausch wäre eine *fremde* Datei in `P` zur Konfliktdatei verschoben worden; jetzt weicht nur die eigene Version `N`.
+- Offen: Wiederherstellung nach Absturz (`recovery.py`), Move-Ausführung, Konflikterkennung und -auflösung.
+
 ## 2026-10-09 – Watcher, App-Daten-Layout, Beobachtungs-Historie
 
 - `core/watch.py`, `core/appdata.py`, `core/history.py` mit Tests: nur Unterschiede bzw. Endstand, versteckte Dateien ausgenommen, getrennte Vault-IDs und Historien bei gleichem relativen Pfad, App-Daten nie im Vault, Historie nur anhängend, Aufbewahrung ab „ersetzt seit“ (tägliches Lesen verlängert alte Versionen nicht), Schutz referenzierter Versionen, Kandidatenbasis vor einem Zeitstempel.

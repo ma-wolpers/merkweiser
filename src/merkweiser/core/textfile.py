@@ -5,9 +5,8 @@
 Gleichheit (PLAN.md, „Signatur“): Maßgeblich für jede Schreibentscheidung ist
 der Inhalt; ``(mtime_ns, size)`` dient nur dem Polling.
 
-BAUSTELLE(S4): Die Primitive des Tausch-Protokolls (``displace``,
-``install_no_overwrite``, ``create_exclusive``, ``fsync``) folgen in Schritt 3
-nach dem Spike S4.
+Die Primitive des Tausch-Protokolls (exklusiv anlegen, umbenennen ohne
+Überschreiben, Schreibsperre, ``fsync``) liegen in ``fsops.py``.
 """
 
 from __future__ import annotations

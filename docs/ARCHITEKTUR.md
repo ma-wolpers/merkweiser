@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
 - Schritt 5 ist **teilweise** umgesetzt: die reinen Merge-Algorithmen (siehe „Core: Merge“). Konflikterkennung und -auflösung samt Journal, Marker und Backups folgen mit dem Schreibprotokoll.
-- Schritt 3 ist **teilweise** umgesetzt: die reine Planung der Edit-Operationen (siehe „Core: Edit-Planung“). Das Tausch-Protokoll (`safe_write`) folgt nach Spike S4.
+- Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Es fehlen noch die Wiederherstellung nach Absturz und die Move-Ausführung.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -44,7 +44,7 @@ Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline �
 | `core/tags.py` | `compute_tags(outline, prefix)`: effektiv = explizit ∪ effektiv(Eltern), ein Durchlauf in Knotenreihenfolge. Liefert explizite, effektive und geerbte Projekte. |
 
 | `core/vault.py` | `DayPattern` (nur `%Y`/`%m`/`%d`, je genau einmal, ganzer Dateiname), `scan(root, pattern)` (rekursiv; versteckte Ordner und Dateien werden übersprungen) → `VaultIndex(day_files, conflicts)` mit `duplicates()`. `parse_conflict_name` leitet die Hauptdatei aus dem Namen ohne **alle** `.sync-conflict-…`-Segmente ab und erkennt `nested`, `own` (`MERKWEISER…`) und `decided` (`…MWENTSCHIEDEN`); Nicht-`.md` wird ignoriert. `write_target` setzt die Schreibziel-Regel um bzw. meldet `AmbiguousDayFile`. Schreibt nie. |
-| `core/textfile.py` | `read_snapshot(path)` → `FileSnapshot(raw, mtime_ns, size)` (Stat über den offenen Deskriptor); `same_content` vergleicht nur Bytes. **BAUSTELLE(S4):** Die Tausch-Primitive folgen in Schritt 3. |
+| `core/textfile.py` | `read_snapshot(path)` → `FileSnapshot(raw, mtime_ns, size)` (Stat über den offenen Deskriptor); `same_content` vergleicht nur Bytes. |
 | `ports/clock.py`, `core/clock.py` | `Clock`-Protocol (`now`, `today`, `monotonic`) und `SystemClock`. Tests nutzen `tests/fakes.py:FakeClock` mit getrennt verstellbarer Wanduhr und monotoner Zeit. |
 | `core/document.py` | `parse_document(raw, prefix)` → `Document(source, layout, notes)`, die einzige Stelle, die die Lese-Stufen verkettet. |
 
@@ -65,6 +65,19 @@ Alle Operationen nehmen das **aktuell gelesene** `Document` plus ein flüchtiges
 | `core/move_plan.py` | `plan_move` (exakter Quellblock samt Teilbaum als `BlockTarget`; `B'` mit Wurzel auf Ebene 0 und geerbten Tags explizit an der Wurzel), `insert_moved` (an die letzte Notiz `Verschoben aus [[<Quellname>]]` oder neu anhängen; der Link nutzt den Dateinamen der Quelle, damit er auch bei eigenem Muster funktioniert), `remove_moved_source` (nur bei **genau einem** exakten Vorkommen, `resolve_block(…, unique=True)`). Die Reihenfolge Ziel → Quelle kommt mit dem Protokoll. |
 
 Strukturabfragen: `Outline.subtree_end(node)` und `Document.item_at(line_no)` werden von Edits und Move gemeinsam genutzt.
+
+## Core: Schreibprotokoll (Schritt 3)
+
+| Modul | Ist-Zustand |
+|---|---|
+| `core/fsops.py` | `FsOps`: `create_exclusive` (O_EXCL + fsync), `rename_no_replace` (Windows `os.rename`, POSIX `link`+`unlink`, Fallback `excl`), `remove`, `fsync_dir` (nicht unter Windows), `write_lock` (Windows: Handle mit **nur Lesezugriff** und Share-Mode „Lesen + Löschen“, Schreiben verweigert; ein DELETE-Zugriff am eigenen Handle hätte unser eigenes späteres Lesen blockiert). `point(name)` markiert Protokollgrenzen für Fault-Injection (`SimulatedCrash`). |
+| `core/ops.py` | `OpStore.create` (exklusives `mkdir`, Betriebssystem-Lock, Bytes persistieren und prüfen, Manifest, dann `PREPARED`), `open_for_recovery` (nicht blockierend; ein vergebener Lock heißt: nicht übernehmen; sonst steigt die Epoche), `Op.set_state` mit Fencing (`FencedError`), `persist_blob`. |
+| `core/conflict_files.py` | Eigene Konfliktnamen `…-MERKWEISER<8 base32>.md`, exklusiv bzw. per Rename ohne Überschreiben; `find_with_content` gegen Duplikate; Sidecar je Konfliktdatei (Schlüssel ohne Marker), nur gültig bei passendem Hash. |
+| `core/safe_write.py` | `Writer.write` (Ersetzen bzw. Create-only), `Writer.remove`, Quarantäne 120 s über `Clock.monotonic` (`finish_due`/`finish`): zuerst `P` prüfen (ist `N` nicht mehr da → `N` als Konfliktdatei mit Sidecar-Basis `E`), dann `D` (unverändert → löschen, sonst → Konfliktdatei). Rücktausch bei fremder Änderung vor dem Wegbenennen: Nur die *eigene* Version in `P` weicht, eine fremde bleibt. `ChangedBeforeWriteError` → der Aufrufer plant neu. Abweichung vom Plan, **strenger**: Die Quarantäne prüft `D` auch unter Windows. |
+
+Tests (`tests/core/test_safe_write.py`): fremde Änderung vor dem Wegbenennen, Neuanlage während `P` fehlt, Ersetzen in der Quarantäne, später Schreibzugriff in `D`, monotone Quarantäne bei Wanduhrsprung, Create-only-Kollision, Entfernen nur bei unverändertem Inhalt, Windows-Schreibsperre (fremder Schreiber wird blockiert; eine offene fremde Datei bricht ohne Änderung ab).
+
+**BAUSTELLE(A2-Identität):** Der `excl`-Fallback hält die Identität einer partiellen Zieldatei (`P_CREATED`, `st_ino`) noch nicht fest. Eine partielle Datei gilt dort deshalb immer als fremd (`A2`). Relevant erst, wenn S1 den Fallback erzwingt.
 
 ## Core: Merge (Schritt 5, nur Algorithmen)
 
