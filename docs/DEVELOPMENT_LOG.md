@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 5 (Teil): Merge-Algorithmen
+
+- `core/merge/{align,model,diff3,union,verify}.py` mit 22 Tests: Konzeptbeispiel (diff3 automatisch, A zuerst), identische Ersetzung und Einfügung einmal, Löschung gegen Änderung → Konflikt, R1/R2, Union-GRENZE, wiederholte Zeilen bleiben getrennt, gleicher Inhalt an anderer Position wird nicht zusammengelegt, manipulierte Ergebnisse werden abgelehnt, Zufallstest.
+- **Offene Frage an die Nutzerin bzw. den Nutzer:** Ohne verlässliche Basis (Syncthing-Normalfall) wird das Konzeptbeispiel (B und C an derselben Stelle) laut Plan ein Konflikt mit Vorschlag „beide“, weil es von einer Umformulierung nicht unterscheidbar ist.
+
 ## 2026-10-09 – Schritt 3 (Teil): Move-Planung
 
 - `core/move_plan.py` mit Tests: Teilbaum inklusive Fortsetzungszeilen, geerbte Tags explizit (außen nach innen), effektive Tags bleiben im Ziel erhalten, Notiz „Verschoben aus“ wird neu angelegt bzw. wiederverwendet, Quelle nur bei exaktem und eindeutigem Block.

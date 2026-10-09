@@ -7,6 +7,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
+- Schritt 5 ist **teilweise** umgesetzt: die reinen Merge-Algorithmen (siehe „Core: Merge“). Konflikterkennung und -auflösung samt Journal, Marker und Backups folgen mit dem Schreibprotokoll.
 - Schritt 3 ist **teilweise** umgesetzt: die reine Planung der Edit-Operationen (siehe „Core: Edit-Planung“). Das Tausch-Protokoll (`safe_write`) folgt nach Spike S4.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
@@ -64,6 +65,18 @@ Alle Operationen nehmen das **aktuell gelesene** `Document` plus ein flüchtiges
 | `core/move_plan.py` | `plan_move` (exakter Quellblock samt Teilbaum als `BlockTarget`; `B'` mit Wurzel auf Ebene 0 und geerbten Tags explizit an der Wurzel), `insert_moved` (an die letzte Notiz `Verschoben aus [[<Quellname>]]` oder neu anhängen; der Link nutzt den Dateinamen der Quelle, damit er auch bei eigenem Muster funktioniert), `remove_moved_source` (nur bei **genau einem** exakten Vorkommen, `resolve_block(…, unique=True)`). Die Reihenfolge Ziel → Quelle kommt mit dem Protokoll. |
 
 Strukturabfragen: `Outline.subtree_end(node)` und `Document.item_at(line_no)` werden von Edits und Move gemeinsam genutzt.
+
+## Core: Merge (Schritt 5, nur Algorithmen)
+
+| Modul | Ist-Zustand |
+|---|---|
+| `core/merge/align.py` | `align([A, B])` bzw. `align([Basis, A, B])` → Synchronzeilen und Lücken. Anker sind nur nicht leere Zeilen, die im (Teil-)Bereich in **jeder** Folge genau einmal vorkommen; gewählt wird die längste in allen Folgen aufsteigende Kette, rekursiv in den Zwischenräumen. Gleiche Zeilen am Rand eines Bereichs gelten als synchron. Deterministisch. |
+| `core/merge/model.py` | `OutLine(text, sources, cert)`, `Hunk` (inkl. `offers_both`: nur wenn beide Seiten nicht leer und verschieden sind), `MergeResult`, Zertifikate `ANKER`/`UEBERNAHME`/`IDENTISCH`/`R1`/`R2`, `status_rule` (R1 erledigt gewinnt, R2 `[x]`/`[X]` → Schreibweise der Hauptdatei). |
+| `core/merge/diff3.py` | `merge3(base, a, b)` nach der Plan-Tabelle (eine Seite ändert → diese; identisch → einmal; beide fügen Verschiedenes ein → A, dann B; Statuspaare → R1/R2; sonst Hunk). Nur mit verlässlicher Basis. |
+| `core/merge/union.py` | `merge2(a, b)`: einseitige Regionen werden behalten (**GRENZE:** einseitige Löschungen kommen zurück), beidseitig verschieden → R1/R2 oder Hunk. |
+| `core/merge/verify.py` | `verify(result, a, b, base)` → Liste der Verstöße: je Seite injektiv und monoton; Viele-zu-eins nur mit `ANKER` bzw. `IDENTISCH`, nachgeprüft gegen die neu berechnete Ausrichtung (gleiche Lücke, gleicher Offset, gleich lange Bereiche); Byte-Gleichheit außer bei R1/R2, die gegen die Regel geprüft werden; Vollständigkeit (Union: alles; diff3: Fehlen nur, wenn die Region dieser Seite der Basis gleicht); keine erfundenen Zeilen; Zeilen in Hunks gelten als erhalten. |
+
+Absicherung: Zufallstest mit festem Seed (3.000 Fälle je Modus) – `verify` meldet für echte Merge-Ergebnisse nie einen Verlust; manipulierte Ergebnisse (fehlende, erfundene, veränderte, zusammengelegte Zeilen, falsches R1) werden erkannt.
 
 ## Core: Suche (Schritt 4)
 
