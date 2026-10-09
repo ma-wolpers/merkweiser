@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
 - Schritt 5 ist **teilweise** umgesetzt: die reinen Merge-Algorithmen (siehe „Core: Merge“). Konflikterkennung und -auflösung samt Journal, Marker und Backups folgen mit dem Schreibprotokoll.
-- Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Es fehlen noch die Wiederherstellung nach Absturz und die Move-Ausführung.
+- Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Wiederherstellung nach Absturz ist umgesetzt; es fehlt noch die Move-Ausführung.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -75,7 +75,9 @@ Strukturabfragen: `Outline.subtree_end(node)` und `Document.item_at(line_no)` we
 | `core/conflict_files.py` | Eigene Konfliktnamen `…-MERKWEISER<8 base32>.md`, exklusiv bzw. per Rename ohne Überschreiben; `find_with_content` gegen Duplikate; Sidecar je Konfliktdatei (Schlüssel ohne Marker), nur gültig bei passendem Hash. |
 | `core/safe_write.py` | `Writer.write` (Ersetzen bzw. Create-only), `Writer.remove`, Quarantäne 120 s über `Clock.monotonic` (`finish_due`/`finish`): zuerst `P` prüfen (ist `N` nicht mehr da → `N` als Konfliktdatei mit Sidecar-Basis `E`), dann `D` (unverändert → löschen, sonst → Konfliktdatei). Rücktausch bei fremder Änderung vor dem Wegbenennen: Nur die *eigene* Version in `P` weicht, eine fremde bleibt. `ChangedBeforeWriteError` → der Aufrufer plant neu. Abweichung vom Plan, **strenger**: Die Quarantäne prüft `D` auch unter Windows. |
 
-Tests (`tests/core/test_safe_write.py`): fremde Änderung vor dem Wegbenennen, Neuanlage während `P` fehlt, Ersetzen in der Quarantäne, später Schreibzugriff in `D`, monotone Quarantäne bei Wanduhrsprung, Create-only-Kollision, Entfernen nur bei unverändertem Inhalt, Windows-Schreibsperre (fremder Schreiber wird blockiert; eine offene fremde Datei bricht ohne Änderung ab).
+| `core/recovery.py` | `recover(writer)` → `RecoveryReport(results, busy_paths, not_applied, orphans)`. Wendet die Zustandstabelle (Zeilen 1–11) auf alle unvollständigen `write`/`remove`-Ops an; die Entscheidung fällt allein aus Manifest und Plattenzustand. Ohne `state.json` → ABORTED (der Vault ist unberührt). Nie verdrängt → Temp entfernen, ABORTED mit „Wiederholen“. `D` vorhanden und `P` fehlt → installieren bzw. fremden Stand zurück. `P` fremd → `N` als Konfliktdatei. Quarantäne → beginnt neu. Fremd gesperrte Ops → `busy_paths`. Verwaiste `.NAME.mw-*` → Konfliktdatei, nie gelöscht. |
+
+Tests (`tests/core/test_safe_write.py`): fremde Änderung vor dem Wegbenennen, Neuanlage während `P` fehlt, Ersetzen in der Quarantäne, später Schreibzugriff in `D`, monotone Quarantäne bei Wanduhrsprung, Create-only-Kollision, Entfernen nur bei unverändertem Inhalt, Windows-Schreibsperre (fremder Schreiber wird blockiert; eine offene fremde Datei bricht ohne Änderung ab). `tests/core/test_recovery.py`: Absturz an **jeder** Protokollgrenze von Ersetzen, Create-only und Entfernen, danach eine neue Instanz mit Wiederherstellung und Quarantäne-Abschluss. Invariante: `N` steht in der Datei oder die Änderung ist als nicht ausgeführt gemeldet; keine fehlende Hauptdatei, keine Hilfsdateien, `E` im Backup. Zusätzlich: Absturz während der Wiederherstellung, Idempotenz, fremd gesperrte Op, verwaiste Dateien.
 
 **BAUSTELLE(A2-Identität):** Der `excl`-Fallback hält die Identität einer partiellen Zieldatei (`P_CREATED`, `st_ino`) noch nicht fest. Eine partielle Datei gilt dort deshalb immer als fremd (`A2`). Relevant erst, wenn S1 den Fallback erzwingt.
 

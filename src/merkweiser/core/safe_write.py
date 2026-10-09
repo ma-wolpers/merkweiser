@@ -140,7 +140,7 @@ class Writer:
             self.fs.rename_no_replace(main, old)
             op.set_state("DISPLACED")
             self.fs.point("remove:displaced")
-            return self._save_displaced(op, main, old, expected, restore_to_main=True)
+            return self.save_displaced(op, main, old, expected, restore_to_main=True)
 
     def finish_due(self) -> list[WriteResult]:
         """Schließt alle Quarantänen ab, deren monotone Frist abgelaufen ist.
@@ -168,12 +168,12 @@ class Writer:
         if manifest["art"] == "write":
             new = op.blob("neu", manifest["blobs"]["neu"])
             if not (self.fs.exists(main) and main.read_bytes() == new):
-                self._ensure_visible(op, main, new, result)
+                self.ensure_visible(op, main, new, result)
         if self.fs.exists(old):
             if cf.sha1(old.read_bytes()) == state.get("d_sha1"):
                 self.fs.remove(old)  # L: Bytes persistiert und gerade erneut geprüft
             else:
-                result.conflicts.append(self._rel(cf.move_to_conflict(self.fs, main, old, self.clock)))
+                result.conflicts.append(self.rel(cf.move_to_conflict(self.fs, main, old, self.clock)))
         if result.conflicts:
             result.state = "CONFLICTED"
         op.set_state(result.state, konflikte=result.conflicts)
@@ -188,12 +188,12 @@ class Writer:
             self.fs.rename_no_replace(tmp, main)
         except FileExistsError:  # inzwischen extern angelegt: nie überschreiben
             conflict = cf.move_to_conflict(self.fs, main, tmp, self.clock)
-            op.set_state("CONFLICTED", konflikte=[self._rel(conflict)])
+            op.set_state("CONFLICTED", konflikte=[self.rel(conflict)])
             op.release()
-            return WriteResult(op.id, "CONFLICTED", [self._rel(conflict)])
+            return WriteResult(op.id, "CONFLICTED", [self.rel(conflict)])
         op.set_state("QUARANTINE")
         self.fs.point("write:installed")
-        return self._quarantine(op)
+        return self.quarantine(op)
 
     def _install_and_check(self, op: Op, main: Path, tmp: Path, old: Path, expected: bytes) -> WriteResult:
         """Ersetzen-Pfad ab Schritt 4: installieren, dann die verdrängte Fassung prüfen."""
@@ -202,14 +202,14 @@ class Writer:
             self.fs.rename_no_replace(tmp, main)
             op.set_state("INSTALLED")
         except FileExistsError:  # P inzwischen extern belegt: N wird Konfliktdatei
-            conflicts.append(self._own_conflict(op, main, cf.move_to_conflict(self.fs, main, tmp, self.clock)))
+            conflicts.append(self.own_conflict(op, main, cf.move_to_conflict(self.fs, main, tmp, self.clock)))
             op.set_state("INSTALLED", konflikte=conflicts)
         self.fs.point("write:installed")
-        result = self._save_displaced(op, main, old, expected, restore_to_main=False)
+        result = self.save_displaced(op, main, old, expected, restore_to_main=False)
         result.conflicts[:0] = conflicts
         return result
 
-    def _save_displaced(self, op: Op, main: Path, old: Path, expected: bytes, restore_to_main: bool) -> WriteResult:
+    def save_displaced(self, op: Op, main: Path, old: Path, expected: bytes, restore_to_main: bool) -> WriteResult:
         """Schritt 5: Kopie von ``D`` sichern und mit dem erwarteten Stand vergleichen.
 
         Args:
@@ -228,27 +228,27 @@ class Writer:
         self.fs.point(f"{op.manifest['art']}:d_saved")
         if displaced == expected:
             op.set_state("QUARANTINE", d_sha1=d_sha)
-            return self._quarantine(op)
+            return self.quarantine(op)
         result = WriteResult(op.id, "CONFLICTED")
         new = op.blob("neu", op.manifest["blobs"]["neu"]) if not restore_to_main else None
         if new is not None and self.fs.exists(main) and main.read_bytes() == new:
             # Nur unsere eigene Version N weicht der fremden; eine fremde Datei in P bleibt.
-            result.conflicts.append(self._own_conflict(op, main, cf.move_to_conflict(self.fs, main, main, self.clock)))
+            result.conflicts.append(self.own_conflict(op, main, cf.move_to_conflict(self.fs, main, main, self.clock)))
         try:
             self.fs.rename_no_replace(old, main)
         except FileExistsError:
-            result.conflicts.append(self._rel(cf.move_to_conflict(self.fs, main, old, self.clock)))
+            result.conflicts.append(self.rel(cf.move_to_conflict(self.fs, main, old, self.clock)))
         op.set_state("CONFLICTED", konflikte=result.conflicts)
         op.release()
         return result
 
-    def _ensure_visible(self, op: Op, main: Path, new: bytes, result: WriteResult) -> None:
+    def ensure_visible(self, op: Op, main: Path, new: bytes, result: WriteResult) -> None:
         """Macht ``N`` als Konfliktdatei sichtbar, falls sie nirgends im Vault steht."""
         existing = cf.find_with_content(main, new)
-        result.conflicts.append(self._own_conflict(op, main, existing or cf.create_from_bytes(
+        result.conflicts.append(self.own_conflict(op, main, existing or cf.create_from_bytes(
             self.fs, main, new, self.clock)))
 
-    def _own_conflict(self, op: Op, main: Path, path: Path) -> str:
+    def own_conflict(self, op: Op, main: Path, path: Path) -> str:
         """Registriert eine eigene Konfliktdatei mit Sidecar (Basis ``E`` aus dieser Op).
 
         Args:
@@ -259,17 +259,17 @@ class Writer:
         Returns:
             Ihr Pfad relativ zum Vault.
         """
-        rel = self._rel(path)
+        rel = self.rel(path)
         cf.write_sidecar(self.data, rel, cf.sha1(path.read_bytes()), op.manifest["relpath"], op.id,
                          op.manifest["blobs"].get("vorher"))
         return rel
 
-    def _quarantine(self, op: Op) -> WriteResult:
+    def quarantine(self, op: Op) -> WriteResult:
         """Registriert die Op für den Quarantäne-Abschluss (monotone Frist)."""
         self._pending[op.id] = (op, self.clock.monotonic() + QUARANTINE_SECONDS)
         return WriteResult(op.id, "QUARANTINE")
 
-    def _rel(self, path: Path) -> str:
+    def rel(self, path: Path) -> str:
         """Pfad relativ zum Vault mit ``/``."""
         return path.relative_to(self.root).as_posix()
 

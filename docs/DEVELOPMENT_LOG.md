@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Wiederherstellung nach Absturz
+
+- `core/recovery.py` und 20 Absturz-Tests (jede Protokollgrenze, verschachtelter Absturz, fremder Lock, verwaiste Dateien).
+- Gemeinsam genutzte Protokollschritte von `Writer` öffentlich gemacht (`save_displaced`, `quarantine`, `own_conflict`, `ensure_visible`, `rel`), statt private Methoden quer über Module aufzurufen.
+
 ## 2026-10-09 – Schritt 3: Tausch-Protokoll (vor S4, Nutzerentscheidung)
 
 - `core/fsops.py`, `core/ops.py`, `core/conflict_files.py`, `core/safe_write.py` mit Tests (fremde Schreiber an jeder kritischen Grenze).
