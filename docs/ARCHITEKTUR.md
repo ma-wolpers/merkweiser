@@ -1,0 +1,42 @@
+# Merkweiser – Architektur (Ist-Zustand)
+
+Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und Protokolle stehen in [PLAN.md](PLAN.md). Sobald ein Teil umgesetzt ist, wandert seine Beschreibung von dort hierher (als Ist-Zustand).
+
+## Stand
+
+- Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
+- Schritt 0 (Spikes) läuft, siehe unten.
+- Es gibt noch keine fachliche Funktion.
+
+## Wahrheitsmodell
+
+Gilt unverändert wie in PLAN.md, Abschnitt „Wahrheitsmodell“: Die Markdown-Dateien im Vault sind die einzige fachliche Wahrheit. Alles in den App-Daten (Op-Verzeichnisse, Historie, Sidecars, Settings) ist technischer Zustand und liegt außerhalb des Vaults.
+
+## Paketstruktur
+
+| Paket | Rolle | Status |
+|---|---|---|
+| `merkweiser.core` | Parser, Schreibprotokoll, Merge; keine UI-Abhängigkeit | leer |
+| `merkweiser.ports` | Protocols (`AppStorage`, `Clock`, `FolderPicker`) | leer |
+| `merkweiser.app` | `NotesService`, die einzige UI-Fassade | leer |
+| `merkweiser.desktop` | bw-gui-Oberfläche (Schritt 7) | fehlt noch |
+| `merkweiser.mobile` | Flet-Oberfläche, `platform/` (Schritt 8) | fehlt noch |
+
+## Spike-Ergebnisse (Schritt 0)
+
+Die Spikes sind Wegwerfcode außerhalb des Repos. Festgehalten werden hier nur die Befunde.
+
+| Spike | Ergebnis | Folgen |
+|---|---|---|
+| **S1** Android-Ordnerzugriff und Primitive | **offen** (braucht Gerät): Spike-APK mit Selbsttest ist gebaut | Füllt die Android-Zeilen der Plattform-Tabelle |
+| **S2** APK aus Monorepo-`src/` | Die Python-App wird mitsamt `merkweiser.core` und einem `desktop`-Paket mit `import tkinter` gepackt. Der erste Build scheiterte an einer Upstream-Unverträglichkeit (Flet-0.86.5-Vorlage pinnt `jni 1.0.0`, löst aber `jni_flutter 1.0.4+1` auf, die `jni ^1.1.0` verlangt). Behoben per `[tool.flet.flutter.pubspec.dependency_overrides] jni_flutter = "1.0.2"`. | Override steht in `pyproject.toml`. **BAUSTELLE(S2):** Ergebnis des zweiten Builds nachtragen. |
+| **S3** bw-gui | Ein themed `ttk.Treeview` (`widgets.Treeview` nach `configure_ttk_theme`) mit Text-Checkbox-Spalte (☐/☑) und Hierarchie funktioniert; `checkbutton_guard` und `tk_state_guard` sind sauber. Tcl/Tk 8.6.15: Emoji, Tabs, `\r\n` und Leerraum am Rand bleiben über `Text.get("1.0", "end-1c")` byte-genau erhalten. **`WrappedTextField.get()` entfernt dagegen Leerraum am Rand** (`.strip()`) und taugt nicht für Roh-Bearbeitung. | **BAUSTELLE(bw-gui):** eigener bw-gui-Teilplan für verlustfreies Auslesen (z. B. `get_raw()`) vor Schritt 7 (Nutzerentscheidung 2026-10-09). |
+| **S4** Tausch-Protokoll unter Windows mit Obsidian und Syncthing | **offen** (braucht laufendes Obsidian) | `W1`, `W2`, `W4`, Windows-Zeile |
+| Windows-Primitive (Vorbefund aus dem S1-Selbsttest, NTFS) | `os.rename` auf ein existierendes Ziel → `FileExistsError` (installiert also atomar ohne Überschreiben). `os.link` auf ein existierendes Ziel → `FileExistsError`. `O_EXCL` funktioniert. `st_ino` bleibt über Rename stabil. Verzeichnis-`fsync` ist **nicht** möglich (`PermissionError`). | Bestätigt die Windows-Zeile der Plattform-Tabelle (ohne Verzeichnis-`fsync`, wie geplant). |
+
+## Grenzen und Baustellen
+
+- **BAUSTELLE(S1):** Android-Spike auf dem Gerät durchführen.
+- **BAUSTELLE(S4):** Windows-Spike mit Obsidian und Syncthing durchführen.
+- **BAUSTELLE(bw-gui):** Teilplan für das verlustfreie Auslesen von `WrappedTextField`.
+- **BAUSTELLE(bw_libs):** `bw_libs/shared_gui_core.py` wird erst in Schritt 7 übernommen. Die Vorlage enthält in ihrem Docstring einen maschinenspezifischen absoluten Pfad, was der Pfad-Regel dieses Repos widerspricht. Das wird vorher mit der Nutzerin bzw. dem Nutzer geklärt.

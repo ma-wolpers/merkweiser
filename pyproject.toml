@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "merkweiser"
+version = "0.1.0-dev"
+description = "Merkweiser: Überblick über Markdown-Tagesnotizen und ihre Todos (Desktop + Android)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "ma-wolpers" }]
+# `flet build apk` bündelt nur Pakete aus project.dependencies (nicht aus
+# Extras); flet selbst bündelt die App-Vorlage immer mit. Der Core kommt ohne
+# Fremdpakete aus.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+# Gepinnt, nicht als Untergrenze: Die Flet-API ändert sich zwischen Versionen,
+# und alle Aufrufe sind nur gegen genau diese Version geprüft.
+ui = ["flet==0.86.5"]
+build = ["flet-cli==0.86.5"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/merkweiser"]
+
+[tool.flet]
+org = "de.merkweiser"
+product = "Merkweiser"
+
+[tool.flet.app]
+# `flet build` führt die Einstiegsdatei als eigenständiges Skript aus. Deshalb
+# liegt das Shim src/main.py (Schritt 8) neben dem Paket, und die App zeigt auf src.
+path = "src"
+
+[tool.flet.android.permission]
+# Plan: echter Pfadzugriff auf den Syncthing-Ordner (wird durch Spike S1 bestätigt).
+"android.permission.MANAGE_EXTERNAL_STORAGE" = true
+
+[tool.flet.android.gradle_properties]
+"org.gradle.jvmargs" = "-Xmx4G -XX:MaxMetaspaceSize=2G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError"
+"android.useAndroidX" = "true"
+
+# Spike S2 (2026-10-09): Die Flet-0.86.5-Vorlage pinnt jni 1.0.0, löst aber
+# jni_flutter transitiv auf 1.0.4+1 auf, und diese Version verlangt jni ^1.1.0
+# (Dart-Kompilierfehler `JniVersionCheck`). jni_flutter 1.0.2 passt zu jni 1.0.0.
+[tool.flet.flutter.pubspec.dependency_overrides]
+jni_flutter = "1.0.2"
