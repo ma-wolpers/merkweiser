@@ -7,6 +7,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
+- Schritt 3 ist **teilweise** umgesetzt: die reine Planung der Edit-Operationen (siehe „Core: Edit-Planung“). Das Tausch-Protokoll (`safe_write`) folgt nach Spike S4.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -49,6 +50,16 @@ Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline �
 Fixtures: `tests/fixtures/*.md` sind synthetisch und byte-genau (CRLF/gemischt, BOM, ohne Schluss-Newline, Fences, Setext, Tabellen, Embeds); `.gitattributes` schützt sie vor `autocrlf`.
 
 Werkzeug: `tools/code_lines.py` zählt ausführbare Code-Zeilen (ohne Docstrings, Kommentare und Imports) gegen den Richtwert 300.
+
+## Core: Edit-Planung (Schritt 3, ohne Schreibprotokoll)
+
+Alle Operationen nehmen das **aktuell gelesene** `Document` plus ein flüchtiges Ziel und liefern neue Bytes. Neu planen auf frischem Stand heißt also einfach: dieselbe Operation mit dem neu gelesenen Dokument aufrufen.
+
+| Modul | Ist-Zustand |
+|---|---|
+| `core/patch.py` | `Target`/`BlockTarget`; `resolve_line`/`resolve_block` (an Ort und Stelle oder **genau ein** exaktes Vorkommen, sonst `StaleTargetError`); `apply_edits(source, LineEdits)`: unveränderte Zeilen byte-identisch, neue Zeilen mit dominantem Zeilenende, „ohne Schluss-Umbruch“ bleibt erhalten; nicht unterstütztes Encoding → `UnsupportedEncodingError`. |
+| `core/edits.py` | `set_done(done)` (statt „toggle“: der Zielzustand ist idempotent und neu planbar; `[X]` bleibt), `set_urgent` (`==…==` um den Inhalt, Tags am Ende bleiben draußen), `set_project` (ersetzt bzw. entfernt alle expliziten Projekt-Tags der Zeile), `add_todo` (Notizende oder letztes Kind mit passender Einrückung). Todos im Codeblock sind keine Todos. |
+| `core/note_ops.py` | `append_note` (Trenner mit Leerzeilen, keiner bei leerer Datei bzw. nur Frontmatter), `replace_note_text` (Notiz nur eindeutig **und** als ganze Notiz auffindbar, sonst `NoteNotFoundError`; der Aufrufer legt dann eine eigene Konfliktdatei an), `delete_note` (genau ein Trenner, Naht ohne doppelte Leerzeilen). |
 
 ## Core: Suche (Schritt 4)
 

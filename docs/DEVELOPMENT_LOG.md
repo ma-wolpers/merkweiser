@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 3 (Teil): Edit-Planung ohne Schreibprotokoll
+
+- `core/patch.py`, `core/edits.py`, `core/note_ops.py` mit Tests: Minimal-Diff per `difflib`, CRLF und fehlender Schluss-Umbruch bleiben erhalten, identische Todos → `StaleTargetError`, Idempotenz, Dringlichkeit hin und zurück byte-identisch, Projekt ersetzen bzw. entfernen, Kind-Einrückung, Notizgrenzen verändert → `NoteNotFoundError`, Löschen mit genau einem Trenner, Encoding-Schutz.
+- Präzisierung gegenüber dem Plan-Wortlaut: `set_done(done)` statt `toggle_done`, weil ein Umschalten nach einer fremden Änderung beim Neuplanen in die falsche Richtung kippen könnte. Für Nutzer bleibt die Funktion gleich.
+- Bewusst noch **nicht** umgesetzt: `safe_write`/`safe_remove` (Tausch-Protokoll). Laut Plan wird S4 abgewartet.
+
 ## 2026-10-09 – Schritt 4: Suche und Filter
 
 - `core/query.py` (Filter, TextQuery mit explizitem Modus, Treffer mit Kontext) und `core/doc_cache.py` (Speicher-Cache) mit Tests: Todo-Ansicht, Status und Dringlichkeit, UND/ODER bei effektiven Tags, geerbte Projekte, Teilstring- gegen Regex-Modus, ungültiger Regex, Datumsbereich, Cache-Invalidierung.
