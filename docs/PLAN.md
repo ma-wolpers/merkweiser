@@ -69,7 +69,7 @@ Stand: Diese Fassung enthält vier externe Audits (2026-10-08/09). Alle frühere
 | Erläuterungsabsatz | Text auf Ebene 0 *vor* dem ersten Listenpunkt gehört zum Thema. Text auf Ebene 0 *nach* Listenpunkten beginnt ein neues Thema. |
 | Überschriften | übergeordnete Vererbungsebene bis zur nächsten gleich- oder höherrangigen Überschrift |
 | Dateien und Datum | Ganzer Dateiname gegen das Muster, rekursive Suche. Dubletten werden angezeigt und markiert. Sonstige `.md` werden ignoriert. |
-| Auto-Merge | Automatisch nur, wenn kein Inhalt verloren geht, plus **„erledigt gewinnt“**. Alles andere wird ein Konflikt mit vorausgewähltem Vorschlag. |
+| Auto-Merge | Automatisch nur, wenn kein Inhalt verloren geht, plus **„erledigt gewinnt“**. Alles andere wird ein Konflikt mit vorausgewähltem Vorschlag. **Präzisiert am 2026-10-09 (Umsetzung):** Ohne verlässliche Basis (Union) werden beidseitig verschiedene Stellen automatisch zu „beide, A dann B“ (verlustfrei, im Auto-Merge-Protokoll mit Rückgängig; GRENZE: eine Umformulierung steht dann doppelt da). Konflikt-Hunks entstehen nur noch im 3-Wege-Fall. |
 | Eigene Konflikte | Eine Konfliktdatei im Vault im Syncthing-Format mit Gerätekennung `MERKWEISER…`. Der Name ist **kollisionssicher** (siehe unten). |
 | Backups | 30 Tage. Backups zu offenen Konflikten bleiben erhalten. |
 | Schreibprotokoll | **Tausch-Protokoll** (siehe unten) statt „prüfen, dann ersetzen“ |

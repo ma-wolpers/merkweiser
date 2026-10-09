@@ -92,11 +92,15 @@ def test_done_wins_in_diff3() -> None:
 
 # --- Union ----------------------------------------------------------------------
 
-def test_union_concept_example_without_base_is_conflict() -> None:
-    """Ohne Basis ist Einfügung von Umformulierung nicht unterscheidbar → Hunk mit „beide“."""
+def test_union_concept_example_without_base_takes_both() -> None:
+    """Nutzerentscheidung: ohne Basis automatisch „beide“, Hauptdatei zuerst."""
     result = m2(BASE + ["- [ ] Aufgabe B"], BASE + ["- [ ] Aufgabe C"])
-    assert not result.clean
-    assert result.hunks[0].a_lines == ("- [ ] Aufgabe B",) and result.hunks[0].offers_both
+    assert result.lines() == tuple(BASE + ["- [ ] Aufgabe B", "- [ ] Aufgabe C"])
+
+
+def test_union_rewording_appears_twice_grenze() -> None:
+    """GRENZE: Eine Umformulierung steht ohne Basis doppelt da (alt und neu)."""
+    assert m2(["T", "Kisten", "Z"], ["T", "Kisten bis Fr", "Z"]).lines() == ("T", "Kisten", "Kisten bis Fr", "Z")
 
 
 def test_union_one_sided_insertions_kept() -> None:
@@ -113,7 +117,7 @@ def test_union_done_wins_and_capital_x_keeps_main() -> None:
     """R1: erledigt gewinnt; R2: ``[x]`` gegen ``[X]`` → Hauptdatei-Schreibweise."""
     assert m2(["T", "- [ ] x #t"], ["T", "- [x] x #t"]).lines() == ("T", "- [x] x #t")
     assert m2(["T", "- [X] x"], ["T", "- [x] x"]).lines() == ("T", "- [X] x")
-    assert not m2(["T", "- [ ] x"], ["T", "- [x] y"]).clean  # Text verschieden → kein R1
+    assert m2(["T", "- [ ] x"], ["T", "- [x] y"]).lines() == ("T", "- [ ] x", "- [x] y")  # kein R1 → beide
 
 
 def test_repeated_identical_lines_stay_separate() -> None:
@@ -175,8 +179,9 @@ def test_verify_rejects_fake_r1() -> None:
 
 def test_verify_accepts_hunks_as_preserved() -> None:
     """Zeilen in einem Hunk gelten als erhalten (Ergebnis ∪ Hunks)."""
-    result = merge2(["T", "a1"], ["T", "a2"])
-    assert isinstance(result.segments[-1], Hunk) and verify(result, ["T", "a1"], ["T", "a2"]) == []
+    base, a, b = ["T", "a", "Z"], ["T", "a1", "Z"], ["T", "a2", "Z"]
+    result = merge3(base, a, b)
+    assert isinstance(result.segments[1], Hunk) and verify(result, a, b, base) == []
 
 
 def test_randomized_merges_never_lose_content() -> None:
