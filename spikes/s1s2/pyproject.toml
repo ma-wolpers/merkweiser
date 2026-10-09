@@ -3,7 +3,9 @@ name = "merkweiser-spike"
 version = "0.0.1"
 description = "Merkweiser Spike S1/S2 (Wegwerfcode)"
 requires-python = ">=3.11"
-dependencies = []
+# pyjnius: Spike-Frage, ob serious_python es fuer Android buendelt (Einstellungsseite
+# oeffnen, isExternalStorageManager abfragen).
+dependencies = ["pyjnius"]
 
 [tool.flet]
 org = "de.merkweiser"

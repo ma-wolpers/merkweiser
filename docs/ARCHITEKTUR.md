@@ -5,6 +5,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 ## Stand
 
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
+- Schritt 2 (Einlesen) ist in Arbeit, siehe „Core: Einlesen“.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -21,6 +22,19 @@ Gilt unverändert wie in PLAN.md, Abschnitt „Wahrheitsmodell“: Die Markdown-
 | `merkweiser.app` | `NotesService`, die einzige UI-Fassade | leer |
 | `merkweiser.desktop` | bw-gui-Oberfläche (Schritt 7) | fehlt noch |
 | `merkweiser.mobile` | Flet-Oberfläche, `platform/` (Schritt 8) | fehlt noch |
+
+## Core: Einlesen (Schritt 2)
+
+Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline → Semantik`. Jede Stufe nutzt nur das Ergebnis der vorherigen.
+
+| Modul | Ist-Zustand |
+|---|---|
+| `core/source.py` | `SourceText.from_bytes(raw)` → `Line(no, text, eol)` mit dem originalen Zeilenende pro Zeile. Zeilengrenzen sind nur `
+`, `
+` und `` (nicht `str.splitlines`, das auch an ``, ` ` … trennt). `to_bytes()` ist für UTF-8 ± BOM byte-identisch, für nicht unterstützte Encodings wird immer `raw` zurückgegeben (`writable == False`). `dominant_eol()` liefert das Zeilenende für neue Zeilen. |
+| `core/blocks.py` | `analyze(lines) → FileLayout(frontmatter, fences, separators, notes)`. Das ist die alleinige Instanz für Notizgrenzen. Fence-Regel: gleiches Zeichen, Länge ≥ öffnende Länge; offen bis Dateiende. **GRENZE:** Nicht geschlossenes Frontmatter gilt als Trenner am Notizanfang. |
+
+Werkzeug: `tools/code_lines.py` zählt ausführbare Code-Zeilen (ohne Docstrings, Kommentare und Imports) gegen den Richtwert 300.
 
 ## Spike-Ergebnisse (Schritt 0)
 

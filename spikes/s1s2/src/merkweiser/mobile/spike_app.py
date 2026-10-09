@@ -10,6 +10,7 @@ belegt zugleich die Syncthing-Übernahme).
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -57,6 +58,32 @@ def _open_all_files_settings() -> str:
         return f"Konnte Einstellungen nicht öffnen: {type(exc).__name__}: {exc}"
 
 
+def _storage_access_state(test_dir: Path) -> list[str]:
+    """Ermittelt den Zugriff auf den geteilten Speicher ohne pyjnius.
+
+    Ohne „Zugriff auf alle Dateien“ darf eine App unter Android 11+ im Wurzel-
+    verzeichnis des geteilten Speichers weder auflisten noch anlegen. Die
+    Prüfung unterscheidet also zuverlässig „Berechtigung fehlt“ von anderen
+    Fehlern, auch wenn ``isExternalStorageManager`` nicht abfragbar ist.
+
+    Args:
+        test_dir: Gewählter Testordner.
+
+    Returns:
+        Befundzeilen für den Bericht.
+    """
+    root = Path("/storage/emulated/0")
+    lines = []
+    for label, path in (("root", root), ("testordner", test_dir)):
+        lines.append(f"{label}: exists={path.exists()} R={os.access(path, os.R_OK)} "
+                     f"W={os.access(path, os.W_OK)}")
+    try:
+        lines.append(f"listdir(root): {len(os.listdir(root))} Einträge")
+    except Exception as exc:
+        lines.append(f"listdir(root): {type(exc).__name__}: {exc}")
+    return lines
+
+
 async def main(page: ft.Page) -> None:
     """Baut die Spike-Oberfläche auf.
 
@@ -87,20 +114,34 @@ async def main(page: ft.Page) -> None:
 
     def run(_e) -> None:
         test_dir = Path(folder.value or DEFAULT_DIR)
-        lines = [_all_files_access_state()]
+        lines = [_all_files_access_state(), *_storage_access_state(test_dir)]
         try:
-            test_dir.mkdir(parents=True, exist_ok=True)
+            if not test_dir.is_dir():
+                lines.append(f"Testordner fehlt, lege an: {test_dir}")
+                test_dir.mkdir(parents=True, exist_ok=True)
             lines += run_probe(test_dir, app_data)
-            report = test_dir / f"mw-spike-bericht-{time.strftime('%Y%m%d-%H%M%S')}.txt"
-            report.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            lines.append(f"Bericht geschrieben: {report}")
         except Exception as exc:
             lines.append(f"FEHLER: {type(exc).__name__}: {exc}")
+        name = f"mw-spike-bericht-{time.strftime('%Y%m%d-%H%M%S')}.txt"
+        # Bericht bevorzugt in den (synchronisierten) Testordner, sonst in den
+        # App-Speicher, damit ein Befund nie verloren geht.
+        for target in (test_dir, app_data):
+            if target is None:
+                continue
+            try:
+                (Path(target) / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+                lines.append(f"Bericht geschrieben: {Path(target) / name}")
+                break
+            except Exception as exc:
+                lines.append(f"Bericht nach {target} fehlgeschlagen: {type(exc).__name__}: {exc}")
         out.value = "\n".join(lines)
         page.update()
 
     page.add(ft.SafeArea(content=ft.Column([
         ft.Text("Merkweiser Spike S1/S2 (nur synthetische Testdateien)", weight=ft.FontWeight.BOLD),
+        ft.Text("Öffnet „Alle-Dateien-Zugriff“ keine Einstellungsseite: Einstellungen → Apps → "
+                "Merkweiser Spike → Berechtigungen → Dateien → „Verwaltung aller Dateien zulassen“. "
+                "Als Testordner den per Syncthing geteilten SyncSpike-Ordner wählen.", size=12),
         folder,
         ft.Row([ft.Button("Ordner wählen", on_click=pick),
                 ft.Button("Alle-Dateien-Zugriff", on_click=perm),
