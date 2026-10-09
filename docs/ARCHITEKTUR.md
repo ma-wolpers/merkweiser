@@ -39,4 +39,4 @@ Der Spike-Code liegt unter `spikes/` (S1/S2: `spikes/s1s2/`, ein eigenes Flet-Pr
 - **BAUSTELLE(S1):** Android-Spike auf dem Gerät durchführen.
 - **BAUSTELLE(S4):** Windows-Spike mit Obsidian und Syncthing durchführen.
 - **BAUSTELLE(bw-gui):** Teilplan für das verlustfreie Auslesen von `WrappedTextField`.
-- **BAUSTELLE(bw_libs):** `bw_libs/shared_gui_core.py` wird erst in Schritt 7 übernommen. Die Vorlage enthält in ihrem Docstring einen maschinenspezifischen absoluten Pfad, was der Pfad-Regel dieses Repos widerspricht. Das wird vorher mit der Nutzerin bzw. dem Nutzer geklärt.
+- `bw_libs/shared_gui_core.py` (Bootstrap für die bw-gui-Pfadinjektion, nur Desktop, liegt außerhalb von `src/` und landet deshalb nicht im APK): Der Code ist identisch mit der gemeinsamen Vorlage. Der Docstring beschreibt das Geschwister-Repo `../bw-gui` statt eines maschinenspezifischen Pfads (Nutzerentscheidung 2026-10-09; die anderen Consumer-Repos stehen auf der Wunschliste).
