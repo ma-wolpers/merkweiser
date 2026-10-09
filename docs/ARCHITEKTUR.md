@@ -76,6 +76,10 @@ Strukturabfragen: `Outline.subtree_end(node)` und `Document.item_at(line_no)` we
 | `core/merge/union.py` | `merge2(a, b)`: einseitige Regionen werden behalten (**GRENZE:** einseitige Löschungen kommen zurück), beidseitig verschieden → R1/R2 oder Hunk. |
 | `core/merge/verify.py` | `verify(result, a, b, base)` → Liste der Verstöße: je Seite injektiv und monoton; Viele-zu-eins nur mit `ANKER` bzw. `IDENTISCH`, nachgeprüft gegen die neu berechnete Ausrichtung (gleiche Lücke, gleicher Offset, gleich lange Bereiche); Byte-Gleichheit außer bei R1/R2, die gegen die Regel geprüft werden; Vollständigkeit (Union: alles; diff3: Fehlen nur, wenn die Region dieser Seite der Basis gleicht); keine erfundenen Zeilen; Zeilen in Hunks gelten als erhalten. |
 
+| `core/watch.py` | `observe(root)` und `poll(root, previous)` → `Changes(added, removed, modified)` über `(mtime_ns, size)` der sichtbaren `.md`-Dateien. Meldet nur Unterschiede zwischen zwei Beobachtungen; kein Event-System. |
+| `core/appdata.py` | `vault_id(root)` = SHA-1 von `normcase(realpath)`; `open_vault_data(app_data, root)` legt `history/`, `ops/`, `conflicts/`, `instances/` an und schreibt `meta.json`; App-Daten im Vault werden abgelehnt. `write_json_atomic` nur für eigene App-Daten. **GRENZE:** Ein umbenannter Vault bekommt eine neue ID. |
+| `core/history.py` | `History.record` (nur anhängend; Inhalte unveränderlich per `open(…, "xb")`; nur Metadaten werden aktualisiert), `versions`, `read`, `candidate_base` (**GRENZE:** Heuristik, nur für Vorschläge), `prune` (ab `replaced_since`, die neuesten 5 und geschützte bleiben). |
+
 Absicherung: Zufallstest mit festem Seed (3.000 Fälle je Modus) – `verify` meldet für echte Merge-Ergebnisse nie einen Verlust; manipulierte Ergebnisse (fehlende, erfundene, veränderte, zusammengelegte Zeilen, falsches R1) werden erkannt.
 
 ## Core: Suche (Schritt 4)

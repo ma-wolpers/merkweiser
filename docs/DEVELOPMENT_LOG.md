@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Watcher, App-Daten-Layout, Beobachtungs-Historie
+
+- `core/watch.py`, `core/appdata.py`, `core/history.py` mit Tests: nur Unterschiede bzw. Endstand, versteckte Dateien ausgenommen, getrennte Vault-IDs und Historien bei gleichem relativen Pfad, App-Daten nie im Vault, Historie nur anhängend, Aufbewahrung ab „ersetzt seit“ (tägliches Lesen verlängert alte Versionen nicht), Schutz referenzierter Versionen, Kandidatenbasis vor einem Zeitstempel.
+- Damit sind alle Bausteine umgesetzt, die nicht vom Tausch-Protokoll abhängen. Als Nächstes folgen (nach S4) `textfile`-Primitive, Op-Verzeichnisse, `safe_write`/`safe_remove`, Wiederherstellung, Konflikte mit Resolve-Op und Marker, dann `NotesService`.
+
 ## 2026-10-09 – Schritt 5 (Teil): Merge-Algorithmen
 
 - `core/merge/{align,model,diff3,union,verify}.py` mit 22 Tests: Konzeptbeispiel (diff3 automatisch, A zuerst), identische Ersetzung und Einfügung einmal, Löschung gegen Änderung → Konflikt, R1/R2, Union-GRENZE, wiederholte Zeilen bleiben getrennt, gleicher Inhalt an anderer Position wird nicht zusammengelegt, manipulierte Ergebnisse werden abgelehnt, Zufallstest.
