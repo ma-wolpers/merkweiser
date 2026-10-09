@@ -5,7 +5,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 ## Stand
 
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
-- Schritt 2 (Einlesen) ist in Arbeit, siehe „Core: Einlesen“.
+- Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -40,6 +40,13 @@ Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline �
 | `core/outline.py` | `build_outline(lines, layout, note)` in zwei Durchgängen: (1) Blöcke (Absatz, ATX- und Setext-Überschrift, Punkt mit Fortsetzungszeilen, Sonstiges inklusive Codeblock); (2) Baum mit Überschriften-Stapel, Thema bzw. Erläuterung, implizitem Thema und Eltern nach Einrückungsspalte. Knoten verweisen nur auf Zeilennummern; Eltern stehen immer vor Kindern. |
 | `core/tags.py` | `compute_tags(outline, prefix)`: effektiv = explizit ∪ effektiv(Eltern), ein Durchlauf in Knotenreihenfolge. Liefert explizite, effektive und geerbte Projekte. |
 
+| `core/vault.py` | `DayPattern` (nur `%Y`/`%m`/`%d`, je genau einmal, ganzer Dateiname), `scan(root, pattern)` (rekursiv; versteckte Ordner und Dateien werden übersprungen) → `VaultIndex(day_files, conflicts)` mit `duplicates()`. `parse_conflict_name` leitet die Hauptdatei aus dem Namen ohne **alle** `.sync-conflict-…`-Segmente ab und erkennt `nested`, `own` (`MERKWEISER…`) und `decided` (`…MWENTSCHIEDEN`); Nicht-`.md` wird ignoriert. `write_target` setzt die Schreibziel-Regel um bzw. meldet `AmbiguousDayFile`. Schreibt nie. |
+| `core/textfile.py` | `read_snapshot(path)` → `FileSnapshot(raw, mtime_ns, size)` (Stat über den offenen Deskriptor); `same_content` vergleicht nur Bytes. **BAUSTELLE(S4):** Die Tausch-Primitive folgen in Schritt 3. |
+| `ports/clock.py`, `core/clock.py` | `Clock`-Protocol (`now`, `today`, `monotonic`) und `SystemClock`. Tests nutzen `tests/fakes.py:FakeClock` mit getrennt verstellbarer Wanduhr und monotoner Zeit. |
+| `core/document.py` | `parse_document(raw, prefix)` → `Document(source, layout, notes)`, die einzige Stelle, die die Lese-Stufen verkettet. |
+
+Fixtures: `tests/fixtures/*.md` sind synthetisch und byte-genau (CRLF/gemischt, BOM, ohne Schluss-Newline, Fences, Setext, Tabellen, Embeds); `.gitattributes` schützt sie vor `autocrlf`.
+
 Werkzeug: `tools/code_lines.py` zählt ausführbare Code-Zeilen (ohne Docstrings, Kommentare und Imports) gegen den Richtwert 300.
 
 ## Spike-Ergebnisse (Schritt 0)
@@ -48,7 +55,7 @@ Der Spike-Code liegt unter `spikes/` (S1/S2: `spikes/s1s2/`, ein eigenes Flet-Pr
 
 | Spike | Ergebnis | Folgen |
 |---|---|---|
-| **S1** Android-Ordnerzugriff und Primitive | **offen** (braucht Gerät): Spike-APK mit Selbsttest liegt in `SyncSpike/`. Wählt man in der App diesen synchronisierten Ordner als Testordner, kommt der Bericht per Syncthing zurück. | Füllt die Android-Zeilen der Plattform-Tabelle |
+| **S1** Android-Ordnerzugriff und Primitive | Teilbefunde (2026-10-09): `pyjnius` ist ohne Eintrag in `project.dependencies` **nicht** im APK. Mit dem Eintrag wird `pyjnius 1.8.0` für arm64-v8a, armeabi-v7a und x86_64 gebündelt. Ohne „Alle Dateien“ führt Anlegen in `/storage/emulated/0` zu `PermissionError`. Sonst **offen** (braucht Gerät): Spike-APK mit Selbsttest liegt in `SyncSpike/`. Wählt man in der App diesen synchronisierten Ordner als Testordner, kommt der Bericht per Syncthing zurück. | Füllt die Android-Zeilen der Plattform-Tabelle |
 | **S2** APK aus Monorepo-`src/` | Die Python-App wird mitsamt `merkweiser.core` und einem `desktop`-Paket mit `import tkinter` gepackt. Der erste Build scheiterte an einer Upstream-Unverträglichkeit (Flet-0.86.5-Vorlage pinnt `jni 1.0.0`, löst aber `jni_flutter 1.0.4+1` auf, die `jni ^1.1.0` verlangt). Behoben per `[tool.flet.flutter.pubspec.dependency_overrides] jni_flutter = "1.0.2"`. | **Bestanden** (2026-10-09): Mit dem Override baut `flet build apk` erfolgreich; `core`, `mobile` und `desktop` (mit `import tkinter`, auf Android nie importiert) sind gebündelt. Der Override steht in `pyproject.toml`. Hinweis: Dieselbe Upstream-Unverträglichkeit trifft jedes Flet-0.86.5-Projekt beim nächsten Build. |
 | **S3** bw-gui | Ein themed `ttk.Treeview` (`widgets.Treeview` nach `configure_ttk_theme`) mit Text-Checkbox-Spalte (☐/☑) und Hierarchie funktioniert; `checkbutton_guard` und `tk_state_guard` sind sauber. Tcl/Tk 8.6.15: Emoji, Tabs, `\r\n` und Leerraum am Rand bleiben über `Text.get("1.0", "end-1c")` byte-genau erhalten. **`WrappedTextField.get()` entfernt dagegen Leerraum am Rand** (`.strip()`) und taugt nicht für Roh-Bearbeitung. | **BAUSTELLE(bw-gui):** eigener bw-gui-Teilplan für verlustfreies Auslesen (z. B. `get_raw()`) vor Schritt 7 (Nutzerentscheidung 2026-10-09). |
 | **S4** Tausch-Protokoll unter Windows mit Obsidian und Syncthing | **offen** (braucht laufendes Obsidian) | `W1`, `W2`, `W4`, Windows-Zeile |
