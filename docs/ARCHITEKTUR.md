@@ -7,7 +7,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
-- Schritt 5 ist **teilweise** umgesetzt: die reinen Merge-Algorithmen (siehe „Core: Merge“). Konflikterkennung und -auflösung samt Journal, Marker und Backups folgen mit dem Schreibprotokoll.
+- Schritt 5 ist umgesetzt: Merge-Algorithmen sowie Konflikterkennung, Auto-Merge mit Rückgängig, manuelle Auflösung mit Marker und deren Wiederherstellung (siehe „Core: Merge“ und „Core: Konflikte“).
 - Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Wiederherstellung nach Absturz ist umgesetzt; es fehlt noch die Move-Ausführung.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
@@ -96,6 +96,18 @@ Tests (`tests/core/test_safe_write.py`): fremde Änderung vor dem Wegbenennen, N
 | `core/history.py` | `History.record` (nur anhängend; Inhalte unveränderlich per `open(…, "xb")`; nur Metadaten werden aktualisiert), `versions`, `read`, `candidate_base` (**GRENZE:** Heuristik, nur für Vorschläge), `prune` (ab `replaced_since`, die neuesten 5 und geschützte bleiben). |
 
 Absicherung: Zufallstest mit festem Seed (3.000 Fälle je Modus) – `verify` meldet für echte Merge-Ergebnisse nie einen Verlust; manipulierte Ergebnisse (fehlende, erfundene, veränderte, zusammengelegte Zeilen, falsches R1) werden erkannt.
+
+## Core: Konflikte (Schritt 5)
+
+| Modul | Ist-Zustand |
+|---|---|
+| `core/conflicts.py` | `classify(root, writer, index, busy, manual)` liefert je Hauptdatei die älteste Konfliktdatei als `ConflictCase`: `AUTO` (Merge konfliktfrei **und** `verify` bestanden; Union bzw. diff3 mit gültigem Sidecar), `MANUAL` (diff3-Hunks, verschachtelt, Marker `MWENTSCHIEDEN`, „nur manuell“, Encoding), `MAIN_DELETED` (alle Versionen), `BUSY`. `auto_merge` läuft als Op `automerge` (Bytes von Haupt-, Konfliktdatei und Ergebnis) über `safe_write` und `safe_remove`; `undo_automerge` stellt die Hauptdatei wieder her und legt die Konfliktdatei neu an. `render` übernimmt Zeilenende, Schluss-Umbruch und BOM der Hauptdatei. |
+| `core/resolve.py` | `resolve(…)` als Resolve-Op: PREPARED → MARKED (`…MWENTSCHIEDEN`, Inhalt geprüft) → MAIN_WRITTEN → DONE (Entfernen nur bei unverändertem Inhalt). `recover_resolves` setzt die Fälle a–j aus dem Plattenzustand fort und räumt Automerge-Ops auf. `manual_only_paths` ist aus den Manifesten rekonstruierbar (unterbrochene bzw. mit Hinweis abgeschlossene, unbestätigte Auflösungen; `nur_manuell` bei `MAIN_DELETED`). `acknowledge` bestätigt Hinweise. |
+
+- **GRENZE:** Ändern beide Seiten **benachbarte** Zeilen, ohne dass dazwischen ein in allen drei Fassungen eindeutiger Anker liegt, behandelt der diff3 sie als eine Region. Das ergibt einen manuellen Konflikt statt eines Auto-Merges (konservativ, wie bei `git merge`).
+- **BAUSTELLE(Vorschläge):** Weil die Union jetzt immer automatisch „beide“ wählt, nutzen bisher keine manuellen Fälle Vorschläge aus der Beobachtungs-Historie. Sinnvoll wäre das für verschachtelte und entschiedene Fälle sowie `MAIN_DELETED`.
+
+Tests (`tests/core/test_conflicts.py`): Konzeptbeispiel automatisch plus Rückgängig, CRLF-Erhalt, manuelle Fallarten, diff3 mit Sidecar-Basis, benachbarte Änderungen (`GRENZE`), manuelle Auflösung, Absturz in jedem Schritt der Auflösung (die Wahl wird nie rückgängig gemacht), App-Datenverlust mit Marker (k), Konfliktdatei nach der Entscheidung geändert (f), extern entfernte Konfliktdatei (i), `MAIN_DELETED` mit „Rest nur manuell“.
 
 ## Core: Suche (Schritt 4)
 

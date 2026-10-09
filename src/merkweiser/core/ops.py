@@ -184,6 +184,19 @@ class OpStore:
         """Alle ``op-id``s, chronologisch (die ID beginnt mit dem Zeitstempel)."""
         return sorted(p.name for p in self._dir.iterdir() if p.is_dir()) if self._dir.exists() else []
 
+    def read(self, op_id: str) -> tuple[dict, dict]:
+        """Liest Manifest und Zustand ohne Lock (nur zur Anzeige und Auswertung).
+
+        Args:
+            op_id: Die Op.
+
+        Returns:
+            ``(manifest, state)``; fehlende Dateien ergeben leere Dicts.
+        """
+        folder = self._dir / op_id
+        load = lambda name: json.loads((folder / name).read_text(encoding="utf-8")) if (folder / name).exists() else {}
+        return load("manifest.json"), load("state.json")
+
     def is_final(self, op_id: str) -> bool:
         """``True``, wenn die Op abgeschlossen ist (oder nie vorbereitet wurde: dann ``False``)."""
         path = self._dir / op_id / "state.json"

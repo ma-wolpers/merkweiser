@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Konfliktschicht: Erkennung, Auto-Merge, Auflösung mit Marker
+
+- `core/conflicts.py`, `core/resolve.py`, `OpStore.read` und 13 Tests.
+- Im Entwurf ergänzt: `manual_only_paths`. Für unterbrochene bzw. mit Hinweis abgeschlossene Auflösungen und für die übrigen `MAIN_DELETED`-Versionen läuft nie ein Auto-Merge (Plan, „Regeln“).
+- Testbefund: Benachbarte Änderungen beider Seiten werden im diff3 zum Konflikt (konservativ, dokumentiert als `GRENZE`). Die Absturz-Tests brauchen einen simulierten Prozesstod (Locks freigeben), sonst übernimmt die Wiederherstellung korrekt **nicht**.
+
 ## 2026-10-09 – Wiederherstellung nach Absturz
 
 - `core/recovery.py` und 20 Absturz-Tests (jede Protokollgrenze, verschachtelter Absturz, fremder Lock, verwaiste Dateien).
