@@ -31,8 +31,14 @@ Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline �
 |---|---|
 | `core/source.py` | `SourceText.from_bytes(raw)` → `Line(no, text, eol)` mit dem originalen Zeilenende pro Zeile. Zeilengrenzen sind nur `
 `, `
-` und `` (nicht `str.splitlines`, das auch an ``, ` ` … trennt). `to_bytes()` ist für UTF-8 ± BOM byte-identisch, für nicht unterstützte Encodings wird immer `raw` zurückgegeben (`writable == False`). `dominant_eol()` liefert das Zeilenende für neue Zeilen. |
+` und `
+` (nicht `str.splitlines`, das auch an ``, ` ` … trennt). `to_bytes()` ist für UTF-8 ± BOM byte-identisch, für nicht unterstützte Encodings wird immer `raw` zurückgegeben (`writable == False`). `dominant_eol()` liefert das Zeilenende für neue Zeilen. |
 | `core/blocks.py` | `analyze(lines) → FileLayout(frontmatter, fences, separators, notes)`. Das ist die alleinige Instanz für Notizgrenzen. Fence-Regel: gleiches Zeichen, Länge ≥ öffnende Länge; offen bis Dateiende. **GRENZE:** Nicht geschlossenes Frontmatter gilt als Trenner am Notizanfang. |
+
+| `core/lexer.py` | `tokenize(text)` zerlegt eine Zeile in `TEXT`/`CODE`/`WIKILINK`/`LINK_URL` (Inline-Code mit passender Backtick-Länge, `[[…]]`, Link-Ziele, Autolinks, nackte URLs). Das ist die einzige Quelle für „wo ist Code bzw. eine URL“. |
+| `core/inline.py` | `parse_list_item` (Marker, Spalte mit Tabstopps 4, Checkbox `[ ]`/`[x]`/`[X]`/`OTHER`, Dringlichkeit `==…==` am Inhaltsanfang), `find_tags` (Wortanfang, nur in `TEXT`, nicht rein numerisch, Vergleich per `casefold`), `project_name`. |
+| `core/outline.py` | `build_outline(lines, layout, note)` in zwei Durchgängen: (1) Blöcke (Absatz, ATX- und Setext-Überschrift, Punkt mit Fortsetzungszeilen, Sonstiges inklusive Codeblock); (2) Baum mit Überschriften-Stapel, Thema bzw. Erläuterung, implizitem Thema und Eltern nach Einrückungsspalte. Knoten verweisen nur auf Zeilennummern; Eltern stehen immer vor Kindern. |
+| `core/tags.py` | `compute_tags(outline, prefix)`: effektiv = explizit ∪ effektiv(Eltern), ein Durchlauf in Knotenreihenfolge. Liefert explizite, effektive und geerbte Projekte. |
 
 Werkzeug: `tools/code_lines.py` zählt ausführbare Code-Zeilen (ohne Docstrings, Kommentare und Imports) gegen den Richtwert 300.
 

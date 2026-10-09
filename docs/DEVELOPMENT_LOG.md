@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 2, Teil 2: Lexer, Zeilensemantik, Notizbaum, Tag-Vererbung
+
+- `core/lexer.py`, `core/inline.py`, `core/outline.py`, `core/tags.py` mit Tests: Konzeptbeispiele (Verschachtelung, Status, Dringlichkeit, `#uni`, Ende der Vererbung beim nächsten Thema), Erläuterungsabsatz, Überschriften-Ebene, Setext, implizites Thema, Fortsetzungszeilen, Codeblock ohne Todos, Zitat/Tabelle/Embed, Projekte explizit/geerbt, Tags ohne Groß-/Kleinschreibung, Tabstopps.
+- Obsidian-Abgleich: Tags brauchen nur mindestens ein Nicht-Ziffer-Zeichen (`#2026-10` gilt).
+- `FORMAT.md`: zwei GRENZE-Einträge (Zeile direkt unter einem Punkt beginnt ein Thema; Setext mit mindestens 3 Zeichen).
+
 ## 2026-10-09 – Schritt 2, Teil 1: Source-Modell und Block-Erkennung
 
 - `core/source.py` (verlustfreies `SourceText`, Encoding-Grenze) und `core/blocks.py` (Frontmatter, Fences, Trenner, Notiz-Spannen) mit Tests: Roundtrip byte-identisch bei LF, CRLF, gemischt, ohne Schluss-Newline, BOM, Emoji, Steuerzeichen; Trennerregel; längere Fences; offene Fences.

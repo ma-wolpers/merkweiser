@@ -42,7 +42,7 @@ Grundsatz: **Merkweiser liest deine Markdown-Dateien, schreibt sie aber nie neu.
 Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die obere):
 
 1. **Leerzeile**
-2. **Überschrift:** `#`, `##` … mit Leerzeichen, oder Setext. `#tag` ohne Leerzeichen ist ein Tag, keine Überschrift.
+2. **Überschrift:** `#`, `##` … mit Leerzeichen, oder Setext (Absatz mit `===`/`---` direkt darunter; **GRENZE:** mindestens 3 Zeichen). `#tag` ohne Leerzeichen ist ein Tag, keine Überschrift.
 3. **Listenpunkt:** beginnt mit `-`, `*`, `+`, `1.` oder `1)`.
 4. **Fortsetzung:** eine eingerückte Zeile direkt unter einem Listenpunkt; sie gehört zu diesem Punkt.
 5. **Sonstiges:** Zitate `>`, Tabellen `|`, HTML `<`, Zeilen nur mit Bild bzw. Embed, eingerückter Text ohne Punkt. Sie bleiben erhalten, beginnen aber nie ein Thema.
@@ -62,6 +62,7 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
   ```
 
 - Eine Notiz darf beliebig viele Themen haben. Listenpunkte vor dem ersten Thema gehören zu einem unsichtbaren Thema ohne Tags.
+- **GRENZE:** Eine nicht eingerückte Textzeile **direkt** unter einem Listenpunkt (ohne Leerzeile) beginnt bei Merkweiser ein neues Thema, so wie im Konzeptbeispiel. Obsidian stellt sie als Fortsetzung des Punkts dar. Soll sie zum Punkt gehören, rücke sie ein.
 
 ### Überschriften
 
