@@ -27,6 +27,8 @@ Diese Regeln gelten für alle Änderungen an Merkweiser, egal ob durch Menschen 
 
 ## Arbeitsweise
 
+- **Spikes** liegen unter `spikes/`; das ist kein Produktcode. Austausch mit dem Handy (APKs, Berichte) läuft über den Syncthing-Ordner `SyncSpike/`, den Git ignoriert. Wegwerfcode kommt nicht ins Scratchpad, sondern ins Repo.
+
 - Jeder abgeschlossene Teilschritt wird ein eigener Commit **direkt auf `main`**, ohne Feature-Branches. Gestaged werden nur eigene Änderungen. Keine Co-Authored-By-Zeile. Gepusht wird nur von Hand.
 - Doku (CHANGELOG, ARCHITEKTUR, DEVELOPMENT_LOG, FORMAT) wird **im selben Commit** gepflegt.
 - Unverwandte Bugs, die während der Umsetzung auffallen, werden gemeldet und erst nach Rückfrage behoben.

@@ -1,0 +1,27 @@
+[project]
+name = "merkweiser-spike"
+version = "0.0.1"
+description = "Merkweiser Spike S1/S2 (Wegwerfcode)"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.flet]
+org = "de.merkweiser"
+product = "Merkweiser Spike"
+
+[tool.flet.app]
+path = "src"
+
+[tool.flet.android.permission]
+"android.permission.MANAGE_EXTERNAL_STORAGE" = true
+
+[tool.flet.android.gradle_properties]
+"org.gradle.jvmargs" = "-Xmx4G -XX:MaxMetaspaceSize=2G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError"
+"android.useAndroidX" = "true"
+
+# Spike-Befund 2026-10-09: Die Flet-0.86.5-Vorlage pinnt jni 1.0.0, löst aber
+# jni_flutter transitiv auf 1.0.4+1 auf, und diese Version verlangt jni ^1.1.0
+# (Dart-Kompilierfehler). jni_flutter 1.0.2 passt zu jni 1.0.0 (so baute
+# namenfit-mobile zuletzt erfolgreich).
+[tool.flet.flutter.pubspec.dependency_overrides]
+jni_flutter = "1.0.2"

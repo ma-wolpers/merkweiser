@@ -5,3 +5,8 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# Syncthing-Austauschordner fuer Spike-APKs und -Berichte (nicht versionieren)
+SyncSpike/
+# Test-Vault des Spikes S4 (synthetische Notizen, lokal)
+spikes/s4/MerkweiserS4-Testvault/
