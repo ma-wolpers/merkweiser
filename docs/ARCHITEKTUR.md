@@ -7,6 +7,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
+- Schritt 6 (App-Schicht) ist umgesetzt, siehe „App-Schicht“.
 - Schritt 5 ist umgesetzt: Merge-Algorithmen sowie Konflikterkennung, Auto-Merge mit Rückgängig, manuelle Auflösung mit Marker und deren Wiederherstellung (siehe „Core: Merge“ und „Core: Konflikte“).
 - Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Wiederherstellung nach Absturz und Move-Ausführung sind umgesetzt.
 - Schritt 0 (Spikes) läuft, siehe unten.
@@ -20,9 +21,9 @@ Gilt unverändert wie in PLAN.md, Abschnitt „Wahrheitsmodell“: Die Markdown-
 
 | Paket | Rolle | Status |
 |---|---|---|
-| `merkweiser.core` | Parser, Schreibprotokoll, Merge; keine UI-Abhängigkeit | leer |
-| `merkweiser.ports` | Protocols (`AppStorage`, `Clock`, `FolderPicker`) | leer |
-| `merkweiser.app` | `NotesService`, die einzige UI-Fassade | leer |
+| `merkweiser.core` | Parser, Schreibprotokoll, Merge; keine UI-Abhängigkeit | umgesetzt |
+| `merkweiser.ports` | Protocols (`Clock`; `AppStorage` und `FolderPicker` folgen mit Mobile) | teilweise |
+| `merkweiser.app` | `NotesService`, die einzige UI-Fassade; `Settings` | umgesetzt |
 | `merkweiser.desktop` | bw-gui-Oberfläche (Schritt 7) | fehlt noch |
 | `merkweiser.mobile` | Flet-Oberfläche, `platform/` (Schritt 8) | fehlt noch |
 
@@ -98,6 +99,14 @@ Tests (`tests/core/test_safe_write.py`): fremde Änderung vor dem Wegbenennen, N
 | `core/history.py` | `History.record` (nur anhängend; Inhalte unveränderlich per `open(…, "xb")`; nur Metadaten werden aktualisiert), `versions`, `read`, `candidate_base` (**GRENZE:** Heuristik, nur für Vorschläge), `prune` (ab `replaced_since`, die neuesten 5 und geschützte bleiben). |
 
 Absicherung: Zufallstest mit festem Seed (3.000 Fälle je Modus) – `verify` meldet für echte Merge-Ergebnisse nie einen Verlust; manipulierte Ergebnisse (fehlende, erfundene, veränderte, zusammengelegte Zeilen, falsches R1) werden erkannt.
+
+## App-Schicht (Schritt 6)
+
+| Modul | Ist-Zustand |
+|---|---|
+| `app/settings.py` | `Settings(vault, pattern, project_prefix, poll_seconds, retention_days)` als `settings.json` in den App-Daten (nie im Vault); `validated`, `load_settings`, `save_settings`. |
+| `app/notes_service.py` | `NotesService` ist die **einzige** Fassade für die UIs. `start()` läuft in fester Reihenfolge: `recover` → `recover_resolves` → `recover_moves` → Sidecars und Ops aufräumen → Scan → `auto_merge_all`. Ansichten: `day`, `search` (auch für die Todo-Ansicht), `conflicts`. Aktionen: `set_done`, `set_urgent`, `set_project`, `add_todo`, `append_note` (Schreibziel-Regel, Create-only), `delete_note`, `replace_note_text` (Notiz nicht mehr eindeutig → eigene Konfliktdatei mit Sidecar-Basis = Planungsstand), `move_todo`, `resolve`, `undo_automerge`. Jede Aktion: lesen → planen → schreiben, bei fremder Änderung bis zu 3-mal neu planen. `poll()` schließt Quarantänen ab und meldet Änderungen. |
+| `core/retention.py` | `prune_ops` löscht nur abgeschlossene, ältere Ops ohne Verweis aus einer existierenden Konfliktdatei bzw. einem Sidecar und ohne unbestätigten Hinweis; `prune_sidecars` entfernt Sidecars ohne Konfliktdatei. |
 
 ## Core: Konflikte (Schritt 5)
 

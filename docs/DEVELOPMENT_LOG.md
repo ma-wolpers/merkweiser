@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 6: App-Schicht
+
+- `app/settings.py`, `app/notes_service.py`, `core/retention.py` und 7 Integrationstests.
+- Damit ist der gesamte Core samt Fassade fertig. Offen: Schritt 7 (Desktop), vorher der bw-gui-Teilplan für verlustfreies Auslesen von `WrappedTextField` (Nutzerentscheidung „vor Schritt 7“), sowie Schritt 8 (Mobile, wartet auf S1), S4-Bestätigung und Mobile-Ports (`AppStorage`, `FolderPicker`).
+
 ## 2026-10-09 – Move-Ausführung
 
 - `core/move_exec.py` und 5 Tests: neue Zieldatei, gleiche Datei, Absturz nach dem Ziel-Write (kein zweites Anhängen), veränderte Quelle → `INCOMPLETE`, mehrfaches Erneut-Versuchen vervielfacht nichts, Suche nach einem offenen Vorgang.
