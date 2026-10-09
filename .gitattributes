@@ -1,0 +1,3 @@
+# Roundtrip-Fixtures muessen byte-genau bleiben (LF/CRLF/gemischt, BOM):
+# Git darf dort keine Zeilenenden umschreiben (core.autocrlf ist global aktiv).
+tests/fixtures/** -text
