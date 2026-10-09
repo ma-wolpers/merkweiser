@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
 - Schritt 5 ist umgesetzt: Merge-Algorithmen sowie Konflikterkennung, Auto-Merge mit Rückgängig, manuelle Auflösung mit Marker und deren Wiederherstellung (siehe „Core: Merge“ und „Core: Konflikte“).
-- Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Wiederherstellung nach Absturz ist umgesetzt; es fehlt noch die Move-Ausführung.
+- Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Wiederherstellung nach Absturz und Move-Ausführung sind umgesetzt.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -63,6 +63,8 @@ Alle Operationen nehmen das **aktuell gelesene** `Document` plus ein flüchtiges
 | `core/note_ops.py` | `append_note` (Trenner mit Leerzeilen, keiner bei leerer Datei bzw. nur Frontmatter), `replace_note_text` (Notiz nur eindeutig **und** als ganze Notiz auffindbar, sonst `NoteNotFoundError`; der Aufrufer legt dann eine eigene Konfliktdatei an), `delete_note` (genau ein Trenner, Naht ohne doppelte Leerzeilen). |
 
 | `core/move_plan.py` | `plan_move` (exakter Quellblock samt Teilbaum als `BlockTarget`; `B'` mit Wurzel auf Ebene 0 und geerbten Tags explizit an der Wurzel), `insert_moved` (an die letzte Notiz `Verschoben aus [[<Quellname>]]` oder neu anhängen; der Link nutzt den Dateinamen der Quelle, damit er auch bei eigenem Muster funktioniert), `remove_moved_source` (nur bei **genau einem** exakten Vorkommen, `resolve_block(…, unique=True)`). Die Reihenfolge Ziel → Quelle kommt mit dem Protokoll. |
+
+| `core/move_exec.py` | `move_todo` als Eltern-Op `move` (Manifest: Quelle, Ziel, exakter Block `B`, `B'`): erst Ziel, dann Quelle, je bis zu 3-mal neu geplant. Ob ein Schritt erledigt ist, entscheidet **nur** der Zustand der Unter-Op (`eltern_op`), nie ein Textvergleich; deshalb wird das Ziel bei Wiederholung nie erneut angehängt. Gleiche Datei: ein Patch (erst entfernen, dann einfügen). `INCOMPLETE` mit Hinweis wartet auf den Nutzer; `resume_move(force_source)` entfernt die Quelle nur, wenn `B'` im Ziel genau einmal exakt steht **und** `B` in der Quelle eindeutig ist. `find_pending_move` dient „vorhandenen Vorgang fortsetzen“; `recover_moves` setzt unterbrochene Moves nach einem Absturz fort, nicht aber `INCOMPLETE`. |
 
 Strukturabfragen: `Outline.subtree_end(node)` und `Document.item_at(line_no)` werden von Edits und Move gemeinsam genutzt.
 

@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Move-Ausführung
+
+- `core/move_exec.py` und 5 Tests: neue Zieldatei, gleiche Datei, Absturz nach dem Ziel-Write (kein zweites Anhängen), veränderte Quelle → `INCOMPLETE`, mehrfaches Erneut-Versuchen vervielfacht nichts, Suche nach einem offenen Vorgang.
+- Ab jetzt pusht Claude die eigenen Commits (Bitte der Nutzerin bzw. des Nutzers vom 2026-10-09).
+
 ## 2026-10-09 – Konfliktschicht: Erkennung, Auto-Merge, Auflösung mit Marker
 
 - `core/conflicts.py`, `core/resolve.py`, `OpStore.read` und 13 Tests.
