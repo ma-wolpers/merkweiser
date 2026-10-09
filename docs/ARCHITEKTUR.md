@@ -6,6 +6,7 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 
 - Schritt 1 (Gerüst) ist umgesetzt: Paketstruktur `src/merkweiser/{core,ports,app}`, Doku, `pyproject.toml`.
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
+- Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
 - Schritt 0 (Spikes) läuft, siehe unten.
 - Es gibt noch keine fachliche Funktion.
 
@@ -48,6 +49,13 @@ Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline �
 Fixtures: `tests/fixtures/*.md` sind synthetisch und byte-genau (CRLF/gemischt, BOM, ohne Schluss-Newline, Fences, Setext, Tabellen, Embeds); `.gitattributes` schützt sie vor `autocrlf`.
 
 Werkzeug: `tools/code_lines.py` zählt ausführbare Code-Zeilen (ohne Docstrings, Kommentare und Imports) gegen den Richtwert 300.
+
+## Core: Suche (Schritt 4)
+
+| Modul | Ist-Zustand |
+|---|---|
+| `core/query.py` | `search(documents, Filter)` → `Hit`s auf Knotenebene mit Kontextpfad. Filterarten UND-verknüpft; Tags effektiv, `TagMode.UND`/`ODER`; Projekte effektiv; `status`/`dringend` nur für Todos (`[-]` ist kein Todo); `TextQuery` mit `TEILSTRING` (casefold) oder `REGEX` (`IGNORECASE`, ungültig → `InvalidQuery`); Datumsbereich inklusiv. Die Semantik liegt vollständig im Core; die UIs reichen nur Werte durch. |
+| `core/doc_cache.py` | `DocumentCache` im Speicher, invalidiert über `(mtime_ns, size)`. **GRENZE:** Eine Änderung ohne Änderung von mtime/size kann die Suche kurz veraltet zeigen. Schreiboperationen lesen immer neu. Persistenter Index: **BAUSTELLE** laut Plan. |
 
 ## Spike-Ergebnisse (Schritt 0)
 

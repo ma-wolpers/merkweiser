@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 4: Suche und Filter
+
+- `core/query.py` (Filter, TextQuery mit explizitem Modus, Treffer mit Kontext) und `core/doc_cache.py` (Speicher-Cache) mit Tests: Todo-Ansicht, Status und Dringlichkeit, UND/ODER bei effektiven Tags, geerbte Projekte, Teilstring- gegen Regex-Modus, ungültiger Regex, Datumsbereich, Cache-Invalidierung.
+
 ## 2026-10-09 – Schritt 2 abgeschlossen: Vault, Snapshot, Clock, Dokument-Fassade
 
 - `core/vault.py` (Muster, Scan, Dubletten, Konfliktnamen inklusive verschachtelt/eigen/entschieden, Schreibziel-Regel), `core/textfile.py` (lesender Snapshot), `ports/clock.py` und `core/clock.py`, `core/document.py`, `tests/fakes.py` (`FakeClock`).
