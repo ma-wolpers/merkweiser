@@ -87,6 +87,20 @@ class Outline:
         """Alle Listenpunkte in Dateireihenfolge."""
         return tuple(n for n in self.nodes if n.kind is NodeKind.ITEM)
 
+    def subtree_end(self, node: Node) -> int:
+        """Letzte Zeile eines Knotens inklusive aller Nachfahren.
+
+        Args:
+            node: Knoten dieses Baums.
+
+        Returns:
+            Größter Zeilenindex im Teilbaum.
+        """
+        last = node.lines[-1] if node.lines else -1
+        for child in node.children:
+            last = max(last, self.subtree_end(self.nodes[child]))
+        return last
+
 
 @dataclass
 class _Block:

@@ -11,7 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .blocks import FileLayout, NoteSpan, analyze
-from .outline import Outline, build_outline
+from .outline import Node, Outline, build_outline
+from .patch import StaleTargetError
 from .source import SourceText
 from .tags import DEFAULT_PROJECT_PREFIX, NodeTags, compute_tags
 
@@ -57,6 +58,24 @@ class Document:
             Der Zeileninhalt.
         """
         return self.source.lines[line_no].text
+
+    def item_at(self, line_no: int) -> tuple[ParsedNote, Node]:
+        """Findet den Listenpunkt, der in ``line_no`` beginnt.
+
+        Args:
+            line_no: Erste Zeile des Punkts.
+
+        Returns:
+            Notiz und Knoten.
+
+        Raises:
+            StaleTargetError: Dort beginnt kein Listenpunkt.
+        """
+        for note in self.notes:
+            for node in note.outline.items():
+                if node.lines[0] == line_no:
+                    return note, node
+        raise StaleTargetError(f"Zeile {line_no + 1} ist kein Listenpunkt")
 
 
 def parse_document(raw: bytes, project_prefix: str = DEFAULT_PROJECT_PREFIX) -> Document:

@@ -95,12 +95,16 @@ def resolve_line(source: SourceText, target: Target) -> int:
     return hits[0]
 
 
-def resolve_block(source: SourceText, target: BlockTarget) -> int:
+def resolve_block(source: SourceText, target: BlockTarget, *, unique: bool = False) -> int:
     """Findet die erste Zeile eines Blocks im aktuellen Inhalt.
 
     Args:
         source: Aktueller Inhalt.
         target: Blockadresse.
+        unique: ``True`` verlangt **genau ein** Vorkommen in der ganzen Datei,
+            auch wenn der Block noch an seiner Stelle steht. Das gilt für das
+            Entfernen einer Move-Quelle (PLAN.md, Move-Protokoll Schritt 3),
+            damit bei einem zweiten identischen Block nichts geraten wird.
 
     Returns:
         Aktueller Index der ersten Blockzeile.
@@ -111,7 +115,7 @@ def resolve_block(source: SourceText, target: BlockTarget) -> int:
     texts = [line.text for line in source.lines]
     want = list(target.expected_lines)
     size = len(want)
-    if texts[target.first_line:target.first_line + size] == want:
+    if not unique and texts[target.first_line:target.first_line + size] == want:
         return target.first_line
     hits = [i for i in range(len(texts) - size + 1) if texts[i:i + size] == want]
     if len(hits) != 1:

@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-09 – Schritt 3 (Teil): Move-Planung
+
+- `core/move_plan.py` mit Tests: Teilbaum inklusive Fortsetzungszeilen, geerbte Tags explizit (außen nach innen), effektive Tags bleiben im Ziel erhalten, Notiz „Verschoben aus“ wird neu angelegt bzw. wiederverwendet, Quelle nur bei exaktem und eindeutigem Block.
+- Widerspruch gefunden und gelöst: Die allgemeine Ziel-Regel („steht noch an Ort und Stelle → Treffer“) hätte eine Move-Quelle auch dann entfernt, wenn derselbe Block doppelt in der Datei steht. Der Plan verlangt dort genau ein Vorkommen, deshalb `resolve_block(unique=True)`.
+- Refactoring: Strukturabfragen als `Outline.subtree_end` und `Document.item_at`, statt private Helfer quer über Module zu importieren.
+
 ## 2026-10-09 – Schritt 3 (Teil): Edit-Planung ohne Schreibprotokoll
 
 - `core/patch.py`, `core/edits.py`, `core/note_ops.py` mit Tests: Minimal-Diff per `difflib`, CRLF und fehlender Schluss-Umbruch bleiben erhalten, identische Todos → `StaleTargetError`, Idempotenz, Dringlichkeit hin und zurück byte-identisch, Projekt ersetzen bzw. entfernen, Kind-Einrückung, Notizgrenzen verändert → `NoteNotFoundError`, Löschen mit genau einem Trenner, Encoding-Schutz.

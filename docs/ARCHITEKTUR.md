@@ -61,6 +61,10 @@ Alle Operationen nehmen das **aktuell gelesene** `Document` plus ein flüchtiges
 | `core/edits.py` | `set_done(done)` (statt „toggle“: der Zielzustand ist idempotent und neu planbar; `[X]` bleibt), `set_urgent` (`==…==` um den Inhalt, Tags am Ende bleiben draußen), `set_project` (ersetzt bzw. entfernt alle expliziten Projekt-Tags der Zeile), `add_todo` (Notizende oder letztes Kind mit passender Einrückung). Todos im Codeblock sind keine Todos. |
 | `core/note_ops.py` | `append_note` (Trenner mit Leerzeilen, keiner bei leerer Datei bzw. nur Frontmatter), `replace_note_text` (Notiz nur eindeutig **und** als ganze Notiz auffindbar, sonst `NoteNotFoundError`; der Aufrufer legt dann eine eigene Konfliktdatei an), `delete_note` (genau ein Trenner, Naht ohne doppelte Leerzeilen). |
 
+| `core/move_plan.py` | `plan_move` (exakter Quellblock samt Teilbaum als `BlockTarget`; `B'` mit Wurzel auf Ebene 0 und geerbten Tags explizit an der Wurzel), `insert_moved` (an die letzte Notiz `Verschoben aus [[<Quellname>]]` oder neu anhängen; der Link nutzt den Dateinamen der Quelle, damit er auch bei eigenem Muster funktioniert), `remove_moved_source` (nur bei **genau einem** exakten Vorkommen, `resolve_block(…, unique=True)`). Die Reihenfolge Ziel → Quelle kommt mit dem Protokoll. |
+
+Strukturabfragen: `Outline.subtree_end(node)` und `Document.item_at(line_no)` werden von Edits und Move gemeinsam genutzt.
+
 ## Core: Suche (Schritt 4)
 
 | Modul | Ist-Zustand |

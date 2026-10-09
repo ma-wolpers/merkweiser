@@ -21,7 +21,7 @@ import re
 from .document import Document, ParsedNote
 from .inline import ListItem, TodoStatus, find_tags, leading_whitespace, parse_list_item, project_name
 from .outline import Node
-from .patch import LineEdit, StaleTargetError, Target, apply_edits, resolve_line
+from .patch import LineEdit, Target, apply_edits, resolve_line
 
 _PROJECT_NAME_RE = re.compile(r"^[\w\-]+(?:/[\w\-]+)*$")
 
@@ -158,8 +158,8 @@ def add_todo(doc: Document, note_index: int, text: str, parent: Target | None = 
             raise ValueError("leere Notiz")
         at, indent = note.note.content.end, ""
     else:
-        parent_note, node = _item_node(doc, resolve_line(doc.source, parent))
-        at, indent = _subtree_end(parent_note, node) + 1, _child_indent(doc, parent_note, node)
+        parent_note, node = doc.item_at(resolve_line(doc.source, parent))
+        at, indent = parent_note.outline.subtree_end(node) + 1, _child_indent(doc, parent_note, node)
     return apply_edits(doc.source, [LineEdit(at, at, (f"{indent}- [ ] {text.strip()}",))])
 
 
@@ -199,42 +199,6 @@ def _content_end(text: str, start: int) -> int:
         if tag.end == end and tag.start >= start:
             end = len(text[:tag.start].rstrip())
     return max(end, start)
-
-
-def _item_node(doc: Document, line_no: int) -> tuple[ParsedNote, Node]:
-    """Findet den Listenpunkt-Knoten, der in ``line_no`` beginnt.
-
-    Args:
-        doc: Dokument.
-        line_no: Erste Zeile des Punkts.
-
-    Returns:
-        Notiz und Knoten.
-
-    Raises:
-        StaleTargetError: Dort beginnt kein Listenpunkt.
-    """
-    for note in doc.notes:
-        for node in note.outline.items():
-            if node.lines[0] == line_no:
-                return note, node
-    raise StaleTargetError(f"Zeile {line_no + 1} ist kein Listenpunkt")
-
-
-def _subtree_end(note: ParsedNote, node: Node) -> int:
-    """Letzte Zeile eines Knotens inklusive aller Nachfahren.
-
-    Args:
-        note: Notiz des Knotens.
-        node: Knoten.
-
-    Returns:
-        Größter Zeilenindex im Teilbaum.
-    """
-    last = node.lines[-1]
-    for child in node.children:
-        last = max(last, _subtree_end(note, note.outline.nodes[child]))
-    return last
 
 
 def _child_indent(doc: Document, note: ParsedNote, node: Node) -> str:
