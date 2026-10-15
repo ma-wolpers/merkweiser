@@ -24,7 +24,7 @@ UTF8_BOM = b"\xef\xbb\xbf"
 _FOREIGN_BOMS = (b"\xff\xfe\x00\x00", b"\x00\x00\xfe\xff", b"\xff\xfe", b"\xfe\xff")
 
 # Nur \r\n, \n und \r gelten als Zeilenende. str.splitlines() wäre falsch, weil
-# es auch an \x0b, \x1c,   … trennt und diese Zeichen damit verlöre.
+# es auch an \x0b, \x1c, \u2028 … trennt und diese Zeichen damit verlöre.
 _LINE_RE = re.compile(r"([^\r\n]*)(\r\n|\n|\r|\Z)")
 
 

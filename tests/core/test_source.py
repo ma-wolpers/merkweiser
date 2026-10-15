@@ -13,7 +13,7 @@ ROUNDTRIP_CASES = {
     "nur_newlines": b"\n\n\n",
     "bom": UTF8_BOM + b"Thema #tag\n",
     "emoji_tabs_raender": "  eingerückt\n\t- [ ] \U0001F600 x   \n\n".encode(),
-    "steuerzeichen_bleiben": "a\x0bb\x1cc d\n".encode(),
+    "steuerzeichen_bleiben": "a\x0bb\x1cc\u2028d\n".encode(),
 }
 
 
@@ -37,7 +37,7 @@ def test_trailing_newline_creates_no_extra_line() -> None:
 
 def test_only_cr_lf_and_crlf_split_lines() -> None:
     """Vertikaler Tab, Gruppentrenner und U+2028 trennen keine Zeilen."""
-    assert len(split_lines("a\x0bb\x1cc d")) == 1
+    assert len(split_lines("a\x0bb\x1cc\u2028d")) == 1
 
 
 @pytest.mark.parametrize("raw, encoding", [

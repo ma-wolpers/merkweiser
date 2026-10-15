@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-14 – bw-gui-Teilplan umgesetzt, Doku-Reparatur
+
+- bw-gui (`410b9e5`, `d9ad7fb`): `WrappedTextField.get_raw()` liest verlustfrei, `load()` lädt den Ausgangsinhalt ohne Undo-Eintrag, `initial=` nutzt `load()`. `set()` und `get()` sind unverändert (kursplaner nutzt `set()` mitten im Bearbeiten). Damit ist `BAUSTELLE(bw-gui)` aufgelöst.
+- Repariert: In `ARCHITEKTUR.md` waren `\r\n`, `\n`, `\r`, `\x0b` und `\u2028` durch ein Ersetzungsskript zu **echten** Steuerzeichen geworden, und die Tabellenzeile zu `source.py` war zerbrochen. In `core/source.py` (Kommentar) und `tests/core/test_source.py` standen echte U+2028-Zeichen statt der Escape-Folge. Ursache: Die Werkzeug-Übertragung interpretiert `\uXXXX` bereits vor Python. Bei solchen Ersetzungen wird der Backslash jetzt zur Laufzeit gebildet (`chr(92)`).
+
 ## 2026-10-09 – Schritt 6: App-Schicht
 
 - `app/settings.py`, `app/notes_service.py`, `core/retention.py` und 7 Integrationstests.
