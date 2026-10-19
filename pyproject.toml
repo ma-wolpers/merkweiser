@@ -37,6 +37,12 @@ product = "Merkweiser"
 # liegt das Shim src/main.py (Schritt 8) neben dem Paket, und die App zeigt auf src.
 path = "src"
 
+[tool.flet.android]
+# Nur für den APK-Build (Desktop bleibt frei von Flet und Java). flet-cli bündelt flet
+# NUR bei leeren Abhängigkeiten automatisch; sobald hier etwas steht, muss flet selbst
+# mit dabei sein, sonst stürzt die App mit „No module named certifi“ ab (Spike S1).
+dependencies = ["flet==0.86.5", "pyjnius"]
+
 [tool.flet.android.permission]
 # Plan: echter Pfadzugriff auf den Syncthing-Ordner (wird durch Spike S1 bestätigt).
 "android.permission.MANAGE_EXTERNAL_STORAGE" = true

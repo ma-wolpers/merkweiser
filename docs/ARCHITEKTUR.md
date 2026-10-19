@@ -8,10 +8,11 @@ Dieses Dokument beschreibt, **was aktuell umgesetzt ist**. Ziel, Garantien und P
 - Schritt 2 (Einlesen) ist umgesetzt, siehe „Core: Einlesen“.
 - Schritt 4 (Suche/Filter) ist umgesetzt, siehe „Core: Suche“.
 - Schritt 6 (App-Schicht) ist umgesetzt, siehe „App-Schicht“.
+- Schritt 8 (Mobile) hat eine erste Fassung, siehe „Mobile (Schritt 8)“; der Gerätetest steht aus.
 - Schritt 5 ist umgesetzt: Merge-Algorithmen sowie Konflikterkennung, Auto-Merge mit Rückgängig, manuelle Auflösung mit Marker und deren Wiederherstellung (siehe „Core: Merge“ und „Core: Konflikte“).
 - Schritt 3 ist **weitgehend** umgesetzt: Edit-Planung und Tausch-Protokoll (siehe „Core: Edit-Planung“ und „Core: Schreibprotokoll“); vorgezogen vor S4 (Nutzerentscheidung 2026-10-09; S4 bestätigt später). Wiederherstellung nach Absturz und Move-Ausführung sind umgesetzt.
 - Schritt 0 (Spikes) läuft, siehe unten.
-- Es gibt noch keine fachliche Funktion.
+- Nutzbar ist bisher die Android-App (erste Fassung); die Desktop-Oberfläche (Schritt 7) fehlt noch.
 
 ## Wahrheitsmodell
 
@@ -22,10 +23,10 @@ Gilt unverändert wie in PLAN.md, Abschnitt „Wahrheitsmodell“: Die Markdown-
 | Paket | Rolle | Status |
 |---|---|---|
 | `merkweiser.core` | Parser, Schreibprotokoll, Merge; keine UI-Abhängigkeit | umgesetzt |
-| `merkweiser.ports` | Protocols (`Clock`; `AppStorage` und `FolderPicker` folgen mit Mobile) | teilweise |
+| `merkweiser.ports` | Protocols `Clock`, `AppStorage`, `FolderAccess` | umgesetzt |
 | `merkweiser.app` | `NotesService`, die einzige UI-Fassade; `Settings` | umgesetzt |
 | `merkweiser.desktop` | bw-gui-Oberfläche (Schritt 7) | fehlt noch |
-| `merkweiser.mobile` | Flet-Oberfläche, `platform/` (Schritt 8) | fehlt noch |
+| `merkweiser.mobile` | Flet-Oberfläche, `platform/` (Schritt 8) | erste Fassung |
 
 ## Core: Einlesen (Schritt 2)
 
@@ -96,6 +97,21 @@ Tests (`tests/core/test_safe_write.py`): fremde Änderung vor dem Wegbenennen, N
 | `core/history.py` | `History.record` (nur anhängend; Inhalte unveränderlich per `open(…, "xb")`; nur Metadaten werden aktualisiert), `versions`, `read`, `candidate_base` (**GRENZE:** Heuristik, nur für Vorschläge), `prune` (ab `replaced_since`, die neuesten 5 und geschützte bleiben). |
 
 Absicherung: Zufallstest mit festem Seed (3.000 Fälle je Modus) – `verify` meldet für echte Merge-Ergebnisse nie einen Verlust; manipulierte Ergebnisse (fehlende, erfundene, veränderte, zusammengelegte Zeilen, falsches R1) werden erkannt.
+
+## Mobile (Schritt 8)
+
+| Modul | Ist-Zustand |
+|---|---|
+| `ports/storage_access.py` | `AppStorage` (privates Datenverzeichnis) und `FolderAccess` (`pick_folder`, `has_all_files_access`, `request_all_files_access`). |
+| `app/views.py` | UI-neutrale Anzeigemodelle für Desktop und Mobile: `note_rows` (Marker entfernt, Tiefe, Status, effektive Tags, `Target`), `hit_rows`, `conflict_result` (Hauptdatei / Konfliktversion / beide über die Union). |
+| `mobile/platform/flet_access.py` | **Einzige Stelle mit Flet- bzw. Android-API.** `resolve_app_storage` (`ft.StoragePaths` → `<support>/data`), `FletFolderAccess` (`FilePicker.get_directory_path`; `content://`-URIs werden abgelehnt, dann tippt man den Pfad ein). Berechtigung über `pyjnius` (`isExternalStorageManager`, Settings-Intent). **BAUSTELLE(S1):** auf dem Gerät noch nicht bestätigt; ohne `jnius` melden die Methoden „unbekannt“ bzw. erklären den manuellen Weg. |
+| `mobile/ui/app.py` | Kompositionswurzel `main`, `MobileApp`: Einrichtung bzw. Vault öffnen (`NotesService.start`), Navigationsleiste, Statuszeile, Polling über `page.run_task` plus Lebenszyklus „resume“. **Regel:** Alle Service-Aufrufe laufen in async-Handlern auf dem Event-Loop und sind dadurch mit dem Polling serialisiert. |
+| `mobile/ui/tabs.py` | Einrichtung, Heute, Todos, Suche, Konflikte, Einstellungen. |
+| `src/main.py` | Flet-Shim (`ft.run(main)`). |
+
+- Build: Unter `[tool.flet.android] dependencies` stehen `flet==0.86.5` **und** `pyjnius`. Befund S1 (2026-10-19): `flet-cli` bündelt `flet` nur bei leeren Abhängigkeiten automatisch, sonst stürzt die App mit „No module named certifi“ ab. Der Desktop bleibt frei von Flet und Java.
+- Tests: `tests/app/test_views.py` und `tests/mobile/test_mobile_tabs.py` (jeder Tab baut seine Controls mit echtem `NotesService`, ohne Gerät; wird übersprungen, wenn Flet fehlt). Die Schichtenprüfung (`tests/test_package.py`) läuft in einem eigenen Prozess.
+- **BAUSTELLE(Mobile):** Datumswahl beim Verschieben (bisher nur „auf morgen“), Auswahl einzelner Hunks bei diff3-Konflikten, Liste der Auto-Merges mit „Rückgängig“, Bearbeiten und Löschen einzelner Notizen.
 
 ## App-Schicht (Schritt 6)
 

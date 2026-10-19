@@ -12,3 +12,4 @@ SyncSpike/
 spikes/s4/MerkweiserS4-Testvault/
 # Build-Logs der Spikes
 spikes/**/build.log
+spikes/*.log

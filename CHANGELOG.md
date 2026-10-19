@@ -6,4 +6,13 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
-- Repository-Gerüst mit Konzept (`docs/KONZEPT.md`), freigegebenem Plan (`docs/PLAN.md`) und Formatbeschreibung (`docs/FORMAT.md`). Merkweiser hat noch keine Funktionen.
+- **Android-App (erste Fassung):**
+  - Einrichtung mit „Zugriff auf alle Dateien“ und Wahl des Notizordners (auch per eingetipptem Pfad).
+  - Tab **Heute**: neue Notiz schreiben; die heutigen Notizen mit abhakbaren Todos, Dringend-Stern und „auf morgen verschieben“.
+  - Tab **Todos**: alle Todos mit Filter nach Status und Tags (UND/ODER).
+  - Tab **Suche**: Teilstring oder regulärer Ausdruck.
+  - Tab **Konflikte**: Syncthing-Konflikte werden beim Start automatisch zusammengeführt; übrige Fälle mit „Hauptdatei behalten“, „Konfliktversion übernehmen“ oder „Beide behalten“.
+  - Tab **Einstellungen**: Projekt-Präfix, Prüfintervall, Ordner wechseln.
+  - Anleitung in `docs/kurzanleitung.md`.
+
+- Repository-Gerüst mit Konzept (`docs/KONZEPT.md`), freigegebenem Plan (`docs/PLAN.md`) und Formatbeschreibung (`docs/FORMAT.md`).

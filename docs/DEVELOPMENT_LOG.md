@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-19 – Mobile-App, erste Fassung (Schritt 8)
+
+- Befund S1 vom Gerät: Mit `pyjnius` in `project.dependencies` stürzte das Spike-APK mit `ModuleNotFoundError: certifi` ab. Ursache (`flet_cli/commands/build_base.py`): `flet` wird nur bei leerer Abhängigkeitsliste automatisch gebündelt, und die Startvorlage (`python.dart`) importiert `certifi` immer. Behoben, indem `flet==0.86.5` mit aufgeführt wird; im Spike-APK sind jetzt `flet`, `certifi`, `httpx` und `jnius` enthalten.
+- Neu: `ports/storage_access.py`, `app/views.py`, `mobile/platform/flet_access.py`, `mobile/ui/{app,tabs}.py`, `src/main.py`, `[tool.flet.android] dependencies`, `docs/kurzanleitung.md`; Tests für die Anzeigemodelle und ein Rauchtest aller Tabs.
+- Die Schichtenprüfung läuft jetzt in einem Unterprozess, weil der Mobile-Rauchtest Flet in den Testprozess lädt.
+- Nebenbefund ohne Eingriff: Der Kommentar in namenfit-mobile (`pyproject.toml`, „flet wird immer gebündelt“) stimmt nicht allgemein; dort zieht `flet-audio` `flet` als Abhängigkeit nach.
+
 ## 2026-10-14 – bw-gui-Teilplan umgesetzt, Doku-Reparatur
 
 - bw-gui (`410b9e5`, `d9ad7fb`): `WrappedTextField.get_raw()` liest verlustfrei, `load()` lädt den Ausgangsinhalt ohne Undo-Eintrag, `initial=` nutzt `load()`. `set()` und `get()` sind unverändert (kursplaner nutzt `set()` mitten im Bearbeiten). Damit ist `BAUSTELLE(bw-gui)` aufgelöst.

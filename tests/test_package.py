@@ -11,10 +11,16 @@ def test_version_is_dev() -> None:
 
 
 def test_layer_packages_import_without_ui_frameworks() -> None:
-    """Core, Ports und App lassen sich ohne bw-gui/Flet importieren (Schichtenregel)."""
+    """Core, Ports und App laden weder Flet noch Tk (Schichtenregel).
+
+    Läuft in einem eigenen Prozess: Andere Tests (Mobile-Rauchtest) laden Flet
+    im Testprozess, ``sys.modules`` wäre dort also nicht aussagekräftig.
+    """
+    import subprocess
     import sys
 
-    for name in ("merkweiser.core", "merkweiser.ports", "merkweiser.app"):
-        importlib.import_module(name)
-    assert "flet" not in sys.modules
-    assert "tkinter" not in sys.modules
+    modules = ("merkweiser.core", "merkweiser.ports", "merkweiser.app", "merkweiser.app.notes_service",
+               "merkweiser.app.views")
+    code = (f"import sys, importlib; [importlib.import_module(n) for n in {modules!r}]; "
+            "assert 'flet' not in sys.modules and 'tkinter' not in sys.modules")
+    subprocess.run([sys.executable, "-c", code], check=True)

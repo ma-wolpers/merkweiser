@@ -1,0 +1,160 @@
+"""UI-neutrale Anzeigemodelle für Desktop und Mobile (keine Flet-/Tk-Abhängigkeit).
+
+Wandelt Dokumente, Suchtreffer und Konfliktfälle in einfache, testbare Zeilen
+um. Die Oberflächen rendern nur noch und reichen ``Target``-Adressen an den
+``NotesService`` zurück.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+
+from ..core.conflicts import ConflictCase, render
+from ..core.document import Document, ParsedNote
+from ..core.inline import TodoStatus
+from ..core.merge.union import merge2
+from ..core.outline import Node, NodeKind
+from ..core.patch import Target
+from ..core.query import Hit
+from ..core.source import SourceText
+
+
+@dataclass(frozen=True)
+class Row:
+    """Eine Anzeigezeile einer Notiz.
+
+    Attributes:
+        kind: ``heading``, ``topic``, ``item``, ``todo`` oder ``other``.
+        text: Anzeigetext (Marker und Checkbox entfernt).
+        depth: Einrückungstiefe im Baum (0 = oberste Ebene).
+        done: Erledigt-Status bei Todos, sonst ``None``.
+        urgent: Dringlichkeit.
+        tags: Effektive Tags (sortiert).
+        target: Adresse der ersten Zeile (für Aktionen) oder ``None``.
+    """
+
+    kind: str
+    text: str
+    depth: int
+    done: bool | None
+    urgent: bool
+    tags: tuple[str, ...]
+    target: Target | None
+
+
+def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
+    """Anzeigezeilen einer Notiz in Dateireihenfolge.
+
+    Args:
+        relpath: Datei relativ zum Vault.
+        doc: Dokument.
+        note: Notiz im Dokument.
+
+    Returns:
+        Zeilen; implizite Themen erscheinen nicht.
+    """
+    rows = []
+    for node in note.outline.nodes:
+        if node.implicit or not node.lines:
+            continue
+        line = doc.line_text(node.lines[0])
+        item = node.item
+        is_todo = bool(item and item.is_todo)
+        rows.append(Row(kind="todo" if is_todo else node.kind.value, text=display_text(line, node),
+                        depth=_depth(note, node), done=(item.status is TodoStatus.DONE) if is_todo else None,
+                        urgent=bool(item and item.urgent), tags=tuple(sorted(note.tags[node.index].effective)),
+                        target=Target(relpath, node.lines[0], line)))
+    return rows
+
+
+def display_text(line: str, node: Node) -> str:
+    """Anzeigetext ohne Listenmarker, Checkbox bzw. ``#``-Präfix einer Überschrift.
+
+    Args:
+        line: Erste Zeile des Knotens.
+        node: Der Knoten.
+
+    Returns:
+        Getrimmter Anzeigetext.
+    """
+    if node.item is not None:
+        return line[node.item.body_start:].strip()
+    if node.kind is NodeKind.HEADING:
+        return line.strip().lstrip("#").strip()
+    return line.strip()
+
+
+def _depth(note: ParsedNote, node: Node) -> int:
+    """Tiefe eines Knotens: Anzahl der sichtbaren Vorfahren."""
+    depth, parent = 0, node.parent
+    while parent is not None:
+        if not note.outline.nodes[parent].implicit:
+            depth += 1
+        parent = note.outline.nodes[parent].parent
+    return depth
+
+
+@dataclass(frozen=True)
+class HitRow:
+    """Ein Suchtreffer für Listen (Todos, Suche)."""
+
+    day: str
+    text: str
+    context: str
+    done: bool | None
+    urgent: bool
+    target: Target
+
+
+def hit_rows(hits: list[Hit]) -> list[HitRow]:
+    """Anzeigezeilen für Suchtreffer.
+
+    Args:
+        hits: Treffer aus ``NotesService.search``.
+
+    Returns:
+        Zeilen mit Datum, Anzeigetext und Kontextpfad.
+    """
+    rows = []
+    for hit in hits:
+        is_todo = hit.status in (TodoStatus.OPEN, TodoStatus.DONE)
+        text = hit.text.strip()
+        if is_todo:
+            text = text.split("]", 1)[1].strip() if "]" in text else text
+        elif text[:2] in ("- ", "* ", "+ "):
+            text = text[2:].strip()
+        rows.append(HitRow(day=hit.day.isoformat(), text=text, context=" › ".join(hit.context),
+                           done=(hit.status is TodoStatus.DONE) if is_todo else None, urgent=hit.urgent,
+                           target=Target(hit.relpath, hit.line_no, hit.text)))
+    return rows
+
+
+class Choice(Enum):
+    """Einfache Konfliktentscheidung für Fälle ohne Hunk-Auswahl."""
+
+    HAUPTDATEI = "hauptdatei"
+    KONFLIKTVERSION = "konfliktversion"
+    BEIDE = "beide"
+
+
+def conflict_result(case: ConflictCase, choice: Choice) -> bytes:
+    """Ergebnis-Bytes einer einfachen Konfliktentscheidung.
+
+    ``BEIDE`` vereinigt verlustfrei (Union, Hauptdatei zuerst) im Zeilenende-Stil
+    der Hauptdatei bzw. der Konfliktversion, falls die Hauptdatei fehlt.
+
+    Args:
+        case: Konfliktfall.
+        choice: Wahl.
+
+    Returns:
+        Bytes für ``NotesService.resolve``.
+    """
+    if choice is Choice.HAUPTDATEI and case.main_bytes is not None:
+        return case.main_bytes
+    if choice is Choice.KONFLIKTVERSION or case.main_bytes is None:
+        return case.conflict_bytes
+    a = [l.text for l in SourceText.from_bytes(case.main_bytes).lines]
+    b = [l.text for l in SourceText.from_bytes(case.conflict_bytes).lines]
+    return render(merge2(a, b).lines(), case.main_bytes)
