@@ -56,3 +56,6 @@ dependencies = ["flet==0.86.5", "pyjnius"]
 # (Dart-Kompilierfehler `JniVersionCheck`). jni_flutter 1.0.2 passt zu jni 1.0.0.
 [tool.flet.flutter.pubspec.dependency_overrides]
 jni_flutter = "1.0.2"
+# 2026-10-19: Dieselbe Drift bei shared_preferences_android 2.5.0 (verlangt jni ^1.1.0).
+# 2.4.28 passt zu jni 1.0.0 (letzter erfolgreicher Build).
+shared_preferences_android = "2.4.28"

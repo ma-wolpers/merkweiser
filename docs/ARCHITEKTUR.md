@@ -111,6 +111,7 @@ Absicherung: Zufallstest mit festem Seed (3.000 Fälle je Modus) – `verify` me
 
 - Build: Unter `[tool.flet.android] dependencies` stehen `flet==0.86.5` **und** `pyjnius`. Befund S1 (2026-10-19): `flet-cli` bündelt `flet` nur bei leeren Abhängigkeiten automatisch, sonst stürzt die App mit „No module named certifi“ ab. Der Desktop bleibt frei von Flet und Java.
 - Tests: `tests/app/test_views.py` und `tests/mobile/test_mobile_tabs.py` (jeder Tab baut seine Controls mit echtem `NotesService`, ohne Gerät; wird übersprungen, wenn Flet fehlt). Die Schichtenprüfung (`tests/test_package.py`) läuft in einem eigenen Prozess.
+- Dart-Pins (`[tool.flet.flutter.pubspec.dependency_overrides]`): `jni_flutter = 1.0.2`, `shared_preferences_android = 2.4.28`. Die Flet-0.86.5-Vorlage pinnt `jni 1.0.0`, lässt die Plugins aber frei laufen. **BAUSTELLE(Dart-Pins):** Jede neue Plugin-Version, die `jni ^1.1` verlangt, bricht den Build erneut. Robuster wäre eine vollständig gesperrte Abhängigkeitsliste oder ein Flet-Update.
 - **BAUSTELLE(Mobile):** Datumswahl beim Verschieben (bisher nur „auf morgen“), Auswahl einzelner Hunks bei diff3-Konflikten, Liste der Auto-Merges mit „Rückgängig“, Bearbeiten und Löschen einzelner Notizen.
 
 ## App-Schicht (Schritt 6)
