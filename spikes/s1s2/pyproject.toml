@@ -5,7 +5,9 @@ description = "Merkweiser Spike S1/S2 (Wegwerfcode)"
 requires-python = ">=3.11"
 # pyjnius: Spike-Frage, ob serious_python es fuer Android buendelt (Einstellungsseite
 # oeffnen, isExternalStorageManager abfragen).
-dependencies = ["pyjnius"]
+# flet-cli bündelt flet NUR bei leerer Liste automatisch (build_base.py); sonst fehlen
+# flet und certifi → Absturz beim Start ("No module named certifi").
+dependencies = ["flet==0.86.5", "pyjnius"]
 
 [tool.flet]
 org = "de.merkweiser"
