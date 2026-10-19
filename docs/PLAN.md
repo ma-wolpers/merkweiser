@@ -5,6 +5,23 @@
 > umgesetzten Ist-Zustand beschreibt [ARCHITEKTUR.md](ARCHITEKTUR.md),
 > den Verlauf [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md).
 
+## Fortschritt (Stand 2026-10-19)
+
+| Schritt | Stand |
+|---|---|
+| Nebenaufgabe bw-gui-Doku | erledigt (bw-gui `3780c97`, `a59ec38`) |
+| 0 – Spikes | **S2** bestanden (APK aus `src/`, `jni_flutter`-Override). **S3** erledigt (Treeview, Guards; daraus der bw-gui-Teilplan). **S1** läuft: `pyjnius` wird gebündelt, aber nur zusammen mit `flet` in `project.dependencies` (sonst stürzt die App mit „No module named certifi“ ab, Befund 2026-10-19); der Gerätetest mit Berechtigung steht aus. **S4** (Obsidian) steht aus. |
+| 1 – Gerüst | erledigt |
+| 2 – Core lesen | erledigt |
+| 3 – Core schreiben | erledigt: Edit- und Move-Planung, Tausch-Protokoll, Wiederherstellung, Move-Ausführung. Vorgezogen vor S4 (Nutzerentscheidung 2026-10-09); S4 bestätigt später. |
+| 4 – Suche/Filter | erledigt |
+| 5 – Merge und Konflikte | erledigt. Präzisierung: Union wählt ohne Basis automatisch „beide“ (Nutzerentscheidung, Tabelle „Auto-Merge“). |
+| 6 – App-Schicht | erledigt (`NotesService`, `Settings`, Aufbewahrung) |
+| bw-gui-Teilplan | erledigt: `WrappedTextField.get_raw()` und `load()` (bw-gui `410b9e5`, `d9ad7fb`) |
+| 7 – Desktop-UI | offen |
+| 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19) |
+| 9 – Abschluss | offen |
+
 ## Context
 
 Konzept: `plan Notizverwaltung.md` im Geschwister-Repo `../tools4school`. Die Datei ist beschädigt, weil die neue Fassung mitten in die alte eingefügt wurde (ab „Ein bestimmtes Format, dem alle Notize# …“). Maßgeblich ist die neue Fassung. **Die Originaldatei wird nicht verändert.**
