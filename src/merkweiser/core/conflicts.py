@@ -25,7 +25,7 @@ from pathlib import Path
 
 from . import conflict_files as cf
 from .merge.diff3 import merge3
-from .merge.model import MergeResult
+from .merge.model import MergeResult, OutLine
 from .merge.union import merge2
 from .merge.verify import verify
 from .ops import OpStore
@@ -181,3 +181,53 @@ def auto_merge(writer: Writer, store: OpStore, case: ConflictCase) -> str | None
     op.set_state("DONE")
     op.release()
     return op.id
+
+
+class HunkPick(Enum):
+    """Wahl für einen Konflikt-Hunk (PLAN.md, „Hunk-Optionen“)."""
+
+    HAUPT = "haupt"
+    KONFLIKT = "konflikt"
+    BEIDE = "beide"
+    BEARBEITET = "bearbeitet"
+
+
+def apply_hunk_picks(merge: MergeResult, picks: list[tuple[HunkPick, str]]) -> tuple[str, ...]:
+    """Setzt ein Merge-Ergebnis mit einer Wahl je Hunk zu Zeilen zusammen.
+
+    Aufgelöste Zeilen bleiben, wie der Merge sie liefert. Je Hunk gilt:
+    ``HAUPT`` → Zeilen aus A, ``KONFLIKT`` → Zeilen aus B, ``BEIDE`` → A, dann B
+    (nur wenn ``Hunk.offers_both``), ``BEARBEITET`` → der mitgegebene Text
+    (Zeilen durch ``\n`` getrennt; leerer Text entfernt den Bereich).
+
+    Args:
+        merge: Merge-Ergebnis mit Hunks.
+        picks: Je Hunk in Reihenfolge ``(Wahl, Text)``; der Text zählt nur bei ``BEARBEITET``.
+
+    Returns:
+        Zeilen ohne Zeilenende (für ``render``).
+
+    Raises:
+        ValueError: Anzahl passt nicht zu den Hunks, oder ``BEIDE`` ist für
+            einen Hunk nicht definiert.
+    """
+    if len(picks) != len(merge.hunks):
+        raise ValueError(f"{len(picks)} Wahlen für {len(merge.hunks)} Abschnitte")
+    lines: list[str] = []
+    remaining = iter(picks)
+    for segment in merge.segments:
+        if isinstance(segment, OutLine):
+            lines.append(segment.text)
+            continue
+        pick, text = next(remaining)
+        if pick is HunkPick.HAUPT:
+            lines += segment.a_lines
+        elif pick is HunkPick.KONFLIKT:
+            lines += segment.b_lines
+        elif pick is HunkPick.BEIDE:
+            if not segment.offers_both:
+                raise ValueError("„Beide“ ist für diesen Abschnitt nicht definiert")
+            lines += segment.a_lines + segment.b_lines
+        else:
+            lines += text.replace("\r\n", "\n").replace("\r", "\n").split("\n") if text else []
+    return tuple(lines)

@@ -287,3 +287,36 @@ def test_retention_keeps_undone_automerge_while_conflict_exists(tmp_path: Path) 
     env.clock.advance(40 * 24 * 3600)
     prune_ops(env.root, env.data, env.store, env.clock, 30)
     assert op_id in env.store.all_ids()
+
+
+def _two_hunks():
+    """diff3 mit zwei Konflikt-Hunks: 1 beidseitig geändert, 2 Änderung gegen Löschung."""
+    from merkweiser.core.merge.diff3 import merge3
+    base = ["T", "- [ ] eins", "mitte 1", "mitte 2", "mitte 3", "- [ ] zwei", "Ende"]
+    a = ["T", "- [ ] eins A", "mitte 1", "mitte 2", "mitte 3", "- [ ] zwei A", "Ende"]
+    b = ["T", "- [ ] eins B", "mitte 1", "mitte 2", "mitte 3", "Ende"]
+    merge = merge3(base, a, b)
+    assert len(merge.hunks) == 2
+    return merge
+
+
+def test_apply_hunk_picks_per_hunk() -> None:
+    """Je Hunk: Hauptdatei, Konfliktversion, Beide (A dann B) oder bearbeiteter Text."""
+    from merkweiser.core.conflicts import HunkPick, apply_hunk_picks
+    merge = _two_hunks()
+    assert apply_hunk_picks(merge, [(HunkPick.BEIDE, ""), (HunkPick.HAUPT, "")]) == (
+        "T", "- [ ] eins A", "- [ ] eins B", "mitte 1", "mitte 2", "mitte 3", "- [ ] zwei A", "Ende")
+    assert apply_hunk_picks(merge, [(HunkPick.KONFLIKT, ""), (HunkPick.BEARBEITET, "- [ ] zwei neu\r\nx")]) == (
+        "T", "- [ ] eins B", "mitte 1", "mitte 2", "mitte 3", "- [ ] zwei neu", "x", "Ende")
+    assert apply_hunk_picks(merge, [(HunkPick.HAUPT, ""), (HunkPick.BEARBEITET, "")])[-2:] == ("mitte 3", "Ende")
+
+
+def test_apply_hunk_picks_rejects_invalid_choices() -> None:
+    """Falsche Anzahl oder „Beide“ ohne zwei nicht leere, verschiedene Seiten → ValueError."""
+    from merkweiser.core.conflicts import HunkPick, apply_hunk_picks
+    merge = _two_hunks()
+    with pytest.raises(ValueError):
+        apply_hunk_picks(merge, [(HunkPick.HAUPT, "")])
+    assert [h.offers_both for h in merge.hunks] == [True, False]
+    with pytest.raises(ValueError):
+        apply_hunk_picks(merge, [(HunkPick.HAUPT, ""), (HunkPick.BEIDE, "")])

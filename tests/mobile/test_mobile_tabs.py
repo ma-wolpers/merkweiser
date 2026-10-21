@@ -219,3 +219,33 @@ def test_automerge_section_offers_undo_and_then_shows_open_case(tmp_path: Path) 
     texts = _texts(conflict_view.conflicts_view(fake))
     assert "Rückgängig gemacht – die Konfliktversion steht wieder oben." in texts
     assert [c.kind.value for c in service.conflicts()] == ["manual"]
+
+
+def test_hunk_controls_apply_one_choice_per_hunk() -> None:
+    """Abschnitt 1 „Beide“, Abschnitt 2 „Bearbeitet“ → resolve bekommt das zusammengesetzte Ergebnis."""
+    import asyncio
+
+    from merkweiser.core.merge.diff3 import merge3
+    from merkweiser.mobile.ui.hunk_view import hunk_controls
+    merge = merge3(["T", "a", "m1", "m2", "m3", "z", "E"], ["T", "a A", "m1", "m2", "m3", "z A", "E"],
+                   ["T", "a B", "m1", "m2", "m3", "E"])
+    case = SimpleNamespace(merge=merge, main_bytes=b"T\na A\nm1\nm2\nm3\nz A\nE\n")
+    calls = []
+    service = SimpleNamespace(resolve=lambda c, result, decision: calls.append((result, decision)))
+
+    async def act(action):
+        return action(service)
+
+    controls = hunk_controls(SimpleNamespace(act=act), case)
+    groups = [c for c in controls if isinstance(c, ft.RadioGroup)]
+    fields = [c for c in controls if isinstance(c, ft.TextField)]
+    assert [len(g.content.controls) for g in groups] == [4, 3]  # „Beide“ fehlt bei Änderung gegen Löschung
+    for field in fields:
+        field.update = lambda: None  # ohne Seite kein Update möglich
+    groups[0].on_change(SimpleNamespace(control=SimpleNamespace(value="beide")))
+    groups[1].on_change(SimpleNamespace(control=SimpleNamespace(value="bearbeitet")))
+    assert fields[1].visible
+    fields[1].on_change(SimpleNamespace(control=SimpleNamespace(value="z neu")))
+    button = next(c for c in controls if isinstance(c, ft.Button))
+    asyncio.run(button.on_click(None))
+    assert calls == [(b"T\na A\na B\nm1\nm2\nm3\nz neu\nE\n", "Abschnitt 1: Beide, 2: Bearbeitet")]

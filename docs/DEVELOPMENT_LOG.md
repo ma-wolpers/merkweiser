@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Abschnittsweise Konfliktauflösung
+
+- Core: `HunkPick`, `apply_hunk_picks` (Optionen laut Plan: A, B, Beide nur bei `offers_both`, Bearbeitet). App: `hunk_result`. Mobile: `mobile/ui/hunk_view.py` unter den Ganzdatei-Knöpfen bei `MANUAL`-Fällen mit Merge. Vorausgewählt ist „Hauptdatei“, solange es keine Historien-Vorschläge gibt (`BAUSTELLE(Vorschläge)`).
+- Nebenbei behoben: Die Konfliktansicht zeigte die interne Fallart (`manual`, `busy` …); jetzt deutsche Texte (`CASE_KIND_LABELS`).
+- Refactoring: Konflikt-Anzeigemodelle aus `app/views.py` nach `app/conflict_views.py` (views.py wäre sonst auf 338 Zeilen gewachsen).
+- Tests: Wahl je Hunk inkl. Bearbeitet mit CRLF und leerem Text, ungültige Wahl, `hunk_result` im CRLF-Stil, Mobile-Durchlauf mit Radio-Auswahl und Bearbeiten.
+
 ## 2026-10-21 – Auto-Merge-Liste mit Rückgängig
 
 - Befund beim Umsetzen: `undo_automerge` legte die Konfliktdatei wieder an, aber nichts hinderte den nächsten Start daran, sie erneut automatisch zusammenzuführen (Verstoß gegen Garantie 4). Neu `core/automerge_log.py` mit Markierung `nur_manuell` im Op-Zustand, idempotentem Rückgängig und Liste; `undo_automerge` ist aus `conflicts.py` dorthin umgezogen.

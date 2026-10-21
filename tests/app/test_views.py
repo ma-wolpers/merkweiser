@@ -7,7 +7,8 @@ import pytest
 
 from merkweiser.app.notes_service import NotesService
 from merkweiser.app.settings import Settings
-from merkweiser.app.views import Choice, conflict_result, hit_rows, note_rows
+from merkweiser.app.conflict_views import Choice, conflict_result
+from merkweiser.app.views import hit_rows, note_rows
 from merkweiser.core.document import parse_document
 from merkweiser.core.query import Filter
 from tests.fakes import FakeClock
@@ -49,7 +50,7 @@ def _case(main: bytes | None, other: bytes, device: str = "ABCDEFG"):
 
 
 def test_conflict_diff_marks_sides_and_skips_long_equal_runs() -> None:
-    from merkweiser.app.views import conflict_diff
+    from merkweiser.app.conflict_views import conflict_diff
     common = b"".join(b"Zeile %d\n" % i for i in range(10))
     rows = conflict_diff(_case(common + b"- [ ] Aufgabe\n", common + b"- [x] Aufgabe\n"))
     sides = [(r.side, r.text) for r in rows]
@@ -58,12 +59,12 @@ def test_conflict_diff_marks_sides_and_skips_long_equal_runs() -> None:
 
 
 def test_conflict_diff_without_main_shows_only_conflict_lines() -> None:
-    from merkweiser.app.views import conflict_diff
+    from merkweiser.app.conflict_views import conflict_diff
     assert [r.side for r in conflict_diff(_case(None, b"a\nb\n"))] == ["konflikt", "konflikt"]
 
 
 def test_conflict_origin_names_source_and_time() -> None:
-    from merkweiser.app.views import conflict_origin
+    from merkweiser.app.conflict_views import conflict_origin
     assert conflict_origin(_case(b"", b"")) == "von Syncthing-Gerät ABCDEFG, 21.10.2026 14:03"
     assert conflict_origin(_case(b"", b"", "MERKWEISERAB12CD34")).startswith("von Merkweiser selbst")
 
@@ -103,3 +104,18 @@ def test_move_choices(today: date, expected: list[date]) -> None:
     choices = move_choices(today)
     assert [day for _label, day in choices] == expected
     assert choices[0][0] == f"Morgen ({['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][expected[0].weekday()]}, {expected[0]:%d.%m.})"
+
+
+def test_hunk_result_renders_like_main_and_names_decision() -> None:
+    """Ergebnis übernimmt den Zeilenende-Stil der Hauptdatei; die Entscheidung ist lesbar."""
+    from types import SimpleNamespace
+
+    from merkweiser.app.conflict_views import hunk_result
+    from merkweiser.core.conflicts import HunkPick
+    from merkweiser.core.merge.diff3 import merge3
+    merge = merge3(["T", "a", "Ende"], ["T", "a A", "Ende"], ["T", "a B", "Ende"])
+    case = SimpleNamespace(merge=merge, main_bytes=b"T\r\na A\r\nEnde\r\n")
+    result, decision = hunk_result(case, [(HunkPick.BEIDE, "")])
+    assert result == b"T\r\na A\r\na B\r\nEnde\r\n" and decision == "Abschnitt 1: Beide"
+    with pytest.raises(ValueError):
+        hunk_result(SimpleNamespace(merge=None, main_bytes=b""), [])

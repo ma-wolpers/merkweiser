@@ -14,8 +14,9 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import Choice, DiffRow, conflict_diff, conflict_origin, conflict_result, line_diff
+from ...app.conflict_views import CASE_KIND_LABELS, Choice, DiffRow, conflict_diff, conflict_origin, conflict_result, line_diff
 from ...core.conflicts import CaseKind
+from .hunk_view import hunk_controls
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -119,13 +120,16 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     controls: list[ft.Control] = [
         ft.Text(case.conflict.main_relpath, weight=ft.FontWeight.BOLD),
         ft.Text(f"Konfliktversion {conflict_origin(case)}", size=12),
-        ft.Text(f"{case.kind.value}: {case.reason}" if case.reason else case.kind.value, size=12),
+        ft.Text(f"{CASE_KIND_LABELS[case.kind]}: {case.reason}" if case.reason else CASE_KIND_LABELS[case.kind],
+                size=12),
     ]
     if case.main_bytes is None:
         controls.append(ft.Text("Die Hauptdatei fehlt; unten steht nur die Konfliktversion.", size=12))
     controls.append(_diff_box(conflict_diff(case)))
     if case.kind is not CaseKind.BUSY:
         controls += _choices(app, case, cases)
+    if case.kind is CaseKind.MANUAL:
+        controls += hunk_controls(app, case)
     return controls
 
 
@@ -133,7 +137,7 @@ def _diff_box(rows: list[DiffRow]) -> ft.Control:
     """Zeilenvergleich als Kasten mit farbig hinterlegten Abweichungen.
 
     Args:
-        rows: Vergleichszeilen (``conflict_diff`` bzw. ``line_diff``).
+        rows: Vergleichszeilen (``conflict_diff`` bzw. ``line_diff`` aus ``app.conflict_views``).
 
     Returns:
         Ein Container mit einer Zeile je ``DiffRow``.
