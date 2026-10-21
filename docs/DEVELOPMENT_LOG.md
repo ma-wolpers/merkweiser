@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Auto-Merges ausblenden
+
+- Nutzerwunsch: Die Liste „Automatisch zusammengeführt“ zeigte jeden Merge für die ganze Aufbewahrung (30 Tage). Neu `hide_automerges` (Zustandsfeld `ausgeblendet`), `NotesService.hide_automerges`, Knöpfe „Ausblenden“ und „Alle ausblenden“. Tests: ausgeblendet verschwindet aus der Liste, Backup und „nur manuell“ bleiben; andere Op-Arten unberührt.
+
 ## 2026-10-21 – Notizdarstellung: Thema, Erläuterung, Fortsetzungen, Listenpunkte
 
 - Gerätebefund: Je Knoten wurde nur die erste Zeile gezeigt; Erläuterung und Fortsetzungen fehlten, Listenpunkte hatten kein Zeichen und eine andere Textkante als Todos.

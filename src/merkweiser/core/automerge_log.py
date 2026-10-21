@@ -6,7 +6,10 @@ Jeder Auto-Merge ist eine Op ``automerge`` mit den Blobs ``haupt`` (vorher),
 * listet sie für die Oberfläche (``automerge_log``),
 * macht einen Auto-Merge rückgängig (``undo_automerge``) und
 * liefert die Konfliktdateien, die danach **nie wieder automatisch**
-  zusammengeführt werden dürfen (``undone_manual_paths``).
+  zusammengeführt werden dürfen (``undone_manual_paths``) und
+* blendet Einträge auf Wunsch aus (``hide_automerges``; Nutzerwunsch vom
+  2026-10-21). Ausblenden ändert nur die Anzeige: Die Op samt Backup bleibt bis
+  zum Ende der Aufbewahrung, ``rueckgaengig`` und ``nur_manuell`` bleiben gültig.
 
 Garantie 4 (PLAN.md): Ein „Rückgängig“ ist eine ausdrückliche Entscheidung.
 Ohne Markierung würde der nächste Start dieselbe Konfliktdatei wieder
@@ -51,7 +54,7 @@ class AutoMergeEntry:
 
 
 def automerge_log(store: OpStore, limit: int = 20) -> list[AutoMergeEntry]:
-    """Abgeschlossene Auto-Merges, neueste zuerst (nur solange die Op aufbewahrt wird).
+    """Abgeschlossene, nicht ausgeblendete Auto-Merges, neueste zuerst (solange die Op aufbewahrt wird).
 
     Args:
         store: Op-Store.
@@ -63,7 +66,7 @@ def automerge_log(store: OpStore, limit: int = 20) -> list[AutoMergeEntry]:
     entries: list[AutoMergeEntry] = []
     for op_id in reversed(store.all_ids()):
         manifest, state = store.read(op_id)
-        if manifest.get("art") != "automerge" or state.get("zustand") != "DONE":
+        if manifest.get("art") != "automerge" or state.get("zustand") != "DONE" or state.get("ausgeblendet"):
             continue
         blobs = manifest["blobs"]
         entries.append(AutoMergeEntry(
@@ -115,6 +118,34 @@ def undo_automerge(writer: Writer, store: OpStore, op_id: str) -> str:
         return restored
     finally:
         op.release()
+
+
+def hide_automerges(store: OpStore, op_ids: list[str]) -> list[str]:
+    """Blendet Einträge der Liste „Automatisch zusammengeführt“ aus.
+
+    Setzt ``ausgeblendet`` im Zustand der Op (mit Lock und Fencing wie jede
+    Zustandsänderung). Eine gerade von einer anderen Instanz gesperrte Op wird
+    übersprungen und bleibt sichtbar.
+
+    Args:
+        store: Op-Store.
+        op_ids: Die auszublendenden Automerge-Ops.
+
+    Returns:
+        Tatsächlich ausgeblendete ``op-id``s.
+    """
+    hidden = []
+    for op_id in op_ids:
+        op = store.open_for_recovery(op_id)
+        if op is None:
+            continue
+        try:
+            if op.manifest.get("art") == "automerge":
+                op.set_state(op.state().get("zustand", "DONE"), ausgeblendet=True)
+                hidden.append(op_id)
+        finally:
+            op.release()
+    return hidden
 
 
 def undone_manual_paths(store: OpStore) -> set[str]:

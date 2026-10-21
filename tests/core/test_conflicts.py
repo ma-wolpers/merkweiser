@@ -320,3 +320,28 @@ def test_apply_hunk_picks_rejects_invalid_choices() -> None:
     assert [h.offers_both for h in merge.hunks] == [True, False]
     with pytest.raises(ValueError):
         apply_hunk_picks(merge, [(HunkPick.HAUPT, ""), (HunkPick.BEIDE, "")])
+
+
+def test_hidden_automerges_leave_list_but_keep_backup_and_undo_effect(tmp_path: Path) -> None:
+    """Ausblenden ändert nur die Anzeige: Op und Backup bleiben, „nur manuell“ nach Rückgängig gilt weiter."""
+    from merkweiser.core.automerge_log import hide_automerges
+    env = Env(tmp_path)
+    op_id = _merged(env)
+    undo_automerge(env.writer, env.store, op_id)
+    env.settle()
+    assert hide_automerges(env.store, [op_id]) == [op_id]
+    assert automerge_log(env.store) == []
+    assert op_id in env.store.all_ids() and undone_manual_paths(env.store) == {CONF}
+    [case] = env.cases()
+    assert case.kind is CaseKind.MANUAL
+
+
+def test_hide_skips_unknown_and_non_automerge_ops(tmp_path: Path) -> None:
+    """Nur Automerge-Ops werden ausgeblendet; andere Ops bleiben unberührt."""
+    from merkweiser.core.automerge_log import hide_automerges
+    env = Env(tmp_path)
+    other = env.store.create("write", {"relpath": "x.md", "create_only": True}, {"neu": b"x"})
+    other.set_state("DONE")
+    other.release()
+    assert hide_automerges(env.store, [other.id]) == []
+    assert "ausgeblendet" not in env.store.read(other.id)[1]

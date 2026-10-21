@@ -21,7 +21,7 @@ from typing import Callable
 from ..core import conflict_files as cf
 from ..core.appdata import open_vault_data
 from ..core.cleanup import empty_day_files
-from ..core.automerge_log import AutoMergeEntry, automerge_log, undone_manual_paths
+from ..core.automerge_log import AutoMergeEntry, automerge_log, hide_automerges, undone_manual_paths
 from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
 from ..core.doc_cache import DocumentCache
@@ -218,6 +218,19 @@ class NotesService:
             Einträge mit Bytes vorher/nachher und Rückgängig-Zustand.
         """
         return automerge_log(self.store, limit)
+
+    def hide_automerges(self, op_ids: list[str]) -> list[str]:
+        """Blendet Einträge der Auto-Merge-Liste aus (nur Anzeige; Backup und Rückgängig-Wirkung bleiben).
+
+        Schreibt nur in die App-Daten, nie in den Vault; daher auch im Schreibschutz erlaubt.
+
+        Args:
+            op_ids: Automerge-Ops.
+
+        Returns:
+            Tatsächlich ausgeblendete ``op-id``s.
+        """
+        return hide_automerges(self.store, op_ids)
 
     @_writes
     def undo_automerge(self, op_id: str) -> str:
