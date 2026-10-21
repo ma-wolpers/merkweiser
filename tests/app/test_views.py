@@ -3,6 +3,8 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from merkweiser.app.notes_service import NotesService
 from merkweiser.app.settings import Settings
 from merkweiser.app.views import Choice, conflict_result, hit_rows, note_rows
@@ -88,3 +90,16 @@ def test_note_ref_skips_empty_notes() -> None:
     from merkweiser.app.views import note_ref
     doc = parse_document(b"a\n\n---\n\n---\n\nb\n")
     assert [note_ref("x.md", doc, n) is None for n in doc.notes] == [False, True, False]
+
+
+@pytest.mark.parametrize("today, expected", [
+    (date(2026, 10, 21), [date(2026, 10, 22), date(2026, 10, 23), date(2026, 10, 26), date(2026, 10, 28)]),  # Mi
+    (date(2026, 10, 24), [date(2026, 10, 25), date(2026, 10, 26), date(2026, 11, 2), date(2026, 10, 31)]),  # Sa
+    (date(2026, 10, 26), [date(2026, 10, 27), date(2026, 10, 28), date(2026, 11, 2)]),  # Mo: Montag = in einer Woche
+])
+def test_move_choices(today: date, expected: list[date]) -> None:
+    """Schnellwahl: morgen, übermorgen, nächster Montag nach übermorgen, in einer Woche – ohne Dubletten."""
+    from merkweiser.app.views import move_choices
+    choices = move_choices(today)
+    assert [day for _label, day in choices] == expected
+    assert choices[0][0] == f"Morgen ({['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][expected[0].weekday()]}, {expected[0]:%d.%m.})"

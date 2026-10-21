@@ -8,13 +8,14 @@ Anzeigemodellen (``merkweiser.app.views``). Aktionen laufen über
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date
 from typing import TYPE_CHECKING
 
 import flet as ft
 
 from ...app.views import HitRow, Row, hit_rows, note_ref, note_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
+from .move_dialog import show_move_dialog
 from .note_dialogs import note_actions
 
 if TYPE_CHECKING:
@@ -109,7 +110,7 @@ def _row(app: "MobileApp", row: Row) -> ft.Control:
 
 
 def _todo(app: "MobileApp", text: str, done: bool | None, urgent: bool, target) -> ft.Control:
-    """Checkbox plus Schnellaktionen (dringend, auf morgen verschieben)."""
+    """Checkbox plus Schnellaktionen (dringend, verschieben mit Datumswahl)."""
     async def toggle(e) -> None:
         value = bool(e.control.value)
         await app.act(lambda s: s.set_done(target, value))
@@ -117,15 +118,14 @@ def _todo(app: "MobileApp", text: str, done: bool | None, urgent: bool, target) 
     async def urgency(_e) -> None:
         await app.act(lambda s: s.set_urgent(target, not urgent))
 
-    async def tomorrow(_e) -> None:
-        day = app.service.clock.today() + timedelta(days=1)
-        await app.act(lambda s: s.move_todo(target, day))
+    async def move(_e) -> None:
+        show_move_dialog(app, target)
 
     label = text.strip("=") if urgent else text
     return ft.Row([
         ft.Checkbox(label=label, value=bool(done), on_change=toggle, expand=True),
         ft.IconButton(icon=ft.Icons.STAR if urgent else ft.Icons.STAR_BORDER, on_click=urgency, tooltip="dringend"),
-        ft.IconButton(icon=ft.Icons.EVENT, on_click=tomorrow, tooltip="auf morgen verschieben"),
+        ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
     ])
 
 

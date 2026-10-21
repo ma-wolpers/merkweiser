@@ -151,3 +151,32 @@ def test_delete_dialog_removes_note(tmp_path: Path) -> None:
     ref = note_ref(day.relpath, day.document, day.document.notes[0])
     asyncio.run(note_dialogs._delete_dialog(fake, ref).actions[1].on_click(None))
     assert (Path(fake.settings.vault) / day.relpath).read_bytes() == b""
+
+
+def test_picked_date_handles_naive_aware_and_missing_values() -> None:
+    """DatePicker-Werte: naiv → Datum direkt; UTC-behaftet → erst in lokale Zeit; None → None."""
+    from datetime import date, datetime, timezone
+
+    from merkweiser.mobile.ui.move_dialog import picked_date
+    assert picked_date(datetime(2026, 10, 23)) == date(2026, 10, 23)
+    aware = datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc)
+    assert picked_date(aware) == aware.astimezone().date()
+    assert picked_date(date(2026, 10, 23)) == date(2026, 10, 23) and picked_date(None) is None
+
+
+def test_move_dialog_quick_choice_moves_todo(tmp_path: Path) -> None:
+    """„Morgen“ im Verschieben-Dialog verschiebt das Todo in die Tagesdatei von morgen."""
+    import asyncio
+
+    from merkweiser.app.views import note_rows
+    from merkweiser.mobile.ui import move_dialog
+    fake = _dialog_app(tmp_path)
+    [day] = fake.service.day(fake.service.clock.today())
+    rows = [r for n in day.document.notes for r in note_rows(day.relpath, day.document, n)]
+    todo = next(r for r in rows if r.kind == "todo")
+    dialog = move_dialog.move_dialog(fake, todo.target)
+    assert [c.content for c in dialog.content.controls][:1] == ["Morgen (Fr, 16.01.)"]
+    asyncio.run(dialog.content.controls[0].on_click(None))
+    vault = Path(fake.settings.vault)
+    assert b"Aufgabe" in (vault / "2026-01-16.md").read_bytes()
+    assert b"Aufgabe" not in (vault / "2026-01-15.md").read_bytes()

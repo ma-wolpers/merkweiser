@@ -8,6 +8,7 @@ um. Die Oberflächen rendern nur noch und reichen ``Target``-Adressen an den
 from __future__ import annotations
 
 import difflib
+from datetime import date, timedelta
 from dataclasses import dataclass
 from enum import Enum
 
@@ -256,3 +257,31 @@ def note_ref(relpath: str, doc: Document, note: ParsedNote) -> NoteRef | None:
         return None
     original = tuple(line.text for line in doc.source.lines[content.start:content.end])
     return NoteRef(relpath, doc.source.raw, original, "\n".join(original))
+
+
+WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+
+
+def move_choices(today: date) -> list[tuple[str, date]]:
+    """Schnellwahl der Zieldaten beim Verschieben eines Todos.
+
+    Args:
+        today: Heutiges Datum (aus der Clock des Service).
+
+    Returns:
+        ``(Beschriftung, Datum)`` für morgen, übermorgen, den nächsten Montag
+        (nach übermorgen; sonst eine Woche später) und in einer Woche, ohne
+        doppelte Daten. Die Beschriftung nennt Wochentag und Datum.
+    """
+    monday = today + timedelta(days=(7 - today.weekday()) % 7 or 7)
+    if monday <= today + timedelta(days=2):
+        monday += timedelta(days=7)
+    raw = [("Morgen", today + timedelta(days=1)), ("Übermorgen", today + timedelta(days=2)),
+           ("Nächster Montag", monday), ("In einer Woche", today + timedelta(days=7))]
+    seen: set[date] = set()
+    choices = []
+    for label, day in raw:
+        if day not in seen:
+            seen.add(day)
+            choices.append((f"{label} ({WEEKDAYS[day.weekday()]}, {day:%d.%m.})", day))
+    return choices

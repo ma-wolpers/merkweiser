@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Mobile: Datumswahl beim Verschieben
+
+- Das Kalendersymbol am Todo öffnet jetzt einen Dialog (vorher: sofort auf morgen). „Morgen“ ist der erste Knopf, die Funktion bleibt also mit einem Tipp mehr erhalten.
+- `app/views.py`: `move_choices`; `mobile/ui/move_dialog.py` mit `DatePicker` und `picked_date`. Tests: Schnellwahl an Mittwoch, Samstag, Montag; Picker-Werte naiv/UTC/None; Dialog verschiebt in die Tagesdatei von morgen.
+
 ## 2026-10-21 – Mobile: Notizen bearbeiten und löschen
 
 - `app/views.py`: `NoteRef`/`note_ref` (Planungsstand und Inhaltszeilen einer Notiz). `mobile/ui/note_dialogs.py`: Bearbeiten- und Lösch-Dialog im Tab Heute.

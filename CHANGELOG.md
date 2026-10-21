@@ -13,7 +13,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 - **Android-App (erste Fassung):**
   - Einrichtung mit „Zugriff auf alle Dateien“ und Wahl des Notizordners (auch per eingetipptem Pfad).
-  - Tab **Heute**: neue Notiz schreiben; die heutigen Notizen mit abhakbaren Todos, Dringend-Stern und „auf morgen verschieben“; jede Notiz lässt sich **bearbeiten** und (nach Rückfrage) **löschen**.
+  - Tab **Heute**: neue Notiz schreiben; die heutigen Notizen mit abhakbaren Todos, Dringend-Stern und **Verschieben** (Schnellwahl morgen, übermorgen, nächster Montag, in einer Woche, oder ein Datum im Kalender); jede Notiz lässt sich **bearbeiten** und (nach Rückfrage) **löschen**.
   - Wurde eine Datei zwischendurch verändert und landet deine Änderung deshalb als Konfliktdatei, sagt die App das sofort.
   - Tab **Todos**: alle Todos mit Filter nach Status und Tags (UND/ODER).
   - Tab **Suche**: Teilstring oder regulärer Ausdruck.
