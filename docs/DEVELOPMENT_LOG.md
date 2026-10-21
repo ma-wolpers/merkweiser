@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Plan: Backup-Ansicht vorgemerkt, S1-Stand präzisiert
+
+- Nutzerwunsch unter „noch zu planen“: Konflikte in die Einstellungen, daneben eine Ansicht aller Backups mit „Rückgängig“.
+- Korrektur im Fortschritt: S1 ist nur im Speicherteil abgeschlossen; die Schreibweise von Obsidian Mobile ist noch nicht untersucht.
+
 ## 2026-10-21 – Thema ohne Unterstreichung, Erläuterung schwächer
 
 - Nutzerwunsch: Unterstreichung entfernt (fett genügt); Erläuterung in `style.EXPLANATION` (`with_opacity(0.5, ON_SURFACE)`) statt `ON_SURFACE_VARIANT`.
