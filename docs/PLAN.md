@@ -23,6 +23,15 @@
 | 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19). Läuft auf dem Gerät; dazu Schreibgarantie-Anzeige, Konfliktvergleich, Diagnosebericht. Offen: Datumswahl beim Verschieben, Hunk-Auswahl, Auto-Merge-Liste mit Rückgängig, Notizen bearbeiten/löschen, Schreibschutz-Modus. |
 | 9 – Abschluss | offen |
 
+## Spätere Schritte (eigene Planrunde im Planmodus, noch nicht ausgearbeitet)
+
+Nutzerwünsche vom 2026-10-21. Sie werden erst in einer eigenen Planrunde festgelegt; hier steht nur, was gewünscht ist und wo es architektonisch hingehört.
+
+| Wunsch | Einordnung (vorläufig) |
+|---|---|
+| **Dringende Todos ganz oben:** Mit Stern (dringend) markierte Todos stehen in den Listen vor allen anderen. | Sortierung gehört in den Core bzw. die UI-neutralen Anzeigemodelle (`query.py` bzw. `app/views.py`), damit Desktop und Mobile gleich sortieren. Zu klären: welche Listen (Todos, Suche, Tagesansicht?), Reihenfolge innerhalb der Gruppen, Verhalten bei verschachtelten Todos (Teilbaum bleibt beim Elternteil?). Die Datei wird dabei **nicht** umsortiert, nur die Anzeige. |
+| **Tag anklicken → alle Notizen und Todos mit diesem Tag:** Ein Tippen auf einen Hashtag zeigt sofort alle Treffer. | Kein eigener Suchweg: Der Klick erzeugt einen `Filter(tags={tag})` und zeigt das Ergebnis von `NotesService.search` in der Suchansicht (gleiche Semantik inkl. effektiver bzw. geerbter Tags, für beide UIs). Zu klären: Treffer für Notizen ohne Todos, Projekt-Tags, Zurück-Navigation, Darstellung der Tags als anklickbare Elemente in Flet und bw-gui. |
+
 ## Context
 
 Konzept: `plan Notizverwaltung.md` im Geschwister-Repo `../tools4school`. Die Datei ist beschädigt, weil die neue Fassung mitten in die alte eingefügt wurde (ab „Ein bestimmtes Format, dem alle Notize# …“). Maßgeblich ist die neue Fassung. **Die Originaldatei wird nicht verändert.**
