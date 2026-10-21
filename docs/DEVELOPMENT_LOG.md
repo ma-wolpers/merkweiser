@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – S1-Gerätebefund: Selbsttest der Install-Primitive
+
+- S1-Bericht vom Gerät (SD-Karte): `os.link` ist verboten (`PermissionError`), `renameat2(RENAME_NOREPLACE)` funktioniert. Ohne Änderung wäre auf Android **jedes Speichern** gescheitert, weil `FsOps` auf POSIX fest `link`+`unlink` nutzte.
+- Neu: `FsOps`-Variante `noreplace` (`renameat2` per `ctypes`-Syscall, Nummern je Architektur) und `core/fs_probe.py` mit dem im Plan vorgesehenen Selbsttest je Vault. `NotesService` ermittelt die Variante beim Öffnen; Einstellungen zeigen die Schreibgarantie, der Startbanner nur, wenn sie eingeschränkt ist.
+- Tests: echtes Dateisystem → `atomic`; simuliert ohne Hardlinks → `noreplace`; ohne atomare Variante → `excl`; still überschreibende Variante wird verworfen; schreibgeschützt → `VaultNotWritableError`; keine Probedateien bleiben liegen; `renameat2` außerhalb von Linux → `ENOSYS` (unter Linux: überschreibt nie).
+- Nebenbefund Diagnose: Nach „gleicher Fehler trotz Update“ war das APK in Ordnung (`certifi` per `zipimport` aus `sitepackages.zip` importierbar). Ursache war eine Verwechslung mit der Spike-App. serious_python entpackt nach jedem (Neu-)Installieren neu (Schlüssel enthält `lastUpdateTime`).
+
 ## 2026-10-19 – Mobile-App, erste Fassung (Schritt 8)
 
 - Befund S1 vom Gerät: Mit `pyjnius` in `project.dependencies` stürzte das Spike-APK mit `ModuleNotFoundError: certifi` ab. Ursache (`flet_cli/commands/build_base.py`): `flet` wird nur bei leerer Abhängigkeitsliste automatisch gebündelt, und die Startvorlage (`python.dart`) importiert `certifi` immer. Behoben, indem `flet==0.86.5` mit aufgeführt wird; im Spike-APK sind jetzt `flet`, `certifi`, `httpx` und `jnius` enthalten.

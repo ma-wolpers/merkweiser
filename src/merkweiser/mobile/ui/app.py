@@ -76,7 +76,7 @@ class MobileApp:
             self.show_setup()
             return
         self.nav.visible = True
-        self.say(tabs.start_hint(self.report))
+        self.say(tabs.start_hint(self.report, self.service.write_guarantee))
         self.render()
 
     def show_setup(self) -> None:

@@ -23,6 +23,7 @@ from ..core.conflicts import undo_automerge as _undo_automerge
 from ..core.doc_cache import DocumentCache
 from ..core.document import Document, parse_document
 from ..core.edits import add_todo, set_done, set_project, set_urgent
+from ..core.fs_probe import GUARANTEE, probe_install_mode
 from ..core.fsops import FsOps
 from ..core.history import History
 from ..core.move_exec import MoveResult, move_todo, recover_moves
@@ -70,14 +71,21 @@ class NotesService:
         app_data: App-Datenverzeichnis des Geräts.
         settings: Einstellungen.
         clock: Zeitquelle.
-        fs: Dateisystem-Primitive (Tests: mit Fault-Injection).
+        fs: Dateisystem-Primitive (Tests: mit Fault-Injection). ``None``: die
+            Install-Variante per Selbsttest im Vault ermitteln (``probe_install_mode``).
+
+    Raises:
+        VaultNotWritableError: Der Selbsttest findet keine Variante, mit der
+            sich im Vault ohne Überschreiben schreiben lässt.
     """
 
     def __init__(self, root: Path, app_data: Path, settings: Settings, clock: Clock, fs: FsOps | None = None) -> None:
         self.root, self.settings, self.clock = root, settings.validated(), clock
         self.pattern = DayPattern(settings.pattern)
+        # BAUSTELLE(Schreibschutz): Laut Plan öffnet ein Vault ohne Primitive
+        # schreibgeschützt; bisher scheitert das Öffnen mit klarer Meldung.
+        self.fs = fs or FsOps(probe_install_mode(root))
         self.data = open_vault_data(app_data, root)
-        self.fs = fs or FsOps()
         self.store = OpStore(self.data, clock, self.fs)
         self.history = History(self.data, clock)
         self.writer = Writer(root, self.data, self.store, self.fs, clock, self.history)
@@ -100,6 +108,11 @@ class NotesService:
         report.automerges = self.auto_merge_all()
         self._watch = observe(self.root)
         return report
+
+    @property
+    def write_guarantee(self) -> str:
+        """Schreibgarantie dieses Vaults für die Anzeige („voll“ bzw. „eingeschränkt (A1–A3)“)."""
+        return GUARANTEE[self.fs.install_mode]
 
     def rescan(self) -> VaultIndex:
         """Liest die Dateiliste neu."""

@@ -9,8 +9,10 @@ Protokollgrenze einen Prozessabbruch simulieren können (``crash_at``).
 * ``rename_no_replace``: atomares Umbenennen, das ein vorhandenes Ziel **nie**
   überschreibt. Windows: ``os.rename`` (schlägt bei vorhandenem Ziel fehl).
   POSIX: ``os.link`` + ``unlink`` (``link`` schlägt bei vorhandenem Ziel fehl).
-  Fallback ``excl`` (nur Android-Shared-Storage ohne ``link``): Existenz
-  prüfen, exklusiv anlegen, kopieren, Quelle löschen (GRENZE A1–A3).
+  ``noreplace`` (Linux/Android ohne Hardlinks, z. B. Shared Storage über FUSE,
+  Befund S1 vom 2026-10-21): ``renameat2(RENAME_NOREPLACE)`` per Syscall.
+  Fallback ``excl`` (nur ohne beide): exklusiv anlegen, kopieren, Quelle
+  löschen (GRENZE A1–A3). Welche Variante gilt, entscheidet ``fs_probe``.
 * ``write_lock``: Windows-Schreibsperre (Handle mit verweigerter
   Schreib-Freigabe, Löschen erlaubt), solange das Protokoll läuft; auf POSIX
   wirkungslos (dort sichert die Quarantäne ab).
@@ -19,10 +21,20 @@ Protokollgrenze einen Prozessabbruch simulieren können (``crash_at``).
 from __future__ import annotations
 
 import contextlib
+import ctypes
+import errno
 import os
+import platform
 import sys
 from pathlib import Path
 from typing import Callable, Iterator
+
+INSTALL_MODES = ("atomic", "noreplace", "excl")
+
+# Syscall-Nummern von renameat2 je Architektur (Linux/Android).
+_SYS_RENAMEAT2 = {"aarch64": 276, "x86_64": 316, "armv7l": 382, "armv8l": 382, "i686": 353}
+_RENAME_NOREPLACE = 1
+_AT_FDCWD = -100
 
 
 class FileBusyError(OSError):
@@ -37,14 +49,15 @@ class FsOps:
     """Echte Dateioperationen plus Haken für Fault-Injection.
 
     Args:
-        install_mode: ``"atomic"`` (Rename/Link ohne Überschreiben) oder
-            ``"excl"`` (Android-Fallback, eingeschränkt).
+        install_mode: ``"atomic"`` (Windows-Rename bzw. POSIX-Link ohne
+            Überschreiben), ``"noreplace"`` (``renameat2``) oder ``"excl"``
+            (Android-Fallback, eingeschränkt).
         crash_at: Nur Tests: wird mit dem Namen jeder Protokollgrenze
             aufgerufen und darf ``SimulatedCrash`` werfen.
     """
 
     def __init__(self, install_mode: str = "atomic", crash_at: Callable[[str], None] | None = None) -> None:
-        if install_mode not in ("atomic", "excl"):
+        if install_mode not in INSTALL_MODES:
             raise ValueError(install_mode)
         self.install_mode = install_mode
         self._crash_at = crash_at or (lambda _point: None)
@@ -97,6 +110,8 @@ class FsOps:
         if self.install_mode == "excl":
             self.create_exclusive(dst, src.read_bytes())
             os.unlink(src)
+        elif self.install_mode == "noreplace":
+            renameat2_noreplace(src, dst)
         elif sys.platform == "win32":
             os.rename(src, dst)
         else:
@@ -138,6 +153,35 @@ class FsOps:
             yield
         finally:
             _win_close(handle)
+
+
+def renameat2_noreplace(src: Path, dst: Path) -> None:
+    """Benennt per ``renameat2(RENAME_NOREPLACE)`` um (Linux/Android, per Syscall).
+
+    Python bietet ``renameat2`` nicht an; der Aufruf geht deshalb über
+    ``ctypes`` an ``syscall`` der libc. Atomar: Existiert ``dst``, schlägt der
+    Aufruf fehl und nichts ändert sich.
+
+    Args:
+        src: Quelle.
+        dst: Ziel (darf nicht existieren).
+
+    Raises:
+        FileExistsError: Ziel existiert (``EEXIST``).
+        OSError: Syscall nicht verfügbar (``ENOSYS``, z. B. Windows/macOS oder
+            unbekannte Architektur) oder vom Dateisystem nicht unterstützt
+            (``EINVAL``), sonst mit der errno des Kernels.
+    """
+    number = _SYS_RENAMEAT2.get(platform.machine())
+    if sys.platform != "linux" or number is None:
+        raise OSError(errno.ENOSYS, f"renameat2 nicht verfügbar ({sys.platform}/{platform.machine()})")
+    libc = ctypes.CDLL(None, use_errno=True)
+    result = libc.syscall(number, _AT_FDCWD, os.fsencode(src), _AT_FDCWD, os.fsencode(dst), _RENAME_NOREPLACE)
+    if result != 0:
+        err = ctypes.get_errno()
+        if err == errno.EEXIST:
+            raise FileExistsError(err, os.strerror(err), str(dst))
+        raise OSError(err, os.strerror(err), str(src))
 
 
 def _win_open_deny_write(path: Path) -> int:

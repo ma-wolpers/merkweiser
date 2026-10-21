@@ -70,6 +70,12 @@ def test_today_shows_todo_as_checkbox(tmp_path: Path) -> None:
     assert texts == ["Aufgabe"]
 
 
+def test_start_hint_reports_limited_write_guarantee() -> None:
+    report = SimpleNamespace(recovery=SimpleNamespace(not_applied=[]), moves=[], automerges=[])
+    assert tabs.start_hint(report, "voll") == ""
+    assert "eingeschränkt" in tabs.start_hint(report, "eingeschränkt (A1–A3)")
+
+
 def test_start_hint_reports_automerge() -> None:
     """Start-Hinweis nennt automatisch zusammengeführte Konflikte."""
     report = SimpleNamespace(recovery=SimpleNamespace(not_applied=[]), moves=[], automerges=["x"])

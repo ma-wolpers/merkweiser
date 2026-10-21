@@ -23,11 +23,16 @@ if TYPE_CHECKING:
 INDENT = 18
 
 
-def start_hint(report) -> str:
-    """Hinweis nach dem Start (nicht ausgeführte Änderungen, unvollständige Vorgänge)."""
+def start_hint(report, guarantee: str = "voll") -> str:
+    """Hinweis nach dem Start (nicht ausgeführte Änderungen, unvollständige Vorgänge).
+
+    Args:
+        report: ``StartReport`` oder ``None``.
+        guarantee: Schreibgarantie des Vaults; alles außer „voll“ wird gemeldet.
+    """
     if report is None:
         return ""
-    parts = []
+    parts = [] if guarantee == "voll" else [f"Schreibgarantie: {guarantee}."]
     if report.recovery.not_applied:
         parts.append(f"{len(report.recovery.not_applied)} Änderung(en) wurden wegen eines Abbruchs nicht ausgeführt.")
     if any(m.state == "INCOMPLETE" for m in report.moves):
@@ -225,5 +230,7 @@ def settings_view(app: "MobileApp") -> list[ft.Control]:
     async def change_folder(_e) -> None:
         app.show_setup()
 
-    return [ft.Text(f"Notizordner: {app.settings.vault}"), ft.Button("Ordner wechseln", on_click=change_folder),
+    guarantee = f"Schreibgarantie: {app.service.write_guarantee} ({app.service.fs.install_mode})" if app.service else ""
+    return [ft.Text(f"Notizordner: {app.settings.vault}"), ft.Text(guarantee, size=12),
+            ft.Button("Ordner wechseln", on_click=change_folder),
             prefix, poll, ft.Button("Speichern", on_click=save), ft.Text(f"Heute: {date.today().isoformat()}", size=11)]
