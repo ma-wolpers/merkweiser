@@ -194,3 +194,27 @@ def test_external_replace_after_own_follow_up_still_shows_n(env: Env) -> None:
     (env.root / "2026-01-01.md").write_bytes(X)
     env.finish()
     assert env.conflicts() == [n2]
+
+
+def test_external_edit_building_on_n_during_quarantine_is_no_conflict(env: Env) -> None:
+    """Befund S4: Obsidian speichert N plus neuen Text in der Quarantäne → N ist enthalten, keine Konfliktdatei."""
+    env.writer.write("2026-01-01.md", E, N)
+    (env.root / "2026-01-01.md").write_bytes(N.replace(b"\n", b"\r\n") + b"Obsidian tippt weiter\r\n")
+    assert [r.state for r in env.finish()] == ["DONE"]
+    assert env.conflicts() == []
+
+
+def test_external_edit_dropping_a_line_of_n_still_conflicts(env: Env) -> None:
+    """Fehlt eine Zeile von N (z. B. alter Obsidian-Puffer ohne den Haken), wird N weiterhin sichtbar."""
+    env.writer.write("2026-01-01.md", E, N)
+    (env.root / "2026-01-01.md").write_bytes(E + b"Obsidian tippt weiter\n")
+    env.finish()
+    assert env.conflicts() == [N]
+
+
+def test_contains_all_lines() -> None:
+    """Zeilen-Teilfolge: Reihenfolge zählt, Einschübe erlaubt, Zeilenenden egal."""
+    from merkweiser.core.safe_write import contains_all_lines
+    assert contains_all_lines(b"a\r\nx\r\nb\r\n", b"a\nb\n")
+    assert not contains_all_lines(b"b\na\n", b"a\nb\n")
+    assert not contains_all_lines(b"a\n", b"a\nb\n")

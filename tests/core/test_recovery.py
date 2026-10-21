@@ -225,3 +225,15 @@ def test_restart_without_elapsed_wall_time_restarts_quarantine(tmp_path: Path, w
     report = _restart_after(tmp_path, wall_seconds)
     assert [r.state for r in report.results] == ["QUARANTINE"]
     assert any(name.endswith(".old") for name in vault_files(tmp_path))
+
+
+def test_restart_after_external_edit_building_on_n_is_no_conflict(tmp_path: Path) -> None:
+    """Neustart in der Quarantäne, P = N plus externer Text: weder Konflikt noch „nicht ausgeführt“."""
+    writer, store = instance(tmp_path)
+    (tmp_path / "vault" / NAME).write_bytes(E)
+    writer.write(NAME, E, N)
+    die(store)
+    (tmp_path / "vault" / NAME).write_bytes(N + b"extern\n")
+    report = recover_and_finish(tmp_path)
+    assert report.not_applied == []
+    assert vault_files(tmp_path) == {NAME: N + b"extern\n"}

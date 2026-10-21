@@ -32,6 +32,7 @@ from .appdata import VaultData
 from .fsops import FileBusyError, FsOps
 from .history import History
 from .ops import Op, OpStore
+from .source import SourceText
 
 # Nutzerentscheidung 2026-10-21 (vorher 120 s): Obsidian und Syncthing speichern in
 # Millisekunden; 120 s überdauerten typische App-Sitzungen, sodass Quarantänen nie
@@ -57,6 +58,29 @@ class WriteResult:
     op_id: str
     state: str
     conflicts: list[str] = field(default_factory=list)
+
+
+def contains_all_lines(outer: bytes, inner: bytes) -> bool:
+    """``True``, wenn alle Zeilen von ``inner`` in derselben Reihenfolge in ``outer`` vorkommen.
+
+    Grundlage der Abschlussprüfung (Nutzerentscheidung 2026-10-21, Befund S4):
+    Speichert ein externer Schreiber (z. B. Obsidian) während der Quarantäne
+    einen Stand, der auf ``N`` aufbaut, ist von ``N`` nichts verloren; eine
+    Konfliktdatei wäre nur Lärm. Verglichen werden Zeilentexte ohne
+    Zeilenende (ein Wechsel LF/CRLF zählt nicht als Verlust); dazwischen darf
+    beliebig viel Neues stehen. Fehlt auch nur eine Zeile von ``N``, gilt
+    ``N`` als nicht enthalten.
+
+    Args:
+        outer: Aktueller Inhalt von ``P``.
+        inner: ``N``.
+
+    Returns:
+        Ob ``inner`` als Zeilen-Teilfolge in ``outer`` steckt.
+    """
+    remaining = iter(line.text for line in SourceText.from_bytes(outer).lines)
+    return all(any(candidate == wanted for candidate in remaining)
+               for wanted in (line.text for line in SourceText.from_bytes(inner).lines))
 
 
 def side_paths(main: Path, op_id: str) -> tuple[Path, Path]:
@@ -171,7 +195,7 @@ class Writer:
         result = WriteResult(op.id, "DONE")
         if manifest["art"] == "write":
             new = op.blob("neu", manifest["blobs"]["neu"])
-            if not (self.fs.exists(main) and main.read_bytes() == new) and not self.superseded(op, new):
+            if not self._kept(main, new) and not self.superseded(op, new):
                 self.ensure_visible(op, main, new, result)
         if self.fs.exists(old):
             if cf.sha1(old.read_bytes()) == state.get("d_sha1"):
@@ -185,6 +209,21 @@ class Writer:
         self._record(manifest["relpath"])
         op.release()
         return result
+
+    def _kept(self, main: Path, new: bytes) -> bool:
+        """``True``, wenn ``P`` existiert und ``N`` unverändert bzw. vollständig enthält.
+
+        Args:
+            main: Hauptpfad ``P``.
+            new: ``N``.
+
+        Returns:
+            Ob ``N`` in ``P`` erhalten ist (``contains_all_lines``).
+        """
+        if not self.fs.exists(main):
+            return False
+        current = main.read_bytes()
+        return current == new or contains_all_lines(current, new)
 
     def superseded(self, op: Op, new: bytes) -> bool:
         """``True``, wenn eine **eigene** spätere Op genau ``N`` verdrängt und gesichert hat.

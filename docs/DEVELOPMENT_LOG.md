@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Obsidian-Tests ausgewertet; Abschlussprüfung mit Zeilen-Teilfolge; S4 Teil E
+
+- Test A (Handy): bestanden. Test B (PC, Teile A–D): Befunde in `ARCHITEKTUR.md`.
+- Per Wegwerftest bestätigt: Speichert ein externer Schreiber in der Quarantäne `N` plus neuen Text, legte `finish` eine überflüssige Konfliktdatei an (vermutliche Quelle der Auto-Merges vom Mittag). Neu `contains_all_lines` in `safe_write.py`, genutzt in `finish` (`_kept`) und in der Wiederherstellung (Zeile 4a, Create-only). Tests: enthalten mit CRLF-Wechsel → kein Konflikt; Zeile von `N` fehlt → Konflikt; Neustart mit externem Weiterschreiben.
+- `spike_s4.py --teil-e`: fünf Schreibvorgänge mit dem echten `Writer` in die offene Notiz; Trockenlauf ohne Obsidian erfolgreich. App-Daten in `spikes/s4/MerkweiserS4-AppData/` (ignoriert).
+
 ## 2026-10-21 – Anleitung für die Obsidian-Tests; Schritte 7 und 9 zurückgestellt
 
 - `spikes/obsidian-tests.md`: Test A (Obsidian Mobile als Szenario-Test mit der echten App, weil sich Handles auf Android ohne Root nicht messen lassen) und Test B (S4 unter Windows mit `spike_s4.py`).

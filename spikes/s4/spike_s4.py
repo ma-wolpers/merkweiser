@@ -5,6 +5,7 @@ mit synthetischen Notizen (Standard: Ordner ``MerkweiserS4-Testvault`` neben
 diesem Skript). Den Ordner in Obsidian als *neuen* Vault öffnen.
 
 Aufruf:  python spike_s4.py [Test-Vault-Ordner]
+         python spike_s4.py --teil-e [Test-Vault-Ordner]   (nur Teil E)
 
 Teil A  – Handle-Lebensdauer: Hält Obsidian eine Notiz zum Schreiben offen?
           (Prüfung per CreateFileW mit verweigerter Schreib-Freigabe, 30 s lang,
@@ -16,6 +17,9 @@ Teil C  – Tausch-Protokoll mit Haltepunkten (a)–(e): An jedem Haltepunkt
           wo sie landet (P, D, Konfliktdatei, verloren).
 Teil D  – Datei 60 s „weg“ (simulierter Absturz zwischen Wegbenennen und
           Installieren, Grenze W4): Reaktion von Obsidian/Syncthing.
+Teil E  – (2026-10-21) Merkweisers ECHTER Speichercode (``Writer``: Sperre,
+          Austausch in Mikrosekunden, Quarantäne) schreibt fünfmal in die offene
+          Notiz, während du tippst: Schließt Obsidian den Tab? Geht Text verloren?
 
 Ergebnis: ``s4-bericht-<zeit>.txt`` im Test-Vault. Bitte die Beobachtungen in
 Obsidian (Fehlermeldungen, geschlossene Tabs, verlorener Text) jeweils bei
@@ -218,9 +222,56 @@ def part_d(note: Path) -> None:
     ask("Was haben Obsidian (Tab? Datei neu angelegt?) und Syncthing (Löschung verteilt?) gemacht?")
 
 
+def part_e(note: Path) -> None:
+    """Teil E: fünf echte Schreibvorgänge über ``Writer`` in die offene Notiz, je 3 s Abstand.
+
+    Nutzt den Produktivcode aus ``src/`` (relativ zum Repo, kein Kopieren).
+    App-Daten (Op-Verzeichnisse) liegen in ``MerkweiserS4-AppData`` neben
+    diesem Skript, nie im Test-Vault.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+    from merkweiser.core.appdata import open_vault_data
+    from merkweiser.core.clock import SystemClock
+    from merkweiser.core.fs_probe import probe_install_mode
+    from merkweiser.core.fsops import FileBusyError, FsOps
+    from merkweiser.core.ops import OpStore
+    from merkweiser.core.safe_write import ChangedBeforeWriteError, Writer
+
+    vault, clock = note.parent, SystemClock()
+    data = open_vault_data(Path(__file__).with_name("MerkweiserS4-AppData"), vault)
+    fs = FsOps(probe_install_mode(vault))
+    writer = Writer(vault, data, OpStore(data, clock, fs), fs, clock)
+    log(f"TEIL E: Install-Variante {fs.install_mode}. Lass die Notiz in Obsidian offen und tippe laufend weiter.")
+    input("    Enter zum Start …")
+    for number in range(1, 6):
+        time.sleep(3)
+        before = note.read_bytes()
+        line = f"- [ ] Merkweiser-E{number}\n".encode()
+        after = before + (b"" if before.endswith(b"\n") else b"\n") + line
+        try:
+            result = writer.write(note.name, before, after)
+            log(f"    E{number}: {result.state} {result.conflicts or ''}")
+        except FileBusyError:
+            log(f"    E{number}: Obsidian hielt die Datei gerade zum Schreiben offen → abgebrochen (wie im Produktivcode)")
+        except ChangedBeforeWriteError:
+            log(f"    E{number}: Datei änderte sich zwischen Lesen und Schreiben → abgebrochen")
+        writer.finish_due()
+    log("TEIL E: Warte 12 s auf das Ende der Quarantänen …")
+    time.sleep(12)
+    for result in writer.finish_due():
+        log(f"    Abschluss {result.op_id}: {result.state} {result.conflicts or ''}")
+    text = note.read_bytes()
+    log(f"TEIL E: in der Notiz gefunden: {[f'E{n}' for n in range(1, 6) if f'Merkweiser-E{n}'.encode() in text]}")
+    conflicts = [p.name for p in vault.iterdir() if ".sync-conflict-" in p.name]
+    log(f"TEIL E: Konfliktdateien im Test-Vault: {conflicts or 'keine'}")
+    ask("Hat Obsidian den Tab geschlossen, neu geladen, einen Fehler gezeigt oder getippten Text verloren?")
+
+
 def main() -> None:
-    """Richtet den Test-Vault ein und führt die Teile A–D nacheinander aus."""
-    vault = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).with_name("MerkweiserS4-Testvault")
+    """Richtet den Test-Vault ein und führt die Teile A–D (bzw. mit ``--teil-e`` nur Teil E) aus."""
+    args = [a for a in sys.argv[1:] if a != "--teil-e"]
+    only_e = "--teil-e" in sys.argv[1:]
+    vault = Path(args[0]) if args else Path(__file__).with_name("MerkweiserS4-Testvault")
     vault.mkdir(parents=True, exist_ok=True)
     note = vault / "2026-01-01.md"
     if not note.exists():
@@ -229,7 +280,7 @@ def main() -> None:
     print("Öffne diesen Ordner in Obsidian als NEUEN Vault und die Notiz im Editor.\n"
           "Optional: Ordner zusätzlich in Syncthing als Testordner freigeben.")
     input("Enter, wenn bereit …")
-    for part in (part_a, part_b, swap_with_breakpoints, part_d):
+    for part in (part_e,) if only_e else (part_a, part_b, swap_with_breakpoints, part_d):
         try:
             part(note)
         except Exception as exc:  # Spike: Fehler sind Befunde

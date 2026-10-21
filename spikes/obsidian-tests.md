@@ -96,3 +96,18 @@ Das Skript führt dich durch vier Teile und hält an jeder Stelle an, an der du 
 Am Ende schreibt das Skript `spikes\s4\MerkweiserS4-Testvault\s4-bericht-<Datum>-<Uhrzeit>.txt`. Sag mir einfach Bescheid, wenn er da ist. Ich lese ihn direkt, weil er nur Testdaten enthält.
 
 Danach kannst du den Test-Vault aus Obsidian (und ggf. Syncthing) wieder entfernen.
+
+### Teil E – echtes Speichern (Zusatz vom 2026-10-21)
+
+Die Teile A–D bilden das Speichern von Hand nach und halten an Haltepunkten an. Teil E nutzt dagegen **Merkweisers echten Speichercode**: Die Datei ist dabei nur Mikrosekunden „weg“.
+
+1. Die Notiz `2026-01-01` im Test-Vault in Obsidian öffnen, Cursor ans Ende.
+2. Starten:
+
+   ```powershell
+   python spikes\s4\spike_s4.py --teil-e
+   ```
+
+3. Nach Enter schreibt das Skript fünfmal im Abstand von 3 Sekunden eine Zeile `- [ ] Merkweiser-E1` … `E5` in die Notiz. **Tippe währenddessen laufend weiter** (z. B. `E-TIPP` und ein paar Wörter).
+4. Achte darauf: Bleibt der Tab offen? Erscheinen die E-Zeilen in Obsidian? Bleibt dein getippter Text erhalten? Kommt eine Fehlermeldung?
+5. Am Ende fragt das Skript nach deiner Beobachtung und schreibt wie oben einen `s4-bericht-…txt`.
