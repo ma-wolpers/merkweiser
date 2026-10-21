@@ -18,6 +18,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
   - Tab **Konflikte**: Syncthing-Konflikte werden beim Start automatisch zusammengeführt. Übrige Fälle zeigen, woher die Konfliktversion stammt, und beide Fassungen im Vergleich (rot nur in der Hauptdatei, grün nur in der Konfliktversion); Entscheidung per „Hauptdatei behalten“, „Konfliktversion übernehmen“ oder „Zusammenführen“, jeweils mit Erklärung.
   - Tab **Einstellungen**: Projekt-Präfix, Prüfintervall, Ordner wechseln; Anzeige der **Schreibgarantie** des Notizordners (ist sie eingeschränkt, steht das auch beim Start).
   - Speichern funktioniert auch auf Speicher ohne Hardlinks (z. B. SD-Karte); Merkweiser prüft beim Öffnen jedes Notizordners, welche sichere Schreibweise dort geht.
+  - **Diagnosebericht** (Einstellungen): schreibt den Zustand der App ohne Notizinhalte als Textdatei in einen wählbaren Ordner, z. B. einen Syncthing-Ordner.
   - Anleitung in `docs/kurzanleitung.md`.
 
 - Repository-Gerüst mit Konzept (`docs/KONZEPT.md`), freigegebenem Plan (`docs/PLAN.md`) und Formatbeschreibung (`docs/FORMAT.md`).

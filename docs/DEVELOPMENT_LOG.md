@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Diagnosebericht, S1 abgeschlossen
+
+- S1, zweiter Gerätebericht (interner Speicher): wie auf der SD-Karte (`link` verboten, `renameat2` funktioniert, `O_EXCL`, Verzeichnis-`fsync`, `flock` ok). S1 ist damit abgeschlossen.
+- Neu: `app/diagnostics.py` (Bericht ohne Notizinhalte, exklusives Anlegen), `Settings.report_dir`, in der Mobile-App ein Protokoll der letzten 30 Statusmeldungen und der Knopf „Diagnosebericht speichern“. Erfolgsmeldungen erscheinen nicht mehr in Fehlerfarbe.
+
 ## 2026-10-21 – Eigene Folgeänderung in der Quarantäne, Konfliktansicht
 
 - Gerätebefund: Ab- und sofort wieder Enthaken erzeugte Konfliktdateien in einem Ordner ohne Syncthing. Ursache: Die Abschlussprüfung der ersten Op fand ihr `N` nicht mehr in `P` und machte es als Konflikt sichtbar, obwohl die eigene Folge-Op es verdrängt und gesichert hatte. Fix `Writer._superseded`; Tests für zwei Folgeänderungen, A→B→A→B und „Fremder ersetzt danach“ (dann bleibt die letzte `N` weiterhin sichtbar).

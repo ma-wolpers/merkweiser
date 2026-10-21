@@ -27,3 +27,9 @@ Trag in die `.stignore` des Notizordners ein:
 ```
 
 Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncthing soll sie nicht verteilen.
+
+## Diagnosebericht
+
+*Einstellungen → Diagnosebericht speichern* legt eine Datei `merkweiser-diagnose-<Datum>-<Uhrzeit>.txt` an. Den Zielordner tippst du ins Feld darüber, oder du lässt es leer und wählst ihn aus; Merkweiser merkt sich den Ordner.
+
+Der Bericht enthält nur Metadaten: Version, Notizordner, Schreibgarantie, Dateinamen von Konfliktdateien, unvollständige Vorgänge und die letzten Meldungen der App. Notizinhalte stehen nie darin. Wählst du einen per Syncthing geteilten Ordner außerhalb des Notizordners, kommt der Bericht direkt am Rechner an.

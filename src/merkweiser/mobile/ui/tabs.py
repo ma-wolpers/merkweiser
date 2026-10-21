@@ -194,7 +194,16 @@ def settings_view(app: "MobileApp") -> list[ft.Control]:
     async def change_folder(_e) -> None:
         app.show_setup()
 
+    report_dir = ft.TextField(label="Ordner für Diagnoseberichte (Pfad)", value=app.settings.report_dir or "")
+
+    async def save_report(_e) -> None:
+        await app.save_diagnostics((report_dir.value or "").strip() or None)
+
     guarantee = f"Schreibgarantie: {app.service.write_guarantee} ({app.service.fs.install_mode})" if app.service else ""
     return [ft.Text(f"Notizordner: {app.settings.vault}"), ft.Text(guarantee, size=12),
             ft.Button("Ordner wechseln", on_click=change_folder),
-            prefix, poll, ft.Button("Speichern", on_click=save), ft.Text(f"Heute: {date.today().isoformat()}", size=11)]
+            prefix, poll, ft.Button("Speichern", on_click=save), ft.Divider(),
+            ft.Text("Diagnosebericht: Zustand der App als Textdatei, ohne Notizinhalte. "
+                    "Leeres Feld = Ordner auswählen.", size=12),
+            report_dir, ft.Button("Diagnosebericht speichern", on_click=save_report),
+            ft.Text(f"Heute: {date.today().isoformat()}", size=11)]

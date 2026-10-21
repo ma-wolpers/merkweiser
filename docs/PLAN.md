@@ -10,7 +10,7 @@
 | Schritt | Stand |
 |---|---|
 | Nebenaufgabe bw-gui-Doku | erledigt (bw-gui `3780c97`, `a59ec38`) |
-| 0 – Spikes | **S2** bestanden (APK aus `src/`, `jni_flutter`-Override). **S3** erledigt (Treeview, Guards; daraus der bw-gui-Teilplan). **S1** läuft: `pyjnius` wird gebündelt, aber nur zusammen mit `flet` in `project.dependencies` (sonst stürzt die App mit „No module named certifi“ ab, Befund 2026-10-19); Gerätetest 2026-10-21 (SD-Karte): `link` verboten, `renameat2(RENAME_NOREPLACE)` funktioniert → volle Garantie über die neue Variante `noreplace`; der Selbsttest je Vault (Plattform-Tabelle) ist umgesetzt. Offen: interner Speicher, Einrichtungsablauf der echten App. **S4** (Obsidian) steht aus. |
+| 0 – Spikes | **S2** bestanden (APK aus `src/`, `jni_flutter`-Override). **S3** erledigt (Treeview, Guards; daraus der bw-gui-Teilplan). **S1** läuft: `pyjnius` wird gebündelt, aber nur zusammen mit `flet` in `project.dependencies` (sonst stürzt die App mit „No module named certifi“ ab, Befund 2026-10-19); Gerätetest 2026-10-21 (SD-Karte): `link` verboten, `renameat2(RENAME_NOREPLACE)` funktioniert → volle Garantie über die neue Variante `noreplace`; der Selbsttest je Vault (Plattform-Tabelle) ist umgesetzt. Interner Speicher identisch (zweiter Bericht) → **S1 abgeschlossen**. **S4** (Obsidian) steht aus. |
 | 1 – Gerüst | erledigt |
 | 2 – Core lesen | erledigt |
 | 3 – Core schreiben | erledigt: Edit- und Move-Planung, Tausch-Protokoll, Wiederherstellung, Move-Ausführung. Vorgezogen vor S4 (Nutzerentscheidung 2026-10-09); S4 bestätigt später. |
@@ -19,7 +19,7 @@
 | 6 – App-Schicht | erledigt (`NotesService`, `Settings`, Aufbewahrung) |
 | bw-gui-Teilplan | erledigt: `WrappedTextField.get_raw()` und `load()` (bw-gui `410b9e5`, `d9ad7fb`) |
 | 7 – Desktop-UI | offen |
-| 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19) |
+| 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19). Läuft auf dem Gerät; dazu Schreibgarantie-Anzeige, Konfliktvergleich, Diagnosebericht. Offen: Datumswahl beim Verschieben, Hunk-Auswahl, Auto-Merge-Liste mit Rückgängig, Notizen bearbeiten/löschen, Schreibschutz-Modus. |
 | 9 – Abschluss | offen |
 
 ## Context

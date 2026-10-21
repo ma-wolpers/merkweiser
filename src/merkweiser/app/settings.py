@@ -25,6 +25,8 @@ class Settings:
         project_prefix: Präfix für Projekt-Tags.
         poll_seconds: Abstand der Änderungsprüfung.
         retention_days: Aufbewahrung von Backups und veralteten Historienständen.
+        report_dir: Ordner für Diagnoseberichte (z. B. ein per Syncthing geteilter
+            Ordner außerhalb des Vaults) oder ``None``.
     """
 
     vault: str | None = None
@@ -32,6 +34,7 @@ class Settings:
     project_prefix: str = "projekt"
     poll_seconds: float = 5.0
     retention_days: int = 30
+    report_dir: str | None = None
 
     def validated(self) -> "Settings":
         """Prüft die Werte.

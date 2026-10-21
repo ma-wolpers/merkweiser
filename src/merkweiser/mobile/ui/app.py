@@ -14,11 +14,14 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections import deque
+from datetime import datetime
 from dataclasses import replace
 from pathlib import Path
 
 import flet as ft
 
+from ...app.diagnostics import build_report, write_report
 from ...app.notes_service import NotesService, StartReport
 from ...app.settings import Settings, load_settings, save_settings
 from ...core.clock import SystemClock
@@ -45,6 +48,7 @@ class MobileApp:
         self.service: NotesService | None = None
         self.report: StartReport | None = None
         self.tab = 0
+        self.messages: deque[tuple[datetime, str]] = deque(maxlen=30)
         self.status = ft.Text("", size=12, color=ft.Colors.ERROR)
         self.body = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
         self.nav = ft.NavigationBar(
@@ -128,8 +132,38 @@ class MobileApp:
 
     def say(self, message: str) -> None:
         """Zeigt eine Statusmeldung (leer = ausblenden)."""
+        if message:
+            self.messages.append((datetime.now(), message))
+        self.status.color = ft.Colors.ERROR
         self.status.value = message
         self.status.visible = bool(message)
+
+    async def save_diagnostics(self, folder: str | None) -> None:
+        """Schreibt einen Diagnosebericht (ohne Notizinhalte) und merkt sich den Ordner.
+
+        Args:
+            folder: Zielordner (eingetippt) oder ``None`` für die Systemauswahl.
+        """
+        folder = folder or await self.access.pick_folder()
+        if not folder:
+            self.say("Kein Ordner für den Diagnosebericht gewählt.")
+            self.render()
+            return
+        now = datetime.now()
+        text = build_report(self.settings, self.service, self.report, list(self.messages), now,
+                            {"flet": ft.__version__})
+        try:
+            path = write_report(Path(folder), text, now)
+        except OSError as exc:
+            self.say(f"Diagnosebericht nicht gespeichert: {type(exc).__name__}: {exc}")
+            self.render()
+            return
+        if folder != self.settings.report_dir:
+            self.settings = replace(self.settings, report_dir=folder)
+            save_settings(self.storage.data_dir, self.settings)
+        self.status.value, self.status.visible = f"Diagnosebericht gespeichert: {path.name}", True
+        self.status.color = ft.Colors.PRIMARY
+        self.render()
 
     def render(self) -> None:
         """Zeichnet den aktuellen Tab neu."""
