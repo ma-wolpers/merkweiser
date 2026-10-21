@@ -64,3 +64,27 @@ def test_conflict_origin_names_source_and_time() -> None:
     from merkweiser.app.views import conflict_origin
     assert conflict_origin(_case(b"", b"")) == "von Syncthing-Gerät ABCDEFG, 21.10.2026 14:03"
     assert conflict_origin(_case(b"", b"", "MERKWEISERAB12CD34")).startswith("von Merkweiser selbst")
+
+
+def test_note_ref_addresses_note_by_content_lines(tmp_path: Path) -> None:
+    """NoteRef trägt Planungsstand und Inhaltszeilen; damit bearbeitet und löscht der Service genau diese Notiz."""
+    from merkweiser.app.views import note_ref
+    root = tmp_path / "vault"
+    root.mkdir()
+    raw = b"Erste #a\n- [ ] eins\n\n---\n\nZweite\n- [ ] zwei\n"
+    (root / "2026-01-15.md").write_bytes(raw)
+    svc = NotesService(root, tmp_path / "app", Settings(vault=str(root)), FakeClock())
+    [day] = svc.day(date(2026, 1, 15))
+    first, second = (note_ref(day.relpath, day.document, n) for n in day.document.notes)
+    assert first.original == ("Erste #a", "- [ ] eins") and first.text == "Erste #a\n- [ ] eins"
+    assert first.planned_raw == raw
+    svc.replace_note_text(first.relpath, first.planned_raw, first.original, "Erste #a\n- [x] eins")
+    svc.delete_note(second.relpath, second.original)
+    assert (root / "2026-01-15.md").read_bytes() == b"Erste #a\n- [x] eins\n"
+
+
+def test_note_ref_skips_empty_notes() -> None:
+    """Leere Notizen (zwei Trenner hintereinander) haben nichts zu bearbeiten."""
+    from merkweiser.app.views import note_ref
+    doc = parse_document(b"a\n\n---\n\n---\n\nb\n")
+    assert [note_ref("x.md", doc, n) is None for n in doc.notes] == [False, True, False]

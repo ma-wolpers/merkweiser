@@ -114,21 +114,32 @@ class MobileApp:
         self.settings = settings
         await self.open_vault()
 
-    async def act(self, action) -> None:
-        """Führt eine Service-Aktion aus, meldet Fehler und zeichnet neu.
+    async def act(self, action):
+        """Führt eine Service-Aktion aus, meldet Fehler und Konflikte und zeichnet neu.
+
+        Endet ein Schreibvorgang als ``CONFLICTED`` (die Datei wurde
+        zwischenzeitlich verändert), wird das sofort gemeldet, statt dass die
+        Konfliktdatei erst später im Tab Konflikte auffällt.
 
         Args:
             action: Funktion ``service → beliebig``.
+
+        Returns:
+            Rückgabe der Aktion oder ``None`` bei Fehler bzw. ohne geöffneten Vault.
         """
         if self.service is None:
-            return
+            return None
+        result = None
         try:
-            action(self.service)
-            self.say("")
+            result = action(self.service)
+            conflicted = getattr(result, "state", None) == "CONFLICTED"
+            self.say("Die Datei wurde zwischendurch verändert. Deine Fassung liegt als Konfliktdatei vor "
+                     "(Tab Konflikte)." if conflicted else "")
         except Exception as exc:  # Fehler sichtbar machen, nichts verschlucken
             self.say(f"{type(exc).__name__}: {exc}")
         self.service.rescan()
         self.render()
+        return result
 
     def say(self, message: str) -> None:
         """Zeigt eine Statusmeldung (leer = ausblenden)."""

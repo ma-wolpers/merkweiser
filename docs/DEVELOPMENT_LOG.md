@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Mobile: Notizen bearbeiten und löschen
+
+- `app/views.py`: `NoteRef`/`note_ref` (Planungsstand und Inhaltszeilen einer Notiz). `mobile/ui/note_dialogs.py`: Bearbeiten- und Lösch-Dialog im Tab Heute.
+- `MobileApp.act` gibt das Ergebnis zurück und meldet `CONFLICTED` sofort (vorher nur über den Tab Konflikte sichtbar).
+- Tests: `NoteRef` mit echtem Service (ersetzen, löschen), leere Notizen, Dialog-Handler mit Seiten-Attrappe (speichern, leerer Text, löschen).
+- Plan: Abschnitt „Spätere Schritte“ mit zwei Nutzerwünschen (dringende Todos oben, Tag anklicken), Ausarbeitung im Planmodus.
+
 ## 2026-10-21 – Quarantäne 10 s + Wanduhr
 
 - Nutzerentscheidung: Quarantäne von 120 s auf 10 s; nach einem Neustart wird eine laut Wanduhr abgelaufene Quarantäne sofort abgeschlossen statt neu begonnen (`quarantaene_seit` in `state.json`, `Writer.wall_quarantine_over`). Grund: Typische Handy-Sitzungen sind kürzer als 2 min, Quarantänen wurden nie fertig.

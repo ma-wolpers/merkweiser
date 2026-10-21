@@ -13,8 +13,9 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import HitRow, Row, hit_rows, note_rows
+from ...app.views import HitRow, Row, hit_rows, note_ref, note_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
+from .note_dialogs import note_actions
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -88,9 +89,11 @@ def today_view(app: "MobileApp") -> list[ft.Control]:
             controls.append(ft.Text("Diese Datei hat einen ungelösten Konflikt.", color=ft.Colors.ERROR))
         for note in day_file.document.notes:
             rows = note_rows(day_file.relpath, day_file.document, note)
-            if rows:
-                controls.append(ft.Container(content=ft.Column([_row(app, r) for r in rows]),
-                                             padding=8, border_radius=8, bgcolor=ft.Colors.SURFACE_CONTAINER))
+            ref = note_ref(day_file.relpath, day_file.document, note)
+            if rows and ref is not None:
+                column = [_row(app, r) for r in rows] + [note_actions(app, ref)]
+                controls.append(ft.Container(content=ft.Column(column), padding=8, border_radius=8,
+                                             bgcolor=ft.Colors.SURFACE_CONTAINER))
     if len(controls) == 2:
         controls.append(ft.Text(f"Noch keine Notizen am {today.isoformat()}."))
     return controls

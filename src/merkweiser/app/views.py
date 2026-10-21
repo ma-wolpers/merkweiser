@@ -220,3 +220,39 @@ def conflict_origin(case: ConflictCase) -> str:
     when = f"{stamp[6:8]}.{stamp[4:6]}.{stamp[:4]} {stamp[9:11]}:{stamp[11:13]}" if len(stamp) == 15 else stamp
     who = "von Merkweiser selbst" if case.conflict.own else f"von Syncthing-Gerät {case.conflict.device}"
     return f"{who}, {when}"
+
+
+@dataclass(frozen=True)
+class NoteRef:
+    """Alles, was eine Oberfläche zum Bearbeiten oder Löschen einer Notiz braucht.
+
+    Attributes:
+        relpath: Tagesdatei.
+        planned_raw: Dateiinhalt beim Öffnen (Planungsstand; Basis einer
+            eventuellen Konfliktdatei in ``NotesService.replace_note_text``).
+        original: Inhaltszeilen der Notiz beim Öffnen (Adresse statt ID).
+        text: Notiztext für den Editor (Zeilen mit ``\n`` verbunden).
+    """
+
+    relpath: str
+    planned_raw: bytes
+    original: tuple[str, ...]
+    text: str
+
+
+def note_ref(relpath: str, doc: Document, note: ParsedNote) -> NoteRef | None:
+    """Adresse und Editortext einer Notiz zum Planungszeitpunkt.
+
+    Args:
+        relpath: Tagesdatei.
+        doc: Dokument, aus dem die Notiz stammt.
+        note: Die Notiz.
+
+    Returns:
+        ``NoteRef`` oder ``None`` bei leerer Notiz (nichts zu bearbeiten).
+    """
+    content = note.note.content
+    if content is None:
+        return None
+    original = tuple(line.text for line in doc.source.lines[content.start:content.end])
+    return NoteRef(relpath, doc.source.raw, original, "\n".join(original))

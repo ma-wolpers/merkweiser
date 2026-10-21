@@ -80,3 +80,74 @@ def test_start_hint_reports_automerge() -> None:
     """Start-Hinweis nennt automatisch zusammengeführte Konflikte."""
     report = SimpleNamespace(recovery=SimpleNamespace(not_applied=[]), moves=[], automerges=["x"])
     assert "automatisch zusammengeführt" in tabs.start_hint(report)
+
+
+class FakePage:
+    """Seite ohne Fenster: merkt sich geöffnete Dialoge."""
+
+    def __init__(self) -> None:
+        self.dialogs = []
+
+    def show_dialog(self, dialog) -> None:
+        self.dialogs.append(dialog)
+
+    def pop_dialog(self):
+        return self.dialogs.pop() if self.dialogs else None
+
+
+def _dialog_app(tmp_path: Path):
+    """App-Attrappe, deren ``act`` die Aktion direkt am echten Service ausführt."""
+    base = app(tmp_path)
+    base.page = FakePage()
+
+    async def act(action):
+        return action(base.service)
+
+    base.act = act
+    return base
+
+
+def test_edit_dialog_replaces_note_text(tmp_path: Path) -> None:
+    """„Speichern“ im Bearbeiten-Dialog ersetzt den Notiztext in der Datei."""
+    import asyncio
+
+    from merkweiser.app.views import note_ref
+    from merkweiser.mobile.ui import note_dialogs
+    fake = _dialog_app(tmp_path)
+    [day] = fake.service.day(fake.service.clock.today())
+    ref = note_ref(day.relpath, day.document, day.document.notes[0])
+    dialog = note_dialogs._edit_dialog(fake, ref)
+    dialog.content.controls[0].value = "Heute #h\n- [ ] Neu formuliert"
+    asyncio.run(dialog.actions[1].on_click(None))
+    assert (Path(fake.settings.vault) / day.relpath).read_bytes() == b"Heute #h\n- [ ] Neu formuliert\n"
+
+
+def test_edit_dialog_rejects_empty_text(tmp_path: Path) -> None:
+    """Leerer Text: Dialog bleibt offen, Hinweis auf „Löschen“, Datei unverändert."""
+    import asyncio
+
+    from merkweiser.app.views import note_ref
+    from merkweiser.mobile.ui import note_dialogs
+    fake = _dialog_app(tmp_path)
+    [day] = fake.service.day(fake.service.clock.today())
+    ref = note_ref(day.relpath, day.document, day.document.notes[0])
+    dialog = note_dialogs._edit_dialog(fake, ref)
+    fake.page.show_dialog(dialog)
+    dialog.content.controls[0].value = "  \n"
+    dialog.content.controls[1].update = lambda: None  # ohne Seite kein Update möglich
+    asyncio.run(dialog.actions[1].on_click(None))
+    assert fake.page.dialogs == [dialog] and "Löschen" in dialog.content.controls[1].value
+    assert (Path(fake.settings.vault) / day.relpath).read_bytes() == ref.planned_raw
+
+
+def test_delete_dialog_removes_note(tmp_path: Path) -> None:
+    """„Löschen“ nach Rückfrage entfernt die Notiz."""
+    import asyncio
+
+    from merkweiser.app.views import note_ref
+    from merkweiser.mobile.ui import note_dialogs
+    fake = _dialog_app(tmp_path)
+    [day] = fake.service.day(fake.service.clock.today())
+    ref = note_ref(day.relpath, day.document, day.document.notes[0])
+    asyncio.run(note_dialogs._delete_dialog(fake, ref).actions[1].on_click(None))
+    assert (Path(fake.settings.vault) / day.relpath).read_bytes() == b""
