@@ -13,15 +13,13 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import HitRow, Row, hit_rows, note_ref, note_rows
+from ...app.views import HitRow, hit_rows, note_ref, note_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
-from .move_dialog import show_move_dialog
 from .note_dialogs import note_actions
+from .note_view import note_row, todo_line
 
 if TYPE_CHECKING:
     from .app import MobileApp
-
-INDENT = 18
 
 
 def start_hint(report, guarantee: str = "voll") -> str:
@@ -94,41 +92,12 @@ def today_view(app: "MobileApp") -> list[ft.Control]:
             rows = note_rows(day_file.relpath, day_file.document, note)
             ref = note_ref(day_file.relpath, day_file.document, note)
             if rows and ref is not None:
-                column = [_row(app, r) for r in rows] + [note_actions(app, ref)]
+                column = [note_row(app, r) for r in rows] + [note_actions(app, ref)]
                 controls.append(ft.Container(content=ft.Column(column), padding=8, border_radius=8,
                                              bgcolor=ft.Colors.SURFACE_CONTAINER))
     if len(controls) == 2:
         controls.append(ft.Text(f"Noch keine Notizen am {today.isoformat()}."))
     return controls
-
-
-def _row(app: "MobileApp", row: Row) -> ft.Control:
-    """Eine Notizzeile: Todo als Checkbox, sonst Text (Thema fett)."""
-    pad = ft.Padding.only(left=row.depth * INDENT)
-    if row.kind == "todo":
-        return ft.Container(content=_todo(app, row.text, row.done, row.urgent, row.target), padding=pad)
-    bold = row.kind == "topic"
-    return ft.Container(content=ft.Text(row.text, weight=ft.FontWeight.BOLD if bold else None), padding=pad)
-
-
-def _todo(app: "MobileApp", text: str, done: bool | None, urgent: bool, target) -> ft.Control:
-    """Checkbox plus Schnellaktionen (dringend, verschieben mit Datumswahl)."""
-    async def toggle(e) -> None:
-        value = bool(e.control.value)
-        await app.act(lambda s: s.set_done(target, value))
-
-    async def urgency(_e) -> None:
-        await app.act(lambda s: s.set_urgent(target, not urgent))
-
-    async def move(_e) -> None:
-        show_move_dialog(app, target)
-
-    label = text.strip("=") if urgent else text
-    return ft.Row([
-        ft.Checkbox(label=label, value=bool(done), on_change=toggle, expand=True),
-        ft.IconButton(icon=ft.Icons.STAR if urgent else ft.Icons.STAR_BORDER, on_click=urgency, tooltip="dringend"),
-        ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
-    ])
 
 
 def todos_view(app: "MobileApp") -> list[ft.Control]:
@@ -156,7 +125,7 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
 def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
     """Ein Treffer mit Datum und Kontext; Todos sind abhakbar."""
     head = ft.Text(f"{row.day} · {row.context}" if row.context else row.day, size=11)
-    body = _todo(app, row.text, row.done, row.urgent, row.target) if row.done is not None else ft.Text(row.text)
+    body = todo_line(app, row.text, row.done, row.urgent, row.target) if row.done is not None else ft.Text(row.text)
     return ft.Column([head, body], spacing=0)
 
 

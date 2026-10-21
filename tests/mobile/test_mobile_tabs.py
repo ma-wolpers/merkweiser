@@ -52,13 +52,12 @@ def test_every_tab_builds_controls(tmp_path: Path, builder) -> None:
 
 
 def test_today_shows_todo_as_checkbox(tmp_path: Path) -> None:
-    """Heute: das Todo erscheint als Checkbox mit Anzeigetext ohne Marker."""
+    """Heute: das Todo hat eine Checkbox, sein Text steht ohne Marker daneben; der Punkt hat ein „•“."""
     controls = tabs.today_view(app(tmp_path))
-    texts = []
+    found = []
 
     def walk(control):
-        if isinstance(control, ft.Checkbox):
-            texts.append(control.label)
+        found.append(control)
         for child in getattr(control, "controls", None) or []:
             walk(child)
         content = getattr(control, "content", None)
@@ -67,7 +66,23 @@ def test_today_shows_todo_as_checkbox(tmp_path: Path) -> None:
 
     for control in controls:
         walk(control)
-    assert texts == ["Aufgabe"]
+    assert len([c for c in found if isinstance(c, ft.Checkbox)]) == 1
+    texts = [c.value for c in found if isinstance(c, ft.Text)]
+    assert "Aufgabe" in texts and "•" in texts and "Detail" in texts
+
+
+def test_note_layout_topic_explanation_continuation() -> None:
+    """Thema unterstrichen, Erläuterung schwächer darunter, Fortsetzung bündig unter dem Punkttext."""
+    from merkweiser.app.views import Row
+    from merkweiser.mobile.ui.note_view import MARKER_WIDTH, note_row
+    topic = note_row(SimpleNamespace(), Row("topic", "Elternabend", 0, None, False, (), None, ("Vorher klären",)))
+    head, explanation = topic.content.controls
+    assert head.style.decoration == ft.TextDecoration.UNDERLINE
+    assert explanation.value == "Vorher klären" and explanation.color == ft.Colors.ON_SURFACE_VARIANT
+    item = note_row(SimpleNamespace(), Row("item", "Liste", 1, None, False, (), None, ("weiter",)))
+    first, continuation = item.content.controls
+    assert first.controls[0].width == MARKER_WIDTH and first.controls[0].content.value == "•"
+    assert continuation.padding.left == MARKER_WIDTH and continuation.content.value == "weiter"
 
 
 def test_start_hint_reports_limited_write_guarantee() -> None:

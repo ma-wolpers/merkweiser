@@ -12,7 +12,7 @@ from datetime import date, timedelta
 
 from ..core.document import Document, ParsedNote
 from ..core.inline import TodoStatus
-from ..core.outline import Node
+from ..core.outline import Node, NodeKind
 from ..core.patch import Target
 from ..core.query import Hit
 
@@ -22,13 +22,17 @@ class Row:
     """Eine Anzeigezeile einer Notiz.
 
     Attributes:
-        kind: ``heading``, ``topic``, ``item``, ``todo`` oder ``other``.
-        text: Anzeigetext (Marker und Checkbox entfernt).
+        kind: ``topic``, ``item``, ``todo`` oder ``other``.
+        text: Anzeigetext der ersten Zeile (Marker und Checkbox entfernt).
         depth: Einrückungstiefe im Baum (0 = oberste Ebene).
         done: Erledigt-Status bei Todos, sonst ``None``.
         urgent: Dringlichkeit.
         tags: Effektive Tags (sortiert).
         target: Adresse der ersten Zeile (für Aktionen) oder ``None``.
+        more: Weitere Zeilen des Knotens: beim Thema die Erläuterung, bei
+            Punkten und Todos die Fortsetzungszeilen (ohne Einrückung, damit
+            sie bündig unter dem Text stehen), bei „Sonstigem“ der Rest
+            (Einrückung bleibt, z. B. in Codeblöcken).
     """
 
     kind: str
@@ -38,6 +42,7 @@ class Row:
     urgent: bool
     tags: tuple[str, ...]
     target: Target | None
+    more: tuple[str, ...] = ()
 
 
 def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
@@ -61,8 +66,24 @@ def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
         rows.append(Row(kind="todo" if is_todo else node.kind.value, text=display_text(line, node),
                         depth=_depth(note, node), done=(item.status is TodoStatus.DONE) if is_todo else None,
                         urgent=bool(item and item.urgent), tags=tuple(sorted(note.tags[node.index].effective)),
-                        target=Target(relpath, node.lines[0], line)))
+                        target=Target(relpath, node.lines[0], line), more=_more_lines(doc, node)))
     return rows
+
+
+def _more_lines(doc: Document, node: Node) -> tuple[str, ...]:
+    """Weitere Zeilen eines Knotens für die Anzeige (siehe ``Row.more``).
+
+    Args:
+        doc: Dokument.
+        node: Knoten mit mindestens einer Zeile.
+
+    Returns:
+        Zeilen ab der zweiten; bei Thema und Punkten ohne Rand-Leerraum.
+    """
+    rest = (doc.line_text(no) for no in node.lines[1:])
+    if node.kind is NodeKind.OTHER:
+        return tuple(line.rstrip() for line in rest)
+    return tuple(line.strip() for line in rest)
 
 
 def display_text(line: str, node: Node) -> str:

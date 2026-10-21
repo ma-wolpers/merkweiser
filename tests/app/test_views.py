@@ -119,3 +119,12 @@ def test_hunk_result_renders_like_main_and_names_decision() -> None:
     assert result == b"T\r\na A\r\na B\r\nEnde\r\n" and decision == "Abschnitt 1: Beide"
     with pytest.raises(ValueError):
         hunk_result(SimpleNamespace(merge=None, main_bytes=b""), [])
+
+
+def test_note_rows_carry_explanation_and_continuation_lines() -> None:
+    """Row.more: Erläuterung am Thema, Fortsetzungen (ohne Einrückung) am Punkt bzw. Todo."""
+    doc = parse_document("Elternabend #s\nVorher klären\n- [ ] Beamer\nnoch dazu\n- Liste\n  eingerückt\n".encode())
+    rows = note_rows("a.md", doc, doc.notes[0])
+    assert [(r.kind, r.text, r.more) for r in rows] == [
+        ("topic", "Elternabend #s", ("Vorher klären",)), ("todo", "Beamer", ("noch dazu",)),
+        ("item", "Liste", ("eingerückt",))]

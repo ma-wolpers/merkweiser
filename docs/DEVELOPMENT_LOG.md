@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Notizdarstellung: Thema, Erläuterung, Fortsetzungen, Listenpunkte
+
+- Gerätebefund: Je Knoten wurde nur die erste Zeile gezeigt; Erläuterung und Fortsetzungen fehlten, Listenpunkte hatten kein Zeichen und eine andere Textkante als Todos.
+- `Row.more` in `views.py`; neues Modul `mobile/ui/note_view.py` (aus `tabs.py` ausgelagert). Der Todo-Text ist nicht mehr die Checkbox-Beschriftung (wegen der festen Markerspalte), bleibt aber per `GestureDetector` antippbar.
+
 ## 2026-10-21 – Konfliktvergleich im Dark Mode lesbar
 
 - Gerätebefund: Grüne (und rote) Vergleichszeilen waren im Dark Mode unlesbar, weil `GREEN_100`/`RED_100` feste helle Töne sind und die Schrift dort hell ist. Neu `mobile/ui/style.py` mit halbtransparenten Tönungen, genutzt von `conflict_view` und `hunk_view`.
