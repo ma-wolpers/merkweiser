@@ -19,6 +19,7 @@ import flet as ft
 from ...app.conflict_views import HUNK_PICK_LABELS, hunk_result
 from ...core.conflicts import HunkPick
 from ...core.merge.model import Hunk, OutLine
+from .style import DIFF_ADDED, DIFF_REMOVED
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -85,8 +86,8 @@ def _hunk_block(number: int, before: str, hunk: Hunk, state: list) -> list[ft.Co
                if pick is not HunkPick.BEIDE or hunk.offers_both]
     return [
         ft.Text(f"Abschnitt {number}" + (f" (nach „{before}“)" if before.strip() else ""), size=12),
-        _lines_box(hunk.a_lines, "− ", ft.Colors.RED_100),
-        _lines_box(hunk.b_lines, "+ ", ft.Colors.GREEN_100),
+        _lines_box(hunk.a_lines, "− ", DIFF_REMOVED),
+        _lines_box(hunk.b_lines, "+ ", DIFF_ADDED),
         ft.RadioGroup(content=ft.Row(options, wrap=True), value=HunkPick.HAUPT.value, on_change=chosen),
         field,
     ]

@@ -17,14 +17,15 @@ import flet as ft
 from ...app.conflict_views import CASE_KIND_LABELS, Choice, DiffRow, conflict_diff, conflict_origin, conflict_result, line_diff
 from ...core.conflicts import CaseKind
 from .hunk_view import hunk_controls
+from .style import DIFF_ADDED, DIFF_REMOVED
 
 if TYPE_CHECKING:
     from .app import MobileApp
 
 #: Darstellung je Vergleichsseite: (Präfix, Hintergrund).
 _SIDE_STYLE = {
-    "haupt": ("− ", ft.Colors.RED_100),
-    "konflikt": ("+ ", ft.Colors.GREEN_100),
+    "haupt": ("− ", DIFF_REMOVED),
+    "konflikt": ("+ ", DIFF_ADDED),
     "beide": ("  ", None),
     "ausgelassen": ("", None),
 }

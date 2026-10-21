@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Konfliktvergleich im Dark Mode lesbar
+
+- Gerätebefund: Grüne (und rote) Vergleichszeilen waren im Dark Mode unlesbar, weil `GREEN_100`/`RED_100` feste helle Töne sind und die Schrift dort hell ist. Neu `mobile/ui/style.py` mit halbtransparenten Tönungen, genutzt von `conflict_view` und `hunk_view`.
+
 ## 2026-10-21 – Formatänderung: Leerzeilen trennen Notizen; Aufräumen leerer Tagesdateien
 
 - Nutzerentscheidung: Jede Leerzeile beendet eine Notiz (außer in Codeblöcken); `---` bleibt Trenner, auch direkt unter Text, wird aber nicht mehr geschrieben; höchstens ein Thema je Notiz; nicht eingerückter Text direkt unter einem Punkt ist Fortsetzung; Überschriften sind gewöhnlicher Text (`#tags` darin bleiben Tags).
