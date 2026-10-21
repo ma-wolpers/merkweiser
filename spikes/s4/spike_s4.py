@@ -32,7 +32,6 @@ from ctypes import wintypes
 from pathlib import Path
 
 GENERIC_READ = 0x80000000
-DELETE = 0x00010000
 FILE_SHARE_READ = 0x1
 FILE_SHARE_DELETE = 0x4
 OPEN_EXISTING = 3
@@ -74,7 +73,11 @@ def ask(prompt: str) -> str:
 
 
 def open_deny_write(path: Path) -> int | None:
-    """Öffnet ``path`` mit Freigabe nur für Lesen und Löschen (Schreiben verweigert).
+    """Öffnet ``path`` wie ``FsOps.write_lock``: nur Lesezugriff, Freigabe Lesen+Löschen (Schreiben verweigert).
+
+    Angeglichen an den Produktivcode (2026-10-21): kein ``DELETE``-Zugriff am
+    eigenen Handle, sonst würden spätere ``open``-Aufrufe ohne
+    ``FILE_SHARE_DELETE`` blockiert.
 
     Args:
         path: Zu öffnende Datei.
@@ -85,7 +88,7 @@ def open_deny_write(path: Path) -> int | None:
     Raises:
         OSError: bei anderen Fehlern.
     """
-    h = _k32.CreateFileW(str(path), GENERIC_READ | DELETE, FILE_SHARE_READ | FILE_SHARE_DELETE,
+    h = _k32.CreateFileW(str(path), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_DELETE,
                          None, OPEN_EXISTING, 0, None)
     if h == INVALID_HANDLE:
         err = ctypes.get_last_error()
@@ -172,8 +175,10 @@ def swap_with_breakpoints(note: Path) -> None:
             log("    Sperre nicht möglich (Schreib-Handle offen) → Protokoll würde hier abbrechen.")
             tmp.unlink()
             continue
-        _k32.CloseHandle(h)  # Spike: Rename per Pfad direkt nach Prüfung
-        os.rename(note, old)
+        try:
+            os.rename(note, old)  # wie der Produktivcode: Wegbenennen, solange die Sperre gehalten wird
+        finally:
+            _k32.CloseHandle(h)
         if tag == b"HP-B":
             input(f"    HALT (b): Notiz ist JETZT weg. Tippe '{tag.decode()}' in Obsidian, dann Enter …")
         try:
@@ -187,7 +192,7 @@ def swap_with_breakpoints(note: Path) -> None:
         d_bytes = old.read_bytes()
         log(f"    D == erwartet: {d_bytes == expected}")
         if tag == b"HP-D":
-            input(f"    HALT (d, Quarantäne): Tippe '{tag.decode()}' in Obsidian, dann Enter …")
+            input(f"    HALT (d, Quarantäne, im Produktivcode 10 s): Tippe '{tag.decode()}' in Obsidian, dann Enter …")
         d_again = old.read_bytes()
         log(f"    D nach Quarantäne unverändert: {d_again == d_bytes}; P == N: {note.read_bytes() == new}")
         old.unlink()

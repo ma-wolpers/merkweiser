@@ -10,7 +10,7 @@
 | Schritt | Stand |
 |---|---|
 | Nebenaufgabe bw-gui-Doku | erledigt (bw-gui `3780c97`, `a59ec38`) |
-| 0 – Spikes | **S2** bestanden (APK aus `src/`, `jni_flutter`-Override). **S3** erledigt (Treeview, Guards; daraus der bw-gui-Teilplan). **S1** läuft: `pyjnius` wird gebündelt, aber nur zusammen mit `flet` in `project.dependencies` (sonst stürzt die App mit „No module named certifi“ ab, Befund 2026-10-19); Gerätetest 2026-10-21 (SD-Karte): `link` verboten, `renameat2(RENAME_NOREPLACE)` funktioniert → volle Garantie über die neue Variante `noreplace`; der Selbsttest je Vault (Plattform-Tabelle) ist umgesetzt. Interner Speicher identisch (zweiter Bericht) → Speicherteil von S1 abgeschlossen. **Offen in S1:** die Schreibweise von Obsidian Mobile (öffnen–schreiben–schließen oder offenes Handle). **S4** (Obsidian) steht aus. |
+| 0 – Spikes | **S2** bestanden (APK aus `src/`, `jni_flutter`-Override). **S3** erledigt (Treeview, Guards; daraus der bw-gui-Teilplan). **S1** läuft: `pyjnius` wird gebündelt, aber nur zusammen mit `flet` in `project.dependencies` (sonst stürzt die App mit „No module named certifi“ ab, Befund 2026-10-19); Gerätetest 2026-10-21 (SD-Karte): `link` verboten, `renameat2(RENAME_NOREPLACE)` funktioniert → volle Garantie über die neue Variante `noreplace`; der Selbsttest je Vault (Plattform-Tabelle) ist umgesetzt. Interner Speicher identisch (zweiter Bericht) → Speicherteil von S1 abgeschlossen. **Offen in S1:** die Schreibweise von Obsidian Mobile (öffnen–schreiben–schließen oder offenes Handle); Testanleitung in `spikes/obsidian-tests.md` (Test A). **S4** (Obsidian) steht aus. |
 | Abweichungen | **Quarantäne 10 s + Wanduhr** statt 2 min und „Neustart beginnt neu“ (Nutzerentscheidung 2026-10-21; betrifft die Abschnitte Clock, Schreibprotokoll, Plattform-Tabelle und `GRENZE W1`; Details in `ARCHITEKTUR.md`). **Format geändert** (Nutzerentscheidung 2026-10-21): Jede Leerzeile beendet eine Notiz, `---` bleibt Trenner, wird aber nicht mehr geschrieben; höchstens ein Thema je Notiz; nicht eingerückter Text direkt unter einem Punkt ist dessen Fortsetzung; Überschriften sind gewöhnlicher Text. Die Abschnitte „Grammatik“ und „Notizen und Trenner“ dieses Plans sind damit überholt; maßgeblich ist `docs/FORMAT.md`. Neu: leere Tagesdateien werden beim Start entfernt. |
 | 1 – Gerüst | erledigt |
 | 2 – Core lesen | erledigt |
@@ -19,9 +19,9 @@
 | 5 – Merge und Konflikte | erledigt. Präzisierung: Union wählt ohne Basis automatisch „beide“ (Nutzerentscheidung, Tabelle „Auto-Merge“). |
 | 6 – App-Schicht | erledigt (`NotesService`, `Settings`, Aufbewahrung) |
 | bw-gui-Teilplan | erledigt: `WrappedTextField.get_raw()` und `load()` (bw-gui `410b9e5`, `d9ad7fb`) |
-| 7 – Desktop-UI | offen |
+| 7 – Desktop-UI | **zurückgestellt** (Nutzerentscheidung 2026-10-21): kommt nach den Obsidian-Tests und der Planrunde für die „Spätere Schritte“. |
 | 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19). Läuft auf dem Gerät; dazu Schreibgarantie-Anzeige, Konfliktvergleich, Diagnosebericht. Notizen bearbeiten/löschen, Datumswahl beim Verschieben und Auto-Merge-Liste mit Rückgängig, abschnittsweise Konfliktauflösung und Schreibschutz-Modus erledigt → **Funktionsumfang laut Plan vollständig**; offen ist der Gerätetest dieser Funktionen. |
-| 9 – Abschluss | offen |
+| 9 – Abschluss | **zurückgestellt** wie Schritt 7. |
 
 ## Spätere Schritte (eigene Planrunde im Planmodus, noch nicht ausgearbeitet)
 

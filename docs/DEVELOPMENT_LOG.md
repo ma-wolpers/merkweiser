@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Anleitung für die Obsidian-Tests; Schritte 7 und 9 zurückgestellt
+
+- `spikes/obsidian-tests.md`: Test A (Obsidian Mobile als Szenario-Test mit der echten App, weil sich Handles auf Android ohne Root nicht messen lassen) und Test B (S4 unter Windows mit `spike_s4.py`).
+- `spike_s4.py` an den Produktivcode angeglichen: Sperre ohne `DELETE`-Zugriff, Wegbenennen bei gehaltener Sperre (am Wegwerfordner geprüft: Rename klappt, fremdes Schreiben bleibt blockiert).
+- Plan: Schritte 7 (Desktop-UI) und 9 (Abschluss) zurückgestellt bis nach den Obsidian-Tests und der Planrunde.
+
 ## 2026-10-21 – Plan: Backup-Ansicht vorgemerkt, S1-Stand präzisiert
 
 - Nutzerwunsch unter „noch zu planen“: Konflikte in die Einstellungen, daneben eine Ansicht aller Backups mit „Rückgängig“.
