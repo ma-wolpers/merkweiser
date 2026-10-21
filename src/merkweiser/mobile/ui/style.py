@@ -16,3 +16,7 @@ DIFF_REMOVED = ft.Colors.with_opacity(0.25, ft.Colors.RED)
 
 #: Hintergrund für Zeilen nur in der Konfliktversion bzw. „nachher“.
 DIFF_ADDED = ft.Colors.with_opacity(0.25, ft.Colors.GREEN)
+
+#: Schriftfarbe der Erläuterung unter einem Thema: deutlich schwächer als normaler
+#: Text, aber als Tönung der Themen-Schriftfarbe hell und dunkel lesbar.
+EXPLANATION = ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)

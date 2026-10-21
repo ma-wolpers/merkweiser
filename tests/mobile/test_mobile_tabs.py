@@ -72,13 +72,14 @@ def test_today_shows_todo_as_checkbox(tmp_path: Path) -> None:
 
 
 def test_note_layout_topic_explanation_continuation() -> None:
-    """Thema unterstrichen, Erläuterung schwächer darunter, Fortsetzung bündig unter dem Punkttext."""
+    """Thema fett (nicht unterstrichen), Erläuterung deutlich schwächer darunter, Fortsetzung bündig."""
     from merkweiser.app.views import Row
     from merkweiser.mobile.ui.note_view import MARKER_WIDTH, note_row
     topic = note_row(SimpleNamespace(), Row("topic", "Elternabend", 0, None, False, (), None, ("Vorher klären",)))
     head, explanation = topic.content.controls
-    assert head.style.decoration == ft.TextDecoration.UNDERLINE
-    assert explanation.value == "Vorher klären" and explanation.color == ft.Colors.ON_SURFACE_VARIANT
+    from merkweiser.mobile.ui.style import EXPLANATION
+    assert head.weight == ft.FontWeight.BOLD and head.style is None
+    assert explanation.value == "Vorher klären" and explanation.color == EXPLANATION
     item = note_row(SimpleNamespace(), Row("item", "Liste", 1, None, False, (), None, ("weiter",)))
     first, continuation = item.content.controls
     assert first.controls[0].width == MARKER_WIDTH and first.controls[0].content.value == "•"

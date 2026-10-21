@@ -2,8 +2,8 @@
 
 Layout (Nutzerwunsch vom 2026-10-21):
 
-* **Thema** unterstrichen, die **Erläuterung** direkt darunter in schwächerer
-  Themenfarbe (``ON_SURFACE_VARIANT``, hell und dunkel lesbar).
+* **Thema** fett, die **Erläuterung** direkt darunter in deutlich schwächerer
+  Schrift (``style.EXPLANATION``, hell und dunkel lesbar).
 * **Todos und Listenpunkte** haben eine gleich breite Markerspalte (Checkbox
   bzw. „•“), damit ihre Texte auf derselben Kante stehen.
 * **Fortsetzungen** stehen auf dieser Textkante unter ihrem Punkt.
@@ -19,6 +19,7 @@ import flet as ft
 
 from ...app.views import Row
 from .move_dialog import show_move_dialog
+from .style import EXPLANATION
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -39,9 +40,8 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
     """
     pad = ft.Padding.only(left=row.depth * INDENT)
     if row.kind == "topic":
-        lines = [ft.Text(row.text, weight=ft.FontWeight.BOLD,
-                         style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE))]
-        lines += [ft.Text(line, color=ft.Colors.ON_SURFACE_VARIANT) for line in row.more]
+        lines = [ft.Text(row.text, weight=ft.FontWeight.BOLD)]
+        lines += [ft.Text(line, color=EXPLANATION) for line in row.more]
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":
         head = todo_line(app, row.text, row.done, row.urgent, row.target)

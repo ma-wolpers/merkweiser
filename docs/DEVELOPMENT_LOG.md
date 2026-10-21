@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Thema ohne Unterstreichung, Erläuterung schwächer
+
+- Nutzerwunsch: Unterstreichung entfernt (fett genügt); Erläuterung in `style.EXPLANATION` (`with_opacity(0.5, ON_SURFACE)`) statt `ON_SURFACE_VARIANT`.
+
 ## 2026-10-21 – Auto-Merges ausblenden
 
 - Nutzerwunsch: Die Liste „Automatisch zusammengeführt“ zeigte jeden Merge für die ganze Aufbewahrung (30 Tage). Neu `hide_automerges` (Zustandsfeld `ausgeblendet`), `NotesService.hide_automerges`, Knöpfe „Ausblenden“ und „Alle ausblenden“. Tests: ausgeblendet verschwindet aus der Liste, Backup und „nur manuell“ bleiben; andere Op-Arten unberührt.

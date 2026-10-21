@@ -11,7 +11,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
-- In der Notizansicht fehlten Erläuterungen unter dem Thema und Fortsetzungszeilen unter Todos und Listenpunkten. Jetzt: Thema unterstrichen, Erläuterung darunter in schwächerer Farbe, Listenpunkte mit „•“ auf derselben Textkante wie Todos, Fortsetzungen bündig darunter.
+- In der Notizansicht fehlten Erläuterungen unter dem Thema und Fortsetzungszeilen unter Todos und Listenpunkten. Jetzt: Thema fett, Erläuterung darunter in deutlich schwächerer Schrift, Listenpunkte mit „•“ auf derselben Textkante wie Todos, Fortsetzungen bündig darunter.
 - Im Dark Mode waren die farbig hinterlegten Zeilen im Konfliktvergleich unlesbar (helle Schrift auf hellem Grün bzw. Rot).
 - Änderungen sind nach 10 Sekunden endgültig abgeschlossen (vorher 2 Minuten). Wird die App früher geschlossen, schließt der nächste Start sie ab, statt von vorn zu warten; versteckte Sicherungsdateien `.NAME.mw-….old` bleiben nicht mehr liegen.
 - Schnelles Ab- und wieder Enthaken eines Todos legte unnötige Konfliktdateien (`….sync-conflict-…-MERKWEISER….md`) an, auch wenn die App gleich danach geschlossen wurde.
