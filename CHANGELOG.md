@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Änderungen sind nach 10 Sekunden endgültig abgeschlossen (vorher 2 Minuten). Wird die App früher geschlossen, schließt der nächste Start sie ab, statt von vorn zu warten; versteckte Sicherungsdateien `.NAME.mw-….old` bleiben nicht mehr liegen.
 - Schnelles Ab- und wieder Enthaken eines Todos legte unnötige Konfliktdateien (`….sync-conflict-…-MERKWEISER….md`) an, auch wenn die App gleich danach geschlossen wurde.
 
 ### Added

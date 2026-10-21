@@ -94,6 +94,9 @@ def _recover_op(writer: Writer, op: Op, report: RecoveryReport) -> WriteResult |
     expected = op.blob("vorher", blobs["vorher"]) if "vorher" in blobs else None
     if not op.state():  # Zeile 1: nie vorbereitet → Vault garantiert unberührt
         return _abort(op, tmp, writer, report)
+    if writer.wall_quarantine_over(op.state()):  # Zeile 7, Quarantäne laut Wanduhr vorbei
+        _drop_tmp(writer, tmp, b"")
+        return writer.finish(op)
     if manifest["art"] == "remove":
         return _recover_remove(writer, op, main, old, expected)
     new = op.blob("neu", blobs["neu"])
@@ -192,7 +195,21 @@ def _drop_tmp(writer: Writer, tmp: Path, new: bytes) -> None:
 
 
 def _restart_quarantine(writer: Writer, op: Op) -> WriteResult:
-    """Beginnt die Quarantäne neu (nie Wanduhr-Vergleiche über Neustarts)."""
+    """Schließt eine laut Wanduhr abgelaufene Quarantäne ab, sonst beginnt sie neu.
+
+    Nutzerentscheidung 2026-10-21 („10 s + Wanduhr“): Vorher begann jede
+    Quarantäne nach einem Neustart neu; bei kurzen App-Sitzungen wurde sie so
+    nie fertig, und die Sicherungsdateien ``.NAME.mw-….old`` blieben liegen.
+
+    Args:
+        writer: Writer.
+        op: Übernommene Op.
+
+    Returns:
+        Ergebnis von ``finish`` oder ``QUARANTINE``.
+    """
+    if writer.wall_quarantine_over(op.state()):
+        return writer.finish(op)
     op.set_state("QUARANTINE", **{k: v for k, v in op.state().items() if k == "d_sha1"})
     return writer.quarantine(op)
 

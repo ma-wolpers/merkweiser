@@ -23,6 +23,7 @@ die Datei schon vor dem Start von ``expected`` ab, kommt
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ..ports.clock import Clock
@@ -32,7 +33,10 @@ from .fsops import FileBusyError, FsOps
 from .history import History
 from .ops import Op, OpStore
 
-QUARANTINE_SECONDS = 120.0
+# Nutzerentscheidung 2026-10-21 (vorher 120 s): Obsidian und Syncthing speichern in
+# Millisekunden; 120 s überdauerten typische App-Sitzungen, sodass Quarantänen nie
+# abgeschlossen wurden und Sicherungsdateien liegen blieben.
+QUARANTINE_SECONDS = 10.0
 
 
 class ChangedBeforeWriteError(Exception):
@@ -297,9 +301,47 @@ class Writer:
         return rel
 
     def quarantine(self, op: Op) -> WriteResult:
-        """Registriert die Op für den Quarantäne-Abschluss (monotone Frist)."""
+        """Registriert die Op für den Quarantäne-Abschluss.
+
+        Innerhalb des Prozesses zählt die monotone Frist. Zusätzlich wird der
+        Beginn als Wanduhrzeit (UTC) in ``state.json`` festgehalten
+        (``quarantaene_seit``); damit kann die Wiederherstellung nach einem
+        Neustart eine längst abgelaufene Quarantäne sofort abschließen
+        (``wall_quarantine_over``) statt sie neu zu beginnen.
+
+        Args:
+            op: Die Op (Zustand ``QUARANTINE``).
+
+        Returns:
+            ``WriteResult`` mit Zustand ``QUARANTINE``.
+        """
+        op.set_state("QUARANTINE", quarantaene_seit=self.clock.now().astimezone(timezone.utc).isoformat())
         self._pending[op.id] = (op, self.clock.monotonic() + QUARANTINE_SECONDS)
         return WriteResult(op.id, "QUARANTINE")
+
+    def wall_quarantine_over(self, state: dict) -> bool:
+        """``True``, wenn eine Quarantäne laut Wanduhr schon vor dem Neustart abgelaufen ist.
+
+        GRENZE: Springt die Wanduhr zwischen zwei Starts vor, kann eine
+        Quarantäne zu früh enden (Nutzerentscheidung 2026-10-21, „10 s +
+        Wanduhr“). Liegt der festgehaltene Beginn in der Zukunft (Uhr
+        zurückgestellt) oder fehlt er, gilt sie als **nicht** abgelaufen.
+
+        Args:
+            state: Inhalt von ``state.json``.
+
+        Returns:
+            ``True`` nur bei Zustand ``QUARANTINE`` mit ``quarantaene_seit`` und
+            mindestens ``QUARANTINE_SECONDS`` verstrichener Wanduhrzeit.
+        """
+        since = state.get("quarantaene_seit")
+        if state.get("zustand") != "QUARANTINE" or not since:
+            return False
+        try:
+            elapsed = (self.clock.now() - datetime.fromisoformat(since)).total_seconds()
+        except (TypeError, ValueError):
+            return False
+        return elapsed >= QUARANTINE_SECONDS
 
     def rel(self, path: Path) -> str:
         """Pfad relativ zum Vault mit ``/``."""

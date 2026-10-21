@@ -11,6 +11,7 @@
 |---|---|
 | Nebenaufgabe bw-gui-Doku | erledigt (bw-gui `3780c97`, `a59ec38`) |
 | 0 – Spikes | **S2** bestanden (APK aus `src/`, `jni_flutter`-Override). **S3** erledigt (Treeview, Guards; daraus der bw-gui-Teilplan). **S1** läuft: `pyjnius` wird gebündelt, aber nur zusammen mit `flet` in `project.dependencies` (sonst stürzt die App mit „No module named certifi“ ab, Befund 2026-10-19); Gerätetest 2026-10-21 (SD-Karte): `link` verboten, `renameat2(RENAME_NOREPLACE)` funktioniert → volle Garantie über die neue Variante `noreplace`; der Selbsttest je Vault (Plattform-Tabelle) ist umgesetzt. Interner Speicher identisch (zweiter Bericht) → **S1 abgeschlossen**. **S4** (Obsidian) steht aus. |
+| Abweichungen | **Quarantäne 10 s + Wanduhr** statt 2 min und „Neustart beginnt neu“ (Nutzerentscheidung 2026-10-21; betrifft die Abschnitte Clock, Schreibprotokoll, Plattform-Tabelle und `GRENZE W1`; Details in `ARCHITEKTUR.md`). |
 | 1 – Gerüst | erledigt |
 | 2 – Core lesen | erledigt |
 | 3 – Core schreiben | erledigt: Edit- und Move-Planung, Tausch-Protokoll, Wiederherstellung, Move-Ausführung. Vorgezogen vor S4 (Nutzerentscheidung 2026-10-09); S4 bestätigt später. |

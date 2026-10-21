@@ -199,3 +199,29 @@ def test_restart_after_create_then_own_edit_is_not_reported_as_lost(tmp_path: Pa
     report = recover_and_finish(tmp_path)
     assert report.not_applied == []
     assert vault_files(tmp_path) == {NAME: N}
+
+
+def _restart_after(tmp_path: Path, wall_seconds: float):
+    """Eine Änderung, Prozessende in der Quarantäne, Neustart nach ``wall_seconds`` Wanduhrzeit (nur Recovery)."""
+    writer, store = instance(tmp_path)
+    (tmp_path / "vault" / NAME).write_bytes(E)
+    writer.write(NAME, E, N)
+    die(store)
+    later, _store = instance(tmp_path)
+    later.clock.jump_wall(wall_seconds)
+    return recover(later)
+
+
+def test_restart_after_quarantine_elapsed_finishes_immediately(tmp_path: Path) -> None:
+    """„10 s + Wanduhr“: ist die Quarantäne laut Uhr vorbei, schließt der Start sie ab (keine .old bleibt)."""
+    report = _restart_after(tmp_path, 60)
+    assert [r.state for r in report.results] == ["DONE"]
+    assert vault_files(tmp_path) == {NAME: N}
+
+
+@pytest.mark.parametrize("wall_seconds", [0, -3600])
+def test_restart_without_elapsed_wall_time_restarts_quarantine(tmp_path: Path, wall_seconds: float) -> None:
+    """Kaum Zeit vergangen oder Uhr zurückgestellt: Quarantäne beginnt neu, D bleibt bis zum Abschluss."""
+    report = _restart_after(tmp_path, wall_seconds)
+    assert [r.state for r in report.results] == ["QUARANTINE"]
+    assert any(name.endswith(".old") for name in vault_files(tmp_path))

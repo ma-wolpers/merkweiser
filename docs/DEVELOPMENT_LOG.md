@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Quarantäne 10 s + Wanduhr
+
+- Nutzerentscheidung: Quarantäne von 120 s auf 10 s; nach einem Neustart wird eine laut Wanduhr abgelaufene Quarantäne sofort abgeschlossen statt neu begonnen (`quarantaene_seit` in `state.json`, `Writer.wall_quarantine_over`). Grund: Typische Handy-Sitzungen sind kürzer als 2 min, Quarantänen wurden nie fertig.
+- Beim Testen gefunden: Die Regel muss am **Anfang** der Zustandstabelle greifen; sonst ging der häufigste Fall (`D` noch vorhanden) über Zeile 5/6 und begann die Quarantäne wieder neu. Tests: abgelaufen → DONE ohne `.old`; kaum Zeit vergangen bzw. Uhr zurückgestellt → Quarantäne beginnt neu.
+
 ## 2026-10-21 – Folgeänderung auch in der Wiederherstellung
 
 - Gerätebefund: Die Konfliktdateien entstanden weiter, und zwar still beim **nächsten Start**. Die App wird meist vor Ablauf der 120-s-Quarantäne geschlossen; dann sah die Wiederherstellung `D` noch auf der Platte und `P ≠ N` und nahm „extern belegt“ an (Zeile 4). Beim Create-only-Pfad wurde eine überholte Neuanlage sogar als „nicht ausgeführt“ gemeldet.
