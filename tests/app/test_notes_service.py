@@ -112,3 +112,30 @@ def test_settings_roundtrip_and_validation(tmp_path: Path) -> None:
         Settings(pattern="%Y.md").validated()
     with pytest.raises(ValueError):
         Settings(project_prefix="mit leer").validated()
+
+
+def test_unwritable_vault_opens_read_only(tmp_path: Path, monkeypatch) -> None:
+    """Plan „No-Go“: ohne sichere Schreibweise schreibgeschützt öffnen, lesen geht, schreiben wird abgelehnt."""
+    from merkweiser.app import notes_service as ns
+    from merkweiser.core.fs_probe import VaultNotWritableError
+
+    def refuse(_root):
+        raise VaultNotWritableError("simuliert")
+
+    monkeypatch.setattr(ns, "probe_install_mode", refuse)
+    root = tmp_path / "vault"
+    root.mkdir()
+    raw = b"Notiz\n- [ ] A\n"
+    (root / "2026-01-15.md").write_bytes(raw)
+    (root / "2026-01-15.sync-conflict-20260115-120000-ABCDEFG.md").write_bytes(b"Notiz\n- [ ] A\n- [ ] B\n")
+    svc = ns.NotesService(root, tmp_path / "app", Settings(vault=str(root)), FakeClock())
+    report = svc.start()
+    assert svc.read_only and svc.write_guarantee == "keine (schreibgeschützt)" and report.automerges == []
+    [day] = svc.day(date(2026, 1, 15))
+    assert day.has_conflict
+    with pytest.raises(ns.ReadOnlyVaultError):
+        svc.append_note("neu")
+    with pytest.raises(ns.ReadOnlyVaultError):
+        svc.auto_merge_all()
+    svc.poll()
+    assert (root / "2026-01-15.md").read_bytes() == raw and len(list(root.iterdir())) == 2

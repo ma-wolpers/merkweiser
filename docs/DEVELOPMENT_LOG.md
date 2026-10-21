@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Schreibschutz-Modus
+
+- Ordner ohne sichere Schreibweise öffnen jetzt schreibgeschützt statt mit Fehler (Plan „No-Go“): `NotesService.read_only`, Decorator `_writes`, `ReadOnlyVaultError`, Start nur mit Scan. Mobile öffnet lesbare Ordner; Diagnosebericht nennt `schreibgeschuetzt`.
+- Test: lesen und Konflikte anzeigen geht, Notiz anlegen und Auto-Merge werden abgelehnt, Poll ändert nichts.
+
 ## 2026-10-21 – Abschnittsweise Konfliktauflösung
 
 - Core: `HunkPick`, `apply_hunk_picks` (Optionen laut Plan: A, B, Beide nur bei `offers_both`, Bearbeitet). App: `hunk_result`. Mobile: `mobile/ui/hunk_view.py` unter den Ganzdatei-Knöpfen bei `MANUAL`-Fällen mit Merge. Vorausgewählt ist „Hauptdatei“, solange es keine Historien-Vorschläge gibt (`BAUSTELLE(Vorschläge)`).

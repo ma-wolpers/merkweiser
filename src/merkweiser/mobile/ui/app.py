@@ -67,7 +67,8 @@ class MobileApp:
     async def open_vault(self) -> None:
         """Öffnet den eingestellten Vault oder zeigt die Einrichtung."""
         root = Path(self.settings.vault) if self.settings.vault else None
-        if root is None or not (root.is_dir() and os.access(root, os.R_OK | os.W_OK)):
+        # Lesbar genügt: Ohne sichere Schreibweise öffnet NotesService schreibgeschützt.
+        if root is None or not (root.is_dir() and os.access(root, os.R_OK)):
             self.service = None
             self.show_setup()
             return

@@ -11,6 +11,7 @@ Resolve-Ops → Moves → Aufbewahrung → Scan → Auto-Merge.
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -24,7 +25,7 @@ from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
 from ..core.doc_cache import DocumentCache
 from ..core.document import Document, parse_document
 from ..core.edits import add_todo, set_done, set_project, set_urgent
-from ..core.fs_probe import GUARANTEE, probe_install_mode
+from ..core.fs_probe import GUARANTEE, VaultNotWritableError, probe_install_mode
 from ..core.fsops import FsOps
 from ..core.history import History
 from ..core.move_exec import MoveResult, move_todo, recover_moves
@@ -42,6 +43,29 @@ from ..ports.clock import Clock
 from .settings import Settings
 
 MAX_REPLANS = 3
+READ_ONLY_GUARANTEE = "keine (schreibgeschützt)"
+
+
+class ReadOnlyVaultError(PermissionError):
+    """Aktion abgelehnt: Der Notizordner ist schreibgeschützt geöffnet."""
+
+
+def _writes(method):
+    """Markiert eine schreibende Service-Methode; im Schreibschutz wird sie abgelehnt.
+
+    Args:
+        method: Methode von ``NotesService``.
+
+    Returns:
+        Die umhüllte Methode, die bei ``read_only`` ``ReadOnlyVaultError`` wirft,
+        bevor irgendetwas geplant oder geschrieben wird.
+    """
+    @functools.wraps(method)
+    def guarded(self, *args, **kwargs):
+        if self.read_only:
+            raise ReadOnlyVaultError("Der Notizordner ist schreibgeschützt geöffnet; Änderungen sind nicht möglich.")
+        return method(self, *args, **kwargs)
+    return guarded
 
 
 @dataclass
@@ -75,17 +99,24 @@ class NotesService:
         fs: Dateisystem-Primitive (Tests: mit Fault-Injection). ``None``: die
             Install-Variante per Selbsttest im Vault ermitteln (``probe_install_mode``).
 
-    Raises:
-        VaultNotWritableError: Der Selbsttest findet keine Variante, mit der
-            sich im Vault ohne Überschreiben schreiben lässt.
+    Attributes:
+        read_only: ``True``, wenn der Selbsttest keine Variante findet, mit der
+            sich im Vault ohne Überschreiben schreiben lässt (PLAN.md, „No-Go“):
+            Der Vault ist dann nur lesbar, der Start überspringt alle
+            schreibenden Schritte, und schreibende Methoden werfen
+            ``ReadOnlyVaultError``.
     """
 
     def __init__(self, root: Path, app_data: Path, settings: Settings, clock: Clock, fs: FsOps | None = None) -> None:
         self.root, self.settings, self.clock = root, settings.validated(), clock
         self.pattern = DayPattern(settings.pattern)
-        # BAUSTELLE(Schreibschutz): Laut Plan öffnet ein Vault ohne Primitive
-        # schreibgeschützt; bisher scheitert das Öffnen mit klarer Meldung.
-        self.fs = fs or FsOps(probe_install_mode(root))
+        self.read_only = False
+        if fs is None:
+            try:
+                fs = FsOps(probe_install_mode(root))
+            except VaultNotWritableError:
+                self.read_only, fs = True, FsOps("excl")  # wird nie zum Schreiben benutzt (_writes)
+        self.fs = fs
         self.data = open_vault_data(app_data, root)
         self.store = OpStore(self.data, clock, self.fs)
         self.history = History(self.data, clock)
@@ -98,7 +129,18 @@ class NotesService:
     # --- Start und Beobachtung ----------------------------------------------------
 
     def start(self) -> StartReport:
-        """Feste Startreihenfolge; danach sind alle Ops in einem definierten Zustand."""
+        """Feste Startreihenfolge; danach sind alle Ops in einem definierten Zustand.
+
+        Im Schreibschutz nur Scan und Beobachtung: Unvollständige Ops bleiben
+        unangetastet, bis der Ordner wieder beschreibbar ist.
+
+        Returns:
+            Startbericht für Hinweise in der Oberfläche.
+        """
+        if self.read_only:
+            self.rescan()
+            self._watch = observe(self.root)
+            return StartReport(RecoveryReport())
         report = StartReport(recover(self.writer))
         self.busy = report.recovery.busy_paths
         report.resolves = recover_resolves(self.writer, self.store)
@@ -112,8 +154,8 @@ class NotesService:
 
     @property
     def write_guarantee(self) -> str:
-        """Schreibgarantie dieses Vaults für die Anzeige („voll“ bzw. „eingeschränkt (A1–A3)“)."""
-        return GUARANTEE[self.fs.install_mode]
+        """Schreibgarantie für die Anzeige („voll“, „eingeschränkt (A1–A3)“ oder „keine (schreibgeschützt)“)."""
+        return READ_ONLY_GUARANTEE if self.read_only else GUARANTEE[self.fs.install_mode]
 
     def rescan(self) -> VaultIndex:
         """Liest die Dateiliste neu."""
@@ -121,8 +163,9 @@ class NotesService:
         return self.index
 
     def poll(self) -> Changes:
-        """Prüft auf Änderungen und schließt fällige Quarantänen ab."""
-        self.writer.finish_due()
+        """Prüft auf Änderungen und schließt fällige Quarantänen ab (nicht im Schreibschutz)."""
+        if not self.read_only:
+            self.writer.finish_due()
         changes, self._watch = poll(self.root, self._watch)
         if changes.any:
             self.rescan()
@@ -146,6 +189,7 @@ class NotesService:
         manual = manual_only_paths(self.store) | undone_manual_paths(self.store)
         return classify(self.root, self.writer, self.index, self.busy, manual)
 
+    @_writes
     def auto_merge_all(self) -> list[str]:
         """Führt alle automatisch zusammenführbaren Fälle aus (Kette je Hauptdatei)."""
         done = []
@@ -171,6 +215,7 @@ class NotesService:
         """
         return automerge_log(self.store, limit)
 
+    @_writes
     def undo_automerge(self, op_id: str) -> str:
         """Macht einen Auto-Merge rückgängig; die Konfliktdatei bleibt danach „nur manuell“.
 
@@ -184,6 +229,7 @@ class NotesService:
         self.rescan()
         return restored
 
+    @_writes
     def resolve(self, case: ConflictCase, result: bytes, decision: str,
                 manual_only: tuple[str, ...] = ()) -> ResolveOutcome:
         """Wendet eine explizite Konfliktentscheidung an (Resolve-Op mit Marker)."""
@@ -194,23 +240,28 @@ class NotesService:
 
     # --- Aktionen ---------------------------------------------------------------------
 
+    @_writes
     def set_done(self, target: Target, done: bool) -> WriteResult:
         """Todo erledigt bzw. offen setzen."""
         return self._edit(target.relpath, lambda doc: set_done(doc, target, done))
 
+    @_writes
     def set_urgent(self, target: Target, urgent: bool) -> WriteResult:
         """Todo als dringend markieren bzw. die Markierung entfernen."""
         return self._edit(target.relpath, lambda doc: set_urgent(doc, target, urgent))
 
+    @_writes
     def set_project(self, target: Target, name: str | None) -> WriteResult:
         """Explizites Projekt eines Todos setzen bzw. entfernen."""
         prefix = self.settings.project_prefix
         return self._edit(target.relpath, lambda doc: set_project(doc, target, name, prefix))
 
+    @_writes
     def add_todo(self, relpath: str, note_index: int, text: str, parent: Target | None = None) -> WriteResult:
         """Neues Todo in eine Notiz einfügen."""
         return self._edit(relpath, lambda doc: add_todo(doc, note_index, text, parent))
 
+    @_writes
     def append_note(self, text: str) -> WriteResult:
         """Neue Notiz in der Tagesdatei von heute (Datei wird bei Bedarf angelegt)."""
         relpath = write_target(self.index, self.pattern, self.clock.today())
@@ -218,10 +269,12 @@ class NotesService:
         self.rescan()
         return result
 
+    @_writes
     def delete_note(self, relpath: str, original: tuple[str, ...]) -> WriteResult:
         """Notiz samt einem angrenzenden Trenner löschen."""
         return self._edit(relpath, lambda doc: delete_note(doc, original))
 
+    @_writes
     def replace_note_text(self, relpath: str, planned_raw: bytes, original: tuple[str, ...],
                           text: str) -> WriteResult:
         """Rohtext einer Notiz ersetzen; ist sie nicht mehr eindeutig auffindbar → eigene Konfliktdatei.
@@ -245,6 +298,7 @@ class NotesService:
             self.rescan()
             return WriteResult(base.id, "CONFLICTED", [rel])
 
+    @_writes
     def move_todo(self, target: Target, day: date) -> MoveResult:
         """Todo samt Teilbaum auf ein anderes Datum verschieben."""
         dst = write_target(self.index, self.pattern, day)

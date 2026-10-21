@@ -97,7 +97,8 @@ def _vault_lines(settings: Settings, service: NotesService | None) -> list[str]:
             f"lesbar={os.access(root, os.R_OK)}, schreibbar={os.access(root, os.W_OK)})")
         return [f"status={state}"]
     index = service.index
-    lines = [f"install_mode={service.fs.install_mode}", f"schreibgarantie={service.write_guarantee}",
+    lines = [f"install_mode={service.fs.install_mode}", f"schreibgeschuetzt={service.read_only}",
+             f"schreibgarantie={service.write_guarantee}",
              f"tagesdateien={sum(len(p) for p in index.day_files.values())}",
              f"konfliktdateien={len(index.conflicts)}"]
     lines += [f"  konflikt {c.relpath}" for c in index.conflicts]
