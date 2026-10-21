@@ -155,7 +155,10 @@ class MobileApp:
         try:
             path = write_report(Path(folder), text, now)
         except OSError as exc:
-            self.say(f"Diagnosebericht nicht gespeichert: {type(exc).__name__}: {exc}")
+            hint = (" Android sperrt die privaten Ordner anderer Apps (…/Android/data/…), auch mit „Alle Dateien“. "
+                    "Bitte einen Ordner außerhalb davon wählen, z. B. /storage/emulated/0/Download."
+                    if "/Android/" in folder else "")
+            self.say(f"Diagnosebericht nicht gespeichert: {type(exc).__name__}: {exc}.{hint}")
             self.render()
             return
         if folder != self.settings.report_dir:
