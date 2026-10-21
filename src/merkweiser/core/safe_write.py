@@ -167,7 +167,7 @@ class Writer:
         result = WriteResult(op.id, "DONE")
         if manifest["art"] == "write":
             new = op.blob("neu", manifest["blobs"]["neu"])
-            if not (self.fs.exists(main) and main.read_bytes() == new) and not self._superseded(op, new):
+            if not (self.fs.exists(main) and main.read_bytes() == new) and not self.superseded(op, new):
                 self.ensure_visible(op, main, new, result)
         if self.fs.exists(old):
             if cf.sha1(old.read_bytes()) == state.get("d_sha1"):
@@ -182,7 +182,7 @@ class Writer:
         op.release()
         return result
 
-    def _superseded(self, op: Op, new: bytes) -> bool:
+    def superseded(self, op: Op, new: bytes) -> bool:
         """``True``, wenn eine **eigene** spätere Op genau ``N`` verdrängt und gesichert hat.
 
         Zwei eigene Änderungen an derselben Datei innerhalb der Quarantäne sind
@@ -191,7 +191,8 @@ class Writer:
         hat ``N`` als erwarteten Stand geplant (``vorher``), als ``D``
         verdrängt und dessen Bytes persistiert (``d_sha1``); ab dort wacht sie
         über die Datei. Entschieden wird nur aus Manifesten und Zuständen auf
-        der Platte (Invariante R), also auch nach einem Neustart.
+        der Platte (Invariante R), also auch nach einem Neustart; die
+        Wiederherstellung fragt es deshalb ebenfalls ab, bevor sie „fremd“ annimmt.
 
         Args:
             op: Die Op in der Abschlussprüfung.

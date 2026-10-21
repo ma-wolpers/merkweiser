@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Folgeänderung auch in der Wiederherstellung
+
+- Gerätebefund: Die Konfliktdateien entstanden weiter, und zwar still beim **nächsten Start**. Die App wird meist vor Ablauf der 120-s-Quarantäne geschlossen; dann sah die Wiederherstellung `D` noch auf der Platte und `P ≠ N` und nahm „extern belegt“ an (Zeile 4). Beim Create-only-Pfad wurde eine überholte Neuanlage sogar als „nicht ausgeführt“ gemeldet.
+- Fix: `Writer.superseded` (vorher privat) wird in `_recover_displaced` und `_recover_create` abgefragt. Tests: Neustart nach A→B, A→B→A, A→B→C sowie nach Neuanlage + Änderung.
+
 ## 2026-10-21 – Diagnosebericht, S1 abgeschlossen
 
 - S1, zweiter Gerätebericht (interner Speicher): wie auf der SD-Karte (`link` verboten, `renameat2` funktioniert, `O_EXCL`, Verzeichnis-`fsync`, `flock` ok). S1 ist damit abgeschlossen.

@@ -173,3 +173,29 @@ def test_orphan_side_files_become_conflicts_never_deleted(tmp_path: Path) -> Non
     assert len(report.orphans) == 1
     files = vault_files(tmp_path)
     assert [v for k, v in files.items() if ".sync-conflict-" in k] == [E]
+
+
+@pytest.mark.parametrize("toggles", [[N, E], [N, E, N], [N, N + b"- [ ] neu\n"]])
+def test_restart_during_own_quick_edits_creates_no_conflict(tmp_path: Path, toggles: list[bytes]) -> None:
+    """Gerätebefund 2026-10-21: Ab-/Enthaken, App vor Ablauf der Quarantäne geschlossen → kein Konflikt."""
+    writer, store = instance(tmp_path)
+    (tmp_path / "vault" / NAME).write_bytes(E)
+    before = E
+    for after in toggles:
+        writer.write(NAME, before, after)
+        before = after
+    die(store)
+    report = recover_and_finish(tmp_path)
+    assert report.not_applied == []
+    assert vault_files(tmp_path) == {NAME: toggles[-1]}
+
+
+def test_restart_after_create_then_own_edit_is_not_reported_as_lost(tmp_path: Path) -> None:
+    """Neue Tagesdatei anlegen, sofort ändern, App schließen: weder Konflikt noch „nicht ausgeführt“."""
+    writer, store = instance(tmp_path)
+    writer.write(NAME, None, E)
+    writer.write(NAME, E, N)
+    die(store)
+    report = recover_and_finish(tmp_path)
+    assert report.not_applied == []
+    assert vault_files(tmp_path) == {NAME: N}

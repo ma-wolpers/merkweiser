@@ -117,6 +117,9 @@ def _recover_displaced(writer: Writer, op: Op, main: Path, tmp: Path, old: Path,
         else:  # fremder Stand gewinnt, N wird sichtbar
             writer.fs.rename_no_replace(old, main)
             return _conflicted(writer, op, main, tmp, new)
+    elif main.read_bytes() != new and writer.superseded(op, new):  # Zeile 4a: eigene Folge-Op
+        _drop_tmp(writer, tmp, new)
+        return writer.save_displaced(op, main, old, expected or b"", restore_to_main=False)
     elif main.read_bytes() != new:  # Zeile 4: P extern belegt
         result = _conflicted(writer, op, main, tmp, new, finish=False)
         if old.read_bytes() == expected:
@@ -134,7 +137,7 @@ def _recover_create(writer: Writer, op: Op, main: Path, tmp: Path, new: bytes,
                     report: RecoveryReport) -> WriteResult | None:
     """Zeile 7a: Create-only."""
     if writer.fs.exists(main):
-        if main.read_bytes() == new:
+        if main.read_bytes() == new or writer.superseded(op, new):  # installiert (ggf. von eigener Folge-Op überholt)
             _drop_tmp(writer, tmp, new)
             return _restart_quarantine(writer, op)
         if writer.fs.exists(tmp) and tmp.read_bytes() == new:

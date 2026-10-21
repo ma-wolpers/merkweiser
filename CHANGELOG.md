@@ -6,7 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
-- Schnelles Ab- und wieder Enthaken eines Todos legte unnötige Konfliktdateien (`….sync-conflict-…-MERKWEISER….md`) an.
+- Schnelles Ab- und wieder Enthaken eines Todos legte unnötige Konfliktdateien (`….sync-conflict-…-MERKWEISER….md`) an, auch wenn die App gleich danach geschlossen wurde.
 
 ### Added
 
