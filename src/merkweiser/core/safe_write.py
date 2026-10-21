@@ -167,7 +167,7 @@ class Writer:
         result = WriteResult(op.id, "DONE")
         if manifest["art"] == "write":
             new = op.blob("neu", manifest["blobs"]["neu"])
-            if not (self.fs.exists(main) and main.read_bytes() == new):
+            if not (self.fs.exists(main) and main.read_bytes() == new) and not self._superseded(op, new):
                 self.ensure_visible(op, main, new, result)
         if self.fs.exists(old):
             if cf.sha1(old.read_bytes()) == state.get("d_sha1"):
@@ -181,6 +181,37 @@ class Writer:
         self._record(manifest["relpath"])
         op.release()
         return result
+
+    def _superseded(self, op: Op, new: bytes) -> bool:
+        """``True``, wenn eine **eigene** spätere Op genau ``N`` verdrängt und gesichert hat.
+
+        Zwei eigene Änderungen an derselben Datei innerhalb der Quarantäne sind
+        der Normalfall (z. B. zwei Todos nacheinander abhaken). Dann steht ``N``
+        der ersten Op nicht mehr in ``P``, ist aber nicht verloren: Die Folge-Op
+        hat ``N`` als erwarteten Stand geplant (``vorher``), als ``D``
+        verdrängt und dessen Bytes persistiert (``d_sha1``); ab dort wacht sie
+        über die Datei. Entschieden wird nur aus Manifesten und Zuständen auf
+        der Platte (Invariante R), also auch nach einem Neustart.
+
+        Args:
+            op: Die Op in der Abschlussprüfung.
+            new: Ihr ``N``.
+
+        Returns:
+            ``True``, wenn eine nicht ältere Op auf demselben Pfad ``vorher = N``
+            und ``d_sha1 = sha1(N)`` trägt; dann wird ``N`` nicht als Konflikt
+            sichtbar gemacht.
+        """
+        sha, relpath, created = cf.sha1(new), op.manifest["relpath"], op.manifest.get("erstellt", "")
+        for other_id in self.store.all_ids():
+            if other_id == op.id:
+                continue
+            manifest, state = self.store.read(other_id)
+            if (manifest.get("art") == "write" and manifest.get("relpath") == relpath
+                    and manifest.get("erstellt", "") >= created
+                    and manifest.get("blobs", {}).get("vorher") == sha and state.get("d_sha1") == sha):
+                return True
+        return False
 
     def _install_new(self, op: Op, main: Path, tmp: Path) -> WriteResult:
         """Create-only: Temp-Datei ohne Überschreiben installieren."""

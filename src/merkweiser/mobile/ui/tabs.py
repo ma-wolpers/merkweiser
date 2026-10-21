@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import Choice, HitRow, Row, conflict_result, hit_rows, note_rows
-from ...core.conflicts import CaseKind
+from ...app.views import HitRow, Row, hit_rows, note_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 
 if TYPE_CHECKING:
@@ -176,41 +175,6 @@ def search_view(app: "MobileApp") -> list[ft.Control]:
         except ValueError as exc:
             controls.append(ft.Text(f"Ungültiger Ausdruck: {exc}", color=ft.Colors.ERROR))
     return controls
-
-
-def conflicts_view(app: "MobileApp") -> list[ft.Control]:
-    """Offene Konflikte mit einfachen Entscheidungen (Hauptdatei, Konfliktversion, beide)."""
-    cases = app.service.conflicts()
-    if not cases:
-        return [ft.Text("Keine offenen Konflikte.")]
-    controls: list[ft.Control] = []
-    for case in cases:
-        controls.append(ft.Text(case.conflict.main_relpath, weight=ft.FontWeight.BOLD))
-        controls.append(ft.Text(f"{case.kind.value}: {case.reason}", size=12))
-        preview = case.conflict_bytes.decode("utf-8", errors="replace")[:300]
-        controls.append(ft.Container(content=ft.Text(preview, size=11), padding=6, bgcolor=ft.Colors.SURFACE_CONTAINER))
-        if case.kind is CaseKind.BUSY:
-            continue
-        controls.append(ft.Row(_choices(app, case, cases), wrap=True))
-    return controls
-
-
-def _choices(app: "MobileApp", case, cases) -> list[ft.Control]:
-    """Entscheidungsknöpfe; bei fehlender Hauptdatei bleibt der Rest nur manuell."""
-    others = tuple(c.conflict.relpath for c in cases
-                   if c.conflict.main_relpath == case.conflict.main_relpath and c is not case)
-
-    def button(label: str, choice: Choice) -> ft.Control:
-        async def decide(_e) -> None:
-            result = conflict_result(case, choice)
-            manual = others if case.kind is CaseKind.MAIN_DELETED else ()
-            await app.act(lambda s: s.resolve(case, result, label, manual))
-        return ft.Button(label, on_click=decide)
-
-    if case.kind is CaseKind.MAIN_DELETED:
-        return [button("Diese Version wiederherstellen", Choice.KONFLIKTVERSION)]
-    return [button("Hauptdatei behalten", Choice.HAUPTDATEI), button("Konfliktversion übernehmen", Choice.KONFLIKTVERSION),
-            button("Beide behalten", Choice.BEIDE)]
 
 
 def settings_view(app: "MobileApp") -> list[ft.Control]:

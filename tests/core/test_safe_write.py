@@ -164,3 +164,33 @@ def test_windows_busy_file_aborts_without_change(env: Env) -> None:
         with pytest.raises(FileBusyError):
             env.writer.write("2026-01-01.md", E, N)
     assert env.files() == {"2026-01-01.md": E}
+
+
+def test_own_follow_up_write_in_quarantine_is_no_conflict(env: Env) -> None:
+    """Zwei eigene Änderungen kurz nacheinander: N1 ist überholt, nicht verloren (Gerätebefund 2026-10-21)."""
+    n2 = N + b"- [ ] neu\n"
+    env.writer.write("2026-01-01.md", E, N)
+    env.writer.write("2026-01-01.md", N, n2)
+    assert [r.state for r in env.finish()] == ["DONE", "DONE"]
+    assert env.conflicts() == []
+    assert env.files() == {"2026-01-01.md": n2}
+
+
+def test_check_and_uncheck_quickly_is_no_conflict(env: Env) -> None:
+    """Abhaken, sofort wieder enthaken und erneut abhaken (A→B→A→B) ergibt keine Konfliktdatei."""
+    env.writer.write("2026-01-01.md", E, N)
+    env.writer.write("2026-01-01.md", N, E)
+    env.writer.write("2026-01-01.md", E, N)
+    assert {r.state for r in env.finish()} == {"DONE"}
+    assert env.conflicts() == []
+    assert env.files() == {"2026-01-01.md": N}
+
+
+def test_external_replace_after_own_follow_up_still_shows_n(env: Env) -> None:
+    """Nur die eigene Folge-Op entlastet: ersetzt danach ein Fremder die Datei, bleibt die letzte N sichtbar."""
+    n2 = N + b"- [ ] neu\n"
+    env.writer.write("2026-01-01.md", E, N)
+    env.writer.write("2026-01-01.md", N, n2)
+    (env.root / "2026-01-01.md").write_bytes(X)
+    env.finish()
+    assert env.conflicts() == [n2]

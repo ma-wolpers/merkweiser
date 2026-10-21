@@ -37,3 +37,30 @@ def test_hit_rows_and_conflict_choices(tmp_path: Path) -> None:
     assert conflict_result(case, Choice.KONFLIKTVERSION) == case.conflict_bytes
     assert conflict_result(case, Choice.BEIDE) == b"Uni #uni\n- [ ] Lernen\n- [ ] Lesen\n"
     assert date(2026, 1, 1).isoformat() == row.day
+
+
+def _case(main: bytes | None, other: bytes, device: str = "ABCDEFG"):
+    """Synthetischer Konfliktfall nur mit den Feldern, die die Anzeigemodelle lesen."""
+    from types import SimpleNamespace
+    conflict = SimpleNamespace(stamp="20261021-140312", device=device, own=device.startswith("MERKWEISER"))
+    return SimpleNamespace(main_bytes=main, conflict_bytes=other, conflict=conflict)
+
+
+def test_conflict_diff_marks_sides_and_skips_long_equal_runs() -> None:
+    from merkweiser.app.views import conflict_diff
+    common = b"".join(b"Zeile %d\n" % i for i in range(10))
+    rows = conflict_diff(_case(common + b"- [ ] Aufgabe\n", common + b"- [x] Aufgabe\n"))
+    sides = [(r.side, r.text) for r in rows]
+    assert sides[0] == ("ausgelassen", "… 9 gleiche Zeile(n) …")
+    assert sides[1:] == [("beide", "Zeile 9"), ("haupt", "- [ ] Aufgabe"), ("konflikt", "- [x] Aufgabe")]
+
+
+def test_conflict_diff_without_main_shows_only_conflict_lines() -> None:
+    from merkweiser.app.views import conflict_diff
+    assert [r.side for r in conflict_diff(_case(None, b"a\nb\n"))] == ["konflikt", "konflikt"]
+
+
+def test_conflict_origin_names_source_and_time() -> None:
+    from merkweiser.app.views import conflict_origin
+    assert conflict_origin(_case(b"", b"")) == "von Syncthing-Gerät ABCDEFG, 21.10.2026 14:03"
+    assert conflict_origin(_case(b"", b"", "MERKWEISERAB12CD34")).startswith("von Merkweiser selbst")

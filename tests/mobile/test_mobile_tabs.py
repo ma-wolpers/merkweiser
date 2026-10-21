@@ -12,7 +12,7 @@ ft = pytest.importorskip("flet")
 
 from merkweiser.app.notes_service import NotesService  # noqa: E402
 from merkweiser.app.settings import Settings  # noqa: E402
-from merkweiser.mobile.ui import tabs  # noqa: E402
+from merkweiser.mobile.ui import conflict_view, tabs  # noqa: E402
 from tests.fakes import FakeClock  # noqa: E402
 
 
@@ -43,7 +43,7 @@ def app(tmp_path: Path) -> SimpleNamespace:
                            render=lambda: None, show_setup=lambda: None)
 
 
-@pytest.mark.parametrize("builder", [tabs.today_view, tabs.todos_view, tabs.search_view, tabs.conflicts_view,
+@pytest.mark.parametrize("builder", [tabs.today_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view,
                                      tabs.settings_view, tabs.setup_view])
 def test_every_tab_builds_controls(tmp_path: Path, builder) -> None:
     """Alle Tabs liefern eine nicht leere Control-Liste."""

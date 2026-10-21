@@ -24,7 +24,7 @@ from ...app.settings import Settings, load_settings, save_settings
 from ...core.clock import SystemClock
 from ...ports.storage_access import AppStorage, FolderAccess
 from ..platform.flet_access import FletFolderAccess, resolve_app_storage
-from . import tabs
+from . import conflict_view, tabs
 
 TAB_NAMES = ("Heute", "Todos", "Suche", "Konflikte", "Einstellungen")
 TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.SYNC_PROBLEM, ft.Icons.SETTINGS)
@@ -133,7 +133,7 @@ class MobileApp:
 
     def render(self) -> None:
         """Zeichnet den aktuellen Tab neu."""
-        builders = (tabs.today_view, tabs.todos_view, tabs.search_view, tabs.conflicts_view, tabs.settings_view)
+        builders = (tabs.today_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view, tabs.settings_view)
         self.body.controls = builders[self.tab](self)
         self.page.update()
 

@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Eigene Folgeänderung in der Quarantäne, Konfliktansicht
+
+- Gerätebefund: Ab- und sofort wieder Enthaken erzeugte Konfliktdateien in einem Ordner ohne Syncthing. Ursache: Die Abschlussprüfung der ersten Op fand ihr `N` nicht mehr in `P` und machte es als Konflikt sichtbar, obwohl die eigene Folge-Op es verdrängt und gesichert hatte. Fix `Writer._superseded`; Tests für zwei Folgeänderungen, A→B→A→B und „Fremder ersetzt danach“ (dann bleibt die letzte `N` weiterhin sichtbar).
+- Konfliktansicht (Mobile) neu als `mobile/ui/conflict_view.py`: Vergleich beider Fassungen statt nur der Konfliktversion, Herkunft, erklärte Knöpfe. Anzeigemodelle `conflict_diff`, `conflict_origin` in `app/views.py` (auch für den Desktop).
+
 ## 2026-10-21 – S1-Gerätebefund: Selbsttest der Install-Primitive
 
 - S1-Bericht vom Gerät (SD-Karte): `os.link` ist verboten (`PermissionError`), `renameat2(RENAME_NOREPLACE)` funktioniert. Ohne Änderung wäre auf Android **jedes Speichern** gescheitert, weil `FsOps` auf POSIX fest `link`+`unlink` nutzte.
