@@ -13,7 +13,7 @@ Semantik (``docs/PLAN.md``, „Suche“), für Desktop und Mobile identisch:
   oder ``REGEX`` (``re.IGNORECASE``). Ungültiger Regex → ``InvalidQuery``.
 * ``von``/``bis``: Datum der Tagesdatei, inklusiv.
 
-Treffer sind Knoten (Thema, Überschrift, Listenpunkt, Sonstiges) mit Kontext.
+Treffer sind Knoten (Thema, Listenpunkt, Sonstiges) mit Kontext.
 """
 
 from __future__ import annotations
@@ -126,7 +126,7 @@ class Hit:
         tags: Effektive Tag-Schlüssel (sortiert).
         projects: Effektive Projekte.
         inherited_projects: Davon nur geerbte Projekte.
-        context: Erste Zeilen der Vorfahren (Überschriften, Thema, Eltern-Punkte).
+        context: Erste Zeilen der Vorfahren (Thema, Eltern-Punkte).
     """
 
     relpath: str

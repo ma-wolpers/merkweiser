@@ -33,77 +33,93 @@ CONCEPT_EXAMPLE = """Notiz-Thema (worum geht es?)
 
   - [ ] offenes todo des Teilpunkts
 
-    - [ ] offenes teil-todo
-
-- ==teilpunkt==
-
-- [ ] offenes todo
-
-  - [ ] offenes teil-todo
-
 - [ ] ==offenes dringendes todo==
-
-weiteres Thema zur gleichen Notiz
-
-- [x] erledigtes todo
-
-- [ ] todo mit tag #tagname
 """
 
 
-def test_concept_example_structure() -> None:
-    """Das Konzeptbeispiel ergibt zwei Themen mit der erwarteten Verschachtelung."""
-    rows = describe(CONCEPT_EXAMPLE)
-    assert [r[0] for r in rows].count("topic") == 2
+def test_loose_concept_list_splits_into_notes() -> None:
+    """Formatänderung 2026-10-21: Jede Leerzeile beendet eine Notiz, auch in einer „lockeren“ Liste.
+
+    Jeder von Leerzeilen umgebene Punkt ist eine eigene Notiz ohne Thema; Verschachtelung und
+    Vererbung über Leerzeilen hinweg gibt es nicht mehr (Nutzerentscheidung).
+    """
+    source = SourceText.from_bytes(CONCEPT_EXAMPLE.encode())
+    layout = analyze(source.lines)
+    assert len(layout.notes) == 4
+    outline = build_outline(source.lines, layout, layout.notes[2])
+    [item] = outline.items()
+    assert outline.nodes[item.parent].implicit
+
+
+CONCEPT_TIGHT = """Notiz-Thema #tagname
+- teilpunkt
+  - [ ] offenes todo des Teilpunkts
+    - [ ] offenes teil-todo
+- ==teilpunkt==
+- [ ] ==offenes dringendes todo==
+weiter zum dringenden Todo
+- [x] erledigtes todo
+"""
+
+
+def test_tight_note_structure_with_one_topic() -> None:
+    """Ohne Leerzeilen: ein Thema, Verschachtelung nach Einrückung, Fortsetzung ohne Einrückung."""
+    rows = describe(CONCEPT_TIGHT)
+    assert [r[0] for r in rows].count("topic") == 1
     pairs = [(r[1].strip(), r[2].strip()) for r in rows if r[0] == "item"]
     assert pairs == [
-        ("- teilpunkt", "Notiz-Thema (worum geht es?)"),
+        ("- teilpunkt", "Notiz-Thema #tagname"),
         ("- [ ] offenes todo des Teilpunkts", "- teilpunkt"),
         ("- [ ] offenes teil-todo", "- [ ] offenes todo des Teilpunkts"),
-        ("- ==teilpunkt==", "Notiz-Thema (worum geht es?)"),
-        ("- [ ] offenes todo", "Notiz-Thema (worum geht es?)"),
-        ("- [ ] offenes teil-todo", "- [ ] offenes todo"),
-        ("- [ ] ==offenes dringendes todo==", "Notiz-Thema (worum geht es?)"),
-        ("- [x] erledigtes todo", "weiteres Thema zur gleichen Notiz"),
-        ("- [ ] todo mit tag #tagname", "weiteres Thema zur gleichen Notiz"),
+        ("- ==teilpunkt==", "Notiz-Thema #tagname"),
+        ("- [ ] ==offenes dringendes todo==", "Notiz-Thema #tagname"),
+        ("- [x] erledigtes todo", "Notiz-Thema #tagname"),
     ]
+    tags = {r[1].strip(): r[3] for r in rows}
+    assert tags["- [x] erledigtes todo"] == ["tagname"]
 
 
 def test_concept_example_status_and_urgency() -> None:
     """Status und Dringlichkeit der Konzept-Todos."""
-    outline, lines = outline_of(CONCEPT_EXAMPLE)
+    outline, lines = outline_of(CONCEPT_TIGHT)
     by_text = {lines[n.lines[0]].strip(): n.item for n in outline.items()}
     assert by_text["- [ ] ==offenes dringendes todo=="].urgent
     assert by_text["- [x] erledigtes todo"].status is TodoStatus.DONE
     assert by_text["- ==teilpunkt=="].status is TodoStatus.NONE
 
 
-def test_topic_tag_inherited_and_ended_by_next_topic() -> None:
-    """Konzept: Thema-Tag gilt für folgende Punkte, ein neues Thema ohne Tag beendet ihn."""
-    text = ("Notiz-Thema mit einem tag #tagname\n- teilpunkt\n- [ ] offenes todo\n"
-            "- [ ] todo mit zusätzlichem tag #anderertagname\n"
-            "anderes Thema zur gleichen Notiz ohne den Tag\n- teilpunkt ohne den Tag\n")
-    rows = {r[1]: r[3] for r in describe(text)}
-    assert rows["- [ ] offenes todo"] == ["tagname"]
-    assert rows["- [ ] todo mit zusätzlichem tag #anderertagname"] == ["anderertagname", "tagname"]
-    assert rows["- teilpunkt ohne den Tag"] == []
+def test_unindented_line_under_item_is_continuation() -> None:
+    """Formatänderung 2026-10-21: Nicht eingerückter Text direkt unter einem Punkt gehört zum Punkt."""
+    outline, lines = outline_of("Thema #t\n- [ ] a\nweiter #f\n- [ ] b\n")
+    first, second = outline.items()
+    assert first.lines == (1, 2)
+    assert [n.kind for n in outline.nodes].count(NodeKind.TOPIC) == 1
+    tags = compute_tags(outline)
+    assert tags[first.index].effective == {"t", "f"} and tags[second.index].effective == {"t"}
 
 
-def test_uni_example_from_concept() -> None:
-    """Konzept: ``Thema #uni`` → das Todo trägt effektiv ``uni``."""
-    rows = {r[1]: r[3] for r in describe("Thema #uni\n\n- Teilpunkt\n\n- [ ] Todo\n")}
-    assert rows["- [ ] Todo"] == ["uni"]
+def test_topic_tag_ends_at_blank_line() -> None:
+    """Thema-Tag gilt bis zur nächsten Leerzeile; danach ist es eine neue Notiz."""
+    text = "Notiz-Thema #tagname\n- [ ] offenes todo\n\nanderes Thema ohne Tag\n- teilpunkt\n"
+    assert {r[1]: r[3] for r in describe(text)}["- [ ] offenes todo"] == ["tagname"]
+    outline, lines = outline_of(text, note_index=1)
+    assert compute_tags(outline)[outline.items()[0].index].effective == frozenset()
 
 
-def test_explanation_paragraph_belongs_to_topic() -> None:
-    """Absatz vor dem ersten Punkt ist Erläuterung, nach Punkten ein neues Thema."""
-    text = "Elternabend #schule\n\nVorher Raum klären #raum\n\n- [ ] Beamer\nweiteres Thema\n- [ ] Kopien\n"
-    outline, lines = outline_of(text)
+def test_uni_example_without_blank_lines() -> None:
+    """``Thema #uni`` direkt über dem Todo → das Todo trägt effektiv ``uni``; mit Leerzeile nicht."""
+    assert {r[1]: r[3] for r in describe("Thema #uni\n- Teilpunkt\n- [ ] Todo\n")}["- [ ] Todo"] == ["uni"]
+    outline, _ = outline_of("Thema #uni\n\n- [ ] Todo\n", note_index=1)
+    assert compute_tags(outline)[outline.items()[0].index].effective == frozenset()
+
+
+def test_explanation_lines_belong_to_topic() -> None:
+    """Textzeilen vor dem ersten Punkt bilden zusammen das (einzige) Thema."""
+    text = "Elternabend #schule\nVorher Raum klären #raum\n- [ ] Beamer\n"
+    outline, _ = outline_of(text)
     topics = [n for n in outline.nodes if n.kind is NodeKind.TOPIC]
-    assert [len(t.lines) for t in topics] == [2, 1]
-    rows = {r[1]: r[3] for r in describe(text)}
-    assert rows["- [ ] Beamer"] == ["raum", "schule"]
-    assert rows["- [ ] Kopien"] == []
+    assert [len(t.lines) for t in topics] == [2]
+    assert {r[1]: r[3] for r in describe(text)}["- [ ] Beamer"] == ["raum", "schule"]
 
 
 def test_item_tags_inherited_along_indentation() -> None:
@@ -112,34 +128,36 @@ def test_item_tags_inherited_along_indentation() -> None:
     assert rows["- b"] == ["x"] and rows["- c"] == ["x"] and rows["- d"] == []
 
 
-def test_heading_tags_cover_topics_until_same_level() -> None:
-    """Überschrift-Tags gelten für alle Themen darunter bis zur gleichrangigen Überschrift."""
-    text = "# Woche #w\n## Mo\nThema A\n- [ ] a\nThema B\n- [ ] b\n# Andere\n- [ ] c\n"
-    rows = {r[1]: r[3] for r in describe(text)}
-    assert rows["- [ ] a"] == ["w"] and rows["- [ ] b"] == ["w"] and rows["- [ ] c"] == []
+def test_headings_are_plain_text() -> None:
+    """Formatänderung 2026-10-21: ``# Woche #w`` ist gewöhnlicher Text (hier das Thema); ``#w`` bleibt ein Tag."""
+    outline, lines = outline_of("# Woche #w\n- [ ] a\n## Mo\n")
+    assert outline.nodes[0].kind is NodeKind.TOPIC and lines[outline.nodes[0].lines[0]] == "# Woche #w"
+    [item] = outline.items()
+    assert item.lines == (1, 2)  # „## Mo“ direkt darunter ist Fortsetzung
+    assert compute_tags(outline)[item.index].effective == {"w"}
 
 
-def test_heading_ends_topic() -> None:
-    """Eine Überschrift beendet das aktuelle Thema (keine Vererbung darüber hinaus)."""
-    rows = {r[1]: r[3] for r in describe("Thema #t\n- a\n## Abschnitt\n- b\n")}
-    assert rows["- b"] == []
+def test_setext_underline_is_text_or_separator() -> None:
+    """``===`` unter Text ist Text des Themas; ``---`` unter Text ist ein Trenner."""
+    outline, lines = outline_of("Titel #h\n===\n- x\n")
+    assert outline.nodes[0].lines == (0, 1)
+    source = SourceText.from_bytes("Titel\n---\n- y\n".encode())
+    assert len(analyze(source.lines).notes) == 2
 
 
-def test_setext_heading() -> None:
-    """``Text`` + ``===``/``---`` direkt darunter ist eine Überschrift."""
-    outline, _ = outline_of("Titel #h\n===\nThema\n- x\nUnter\n---\n- y\n")
-    headings = [n for n in outline.nodes if n.kind is NodeKind.HEADING]
-    assert [h.level for h in headings] == [1, 2]
-    rows = {r[1]: r[3] for r in describe("Titel #h\n===\nThema\n- x\n")}
-    assert rows["- x"] == ["h"]
-
-
-def test_items_before_first_topic_use_implicit_topic() -> None:
-    """Punkte vor dem ersten Thema hängen an einem impliziten Thema ohne Tags."""
+def test_items_before_text_use_implicit_topic() -> None:
+    """Punkte am Notizanfang hängen an einem impliziten Thema; späterer Text ist Fortsetzung, kein Thema."""
     outline, _ = outline_of("- [ ] a\nThema #t\n- [ ] b\n")
     assert outline.nodes[0].implicit and outline.nodes[0].kind is NodeKind.TOPIC
     rows = {r[1]: r[3] for r in describe("- [ ] a\nThema #t\n- [ ] b\n")}
-    assert rows["- [ ] a"] == [] and rows["- [ ] b"] == ["t"]
+    assert rows["- [ ] a"] == ["t"] and rows["- [ ] b"] == []
+
+
+def test_text_after_other_block_never_starts_second_topic() -> None:
+    """Text nach einem Zitat unterhalb der Punkte bleibt „Sonstiges“; es gibt nur ein Thema."""
+    outline, _ = outline_of("Thema\n- a\n> zitat\nnoch Text\n- b\n")
+    kinds = [n.kind for n in outline.nodes]
+    assert kinds.count(NodeKind.TOPIC) == 1 and kinds.count(NodeKind.OTHER) == 2
 
 
 def test_orphan_indented_item_becomes_root_item() -> None:
@@ -192,5 +210,5 @@ def test_tags_are_case_insensitive() -> None:
 
 def test_second_note_is_independent() -> None:
     """Tags enden an der Notizgrenze."""
-    outline, lines = outline_of("Thema #t\n- a\n\n---\n\n- [ ] b\n", note_index=1)
+    outline, lines = outline_of("Thema #t\n- a\n\n- [ ] b\n", note_index=1)
     assert compute_tags(outline)[outline.items()[0].index].effective == frozenset()

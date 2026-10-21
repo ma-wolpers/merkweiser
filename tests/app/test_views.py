@@ -15,13 +15,13 @@ from tests.fakes import FakeClock
 
 
 def test_note_rows_strip_markers_and_track_depth() -> None:
-    """Zeilen ohne Marker/Checkbox, mit Tiefe, Status und effektiven Tags."""
+    """Zeilen ohne Marker/Checkbox, mit Tiefe, Status und effektiven Tags; „## …“ ist Text des Themas."""
     doc = parse_document(b"## Woche #w\nThema #t\n- [ ] ==eilig==\n  - Unterpunkt\n- [x] fertig\n")
     rows = note_rows("a.md", doc, doc.notes[0])
     assert [(r.kind, r.text, r.depth, r.done) for r in rows] == [
-        ("heading", "Woche #w", 0, None), ("topic", "Thema #t", 1, None), ("todo", "==eilig==", 2, False),
-        ("item", "Unterpunkt", 3, None), ("todo", "fertig", 2, True)]
-    assert rows[2].urgent and rows[2].tags == ("t", "w") and rows[2].target.line_no == 2
+        ("topic", "## Woche #w", 0, None), ("todo", "==eilig==", 1, False),
+        ("item", "Unterpunkt", 2, None), ("todo", "fertig", 1, True)]
+    assert rows[1].urgent and rows[1].tags == ("t", "w") and rows[1].target.line_no == 2
 
 
 def test_hit_rows_and_conflict_choices(tmp_path: Path) -> None:
@@ -86,11 +86,11 @@ def test_note_ref_addresses_note_by_content_lines(tmp_path: Path) -> None:
     assert (root / "2026-01-15.md").read_bytes() == b"Erste #a\n- [x] eins\n"
 
 
-def test_note_ref_skips_empty_notes() -> None:
-    """Leere Notizen (zwei Trenner hintereinander) haben nichts zu bearbeiten."""
+def test_two_separators_give_no_empty_note() -> None:
+    """Zwei Trenner hintereinander ergeben keine leere Notiz; jede Notiz hat eine Adresse."""
     from merkweiser.app.views import note_ref
     doc = parse_document(b"a\n\n---\n\n---\n\nb\n")
-    assert [note_ref("x.md", doc, n) is None for n in doc.notes] == [False, True, False]
+    assert [note_ref("x.md", doc, n).text for n in doc.notes] == ["a", "b"]
 
 
 @pytest.mark.parametrize("today, expected", [

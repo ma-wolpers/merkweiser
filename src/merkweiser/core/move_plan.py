@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .document import Document, ParsedNote
-from .note_ops import append_note
+from .note_ops import append_note, delete_note
 from .patch import BlockTarget, LineEdit, Target, apply_edits, resolve_block, resolve_line
 
 MOVED_HEADER = "Verschoben aus [[{stem}]]"
@@ -90,14 +90,21 @@ def remove_moved_source(doc: Document, plan: MovePlan) -> bytes:
         doc: Aktuelles Dokument der Quelldatei.
         plan: Ergebnis von ``plan_move``.
 
+    Ist der Block eine ganze Notiz (z. B. ein Todo zwischen Leerzeilen), wird
+    sie wie mit „Notiz löschen“ samt einer angrenzenden Lücke entfernt, damit
+    keine doppelten Leerzeilen zurückbleiben.
+
     Returns:
         Neue Bytes der Quelldatei.
 
     Raises:
         StaleTargetError: Block verändert, verschwunden oder mehrfach vorhanden.
     """
+    expected = plan.source_block.expected_lines
     start = resolve_block(doc.source, plan.source_block, unique=True)
-    return apply_edits(doc.source, [LineEdit(start, start + len(plan.source_block.expected_lines), ())])
+    if any(n.note.span.start == start and n.note.span.end == start + len(expected) for n in doc.notes):
+        return delete_note(doc, tuple(expected))
+    return apply_edits(doc.source, [LineEdit(start, start + len(expected), ())])
 
 
 def _inherited_tag_names(note: ParsedNote, node_index: int) -> list[str]:
@@ -108,7 +115,7 @@ def _inherited_tag_names(note: ParsedNote, node_index: int) -> list[str]:
         node_index: Index des Wurzel-Todos.
 
     Returns:
-        Namen in der Reihenfolge äußerste Überschrift → Eltern-Punkt, ohne Duplikate.
+        Namen in der Reihenfolge Thema → Eltern-Punkt, ohne Duplikate.
     """
     nodes = note.outline.nodes
     own = {tag.key for tag in nodes[node_index].tags}

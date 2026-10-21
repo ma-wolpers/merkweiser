@@ -41,7 +41,7 @@ def test_moved_todo_keeps_effective_tags_in_target() -> None:
 def test_insert_creates_or_reuses_moved_note() -> None:
     """Fehlt die Notiz „Verschoben aus …“, wird sie angehängt; sonst wird sie wiederverwendet."""
     first = insert_moved(parse_document(b"Heute\n- [ ] x\n"), plan(), "2026-10-08")
-    assert first.decode().endswith("---\n\nVerschoben aus [[2026-10-08]]\n- [ ] Kapitel schreiben #text #w #uni "
+    assert first.decode().endswith("- [ ] x\n\nVerschoben aus [[2026-10-08]]\n- [ ] Kapitel schreiben #text #w #uni "
                                    "#projekt/Bachelor\n  - [ ] Abschnitt 1\n  weiter\n")
     second = insert_moved(parse_document(first), plan(), "2026-10-08")
     assert second.decode().count("Verschoben aus [[2026-10-08]]") == 1
@@ -59,3 +59,10 @@ def test_remove_source_only_with_exact_unique_block() -> None:
     duplicated = SOURCE + "\nNoch\n  - [ ] Kapitel schreiben #text\n    - [ ] Abschnitt 1\n    weiter\n"
     with pytest.raises(StaleTargetError):
         remove_moved_source(parse_document(duplicated.encode()), move)
+
+
+def test_moving_a_lone_todo_removes_its_blank_gap() -> None:
+    """Ein Todo als eigene Notiz zwischen Leerzeilen: Die Quelle behält keine doppelte Leerzeile."""
+    source = parse_document("A\n\n- [ ] allein\n\nB\n".encode())
+    move = plan_move(source, Target("2026-10-08.md", 2, "- [ ] allein"))
+    assert remove_moved_source(source, move) == "A\n\nB\n".encode()

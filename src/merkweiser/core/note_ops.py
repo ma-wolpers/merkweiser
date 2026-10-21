@@ -28,8 +28,10 @@ def append_note(doc: Document, text: str) -> bytes:
 
     Alle Zeilen bis zur letzten Inhaltszeile bleiben byte-genau erhalten
     (fehlt dieser Zeile das Zeilenende, bekommt sie eines). Leerzeilen am
-    Dateiende werden durch den Block „Leerzeile, ``---``, Leerzeile, Notiz“
-    ersetzt; jede neue Zeile endet mit dem dominanten Zeilenende.
+    Dateiende werden durch „Leerzeile, Notiz“ ersetzt (seit 2026-10-21 trennt
+    jede Leerzeile Notizen; ``---`` schreibt Merkweiser nicht mehr). Jede neue
+    Zeile endet mit dem dominanten Zeilenende. Enthält ``text`` Leerzeilen,
+    entstehen daraus mehrere Notizen.
 
     Args:
         doc: Aktuelles Dokument (auch leer oder nur Frontmatter).
@@ -54,7 +56,7 @@ def append_note(doc: Document, text: str) -> bytes:
     kept = list(lines[:keep_until])
     if kept and kept[-1].eol == "":
         kept[-1] = Line(kept[-1].no, kept[-1].text, eol)
-    block = (("", "---", "") if content_nos else ()) + new
+    block = (("",) if content_nos else ()) + new
     rebuilt = "".join(line.text + line.eol for line in kept) + "".join(b + eol for b in block)
     return SourceText(doc.source.raw, doc.source.encoding, split_lines(rebuilt)).to_bytes()
 
@@ -80,10 +82,12 @@ def replace_note_text(doc: Document, original: tuple[str, ...], text: str) -> by
 
 
 def delete_note(doc: Document, original: tuple[str, ...]) -> bytes:
-    """Löscht eine Notiz samt genau einem angrenzenden Trenner.
+    """Löscht eine Notiz samt **einer** angrenzenden Lücke (Leerzeilen, alte Trenner ``---``).
 
-    Bevorzugt wird der Trenner davor; bei der ersten Notiz der danach. Leerzeilen
-    an der entstehenden Naht werden auf die der verbleibenden Nachbarn reduziert.
+    Bevorzugt wird die Lücke danach, damit die folgende Notiz an die Stelle
+    rückt; bei der letzten Notiz die Lücke davor, damit die Datei direkt nach
+    der vorigen Notiz endet. Die einzige Notiz einer Datei hinterlässt eine
+    Datei ohne Inhalt (der Start räumt sie auf, siehe ``NotesService``).
 
     Args:
         doc: Aktuelles Dokument.
@@ -96,20 +100,15 @@ def delete_note(doc: Document, original: tuple[str, ...]) -> bytes:
         NoteNotFoundError: Notiz nicht eindeutig auffindbar.
     """
     note = _find_note(doc, original)
-    separators = doc.layout.separators
-    before = [s for s in separators if s < note.span.start]
-    after = [s for s in separators if s >= note.span.end]
-    if before:
-        start, end = before[-1], note.span.end
-        if not after:  # letzte Notiz: Leerzeilen davor gehören jetzt zum Dateiende
-            while start > 0 and doc.source.lines[start - 1].is_blank:
-                start -= 1
-    elif after:
-        start, end = note.span.start, after[0] + 1
-        while end < len(doc.source.lines) and doc.source.lines[end].is_blank:
-            end += 1
+    notes = [n.note.span for n in doc.notes]
+    position = next(i for i, span in enumerate(notes) if span == note.span)
+    body_start = doc.layout.frontmatter.end if doc.layout.frontmatter else 0
+    if position + 1 < len(notes):
+        start, end = note.span.start, notes[position + 1].start
+    elif position > 0:
+        start, end = notes[position - 1].end, len(doc.source.lines)
     else:
-        start, end = note.span.start, note.span.end
+        start, end = body_start, len(doc.source.lines)
     return apply_edits(doc.source, [LineEdit(start, end, ())])
 
 

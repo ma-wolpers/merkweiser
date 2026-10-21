@@ -12,28 +12,33 @@ Grundsatz: **Merkweiser liest deine Markdown-Dateien, schreibt sie aber nie neu.
 - **Encoding:** Merkweiser liest und schreibt UTF-8 mit und ohne BOM. Andere Dateien zeigt es nur an und durchsucht sie, ändert sie aber nie, und markiert sie mit einem Hinweis.
 - Zeilenenden (LF/CRLF, auch gemischt) und ein fehlender Schluss-Zeilenumbruch bleiben erhalten.
 
-## Notizen und Trenner
+## Notizen
+
+*Geändert am 2026-10-21: Vorher trennte nur `---` Notizen; Leerzeilen gehörten zur Notiz.*
 
 - Eine Datei enthält beliebig viele Notizen.
-- Ein **Trenner** ist eine Zeile `---`, vor der eine **Leerzeile** steht oder die am Notizanfang steht.
+- **Jede Leerzeile beendet eine Notiz.** Eine Notiz ist also ein Block von Zeilen ohne Leerzeile dazwischen.
 
   ```markdown
   Notiz vom Vormittag
   - Inhalt
 
-  ---
-
   Notiz vom Nachmittag
+
+  - [ ] dieses Todo ist eine eigene Notiz (ohne Thema)
   ```
 
-- `Text` direkt gefolgt von `---` (ohne Leerzeile dazwischen) ist eine **Überschrift** (Setext-H2), kein Trenner. So stellt es auch Obsidian dar.
+- Einzige Ausnahme: Leerzeilen **in einem Codeblock** beenden die Notiz nicht.
+- Eine Zeile, die nur `---` enthält, ist ein **Trenner**: Sie beendet die Notiz und wird nicht angezeigt, auch direkt unter Text. Merkweiser schreibt selbst keine Trenner mehr; vorhandene bleiben stehen.
+- Leere Notizen gibt es nicht. Leerzeilen und Trenner am Stück erzeugen keine Notiz.
 - **Frontmatter:** Beginnt die Datei mit `---`, ist alles bis zur nächsten `---`- oder `...`-Zeile Frontmatter. Das ist keine Notiz und wird nie verändert.
-- Merkweiser schreibt Trenner immer mit einer Leerzeile davor und danach.
+- Merkweiser schreibt eine neue Notiz mit genau einer Leerzeile davor.
+- **Folge für ältere Dateien:** Die Dateien bleiben unverändert, werden aber neu gelesen. Steht zwischen einem Thema und seinen Todos eine Leerzeile, sind das jetzt getrennte Notizen, und die Todos erben die Tags des Themas nicht mehr. Dasselbe gilt für „lockere“ Listen mit Leerzeilen zwischen den Punkten: Jeder Punkt ist eine eigene Notiz, Verschachtelung über Leerzeilen hinweg gibt es nicht.
 
 ## Codeblöcke
 
 - Ein Codeblock beginnt mit mindestens drei Backticks oder Tilden und endet mit **demselben Zeichen in mindestens derselben Anzahl**. Eine kürzere Folge ```` ``` ```` innerhalb eines ```` ```` ````-Blocks schließt ihn also nicht.
-- Im Codeblock gibt es keine Trenner, Tags, Todos oder Themen. Er bleibt unverändert.
+- Im Codeblock gibt es keine Trenner, Notizgrenzen, Tags, Todos oder Themen. Er bleibt unverändert.
 - Ein nicht geschlossener Codeblock reicht bis zum Dateiende, wie in Obsidian.
 - **GRENZE:** Mit vier Leerzeichen eingerückter Code ohne Backticks gilt nicht als Codeblock.
 
@@ -41,36 +46,34 @@ Grundsatz: **Merkweiser liest deine Markdown-Dateien, schreibt sie aber nie neu.
 
 Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die obere):
 
-1. **Leerzeile**
-2. **Überschrift:** `#`, `##` … mit Leerzeichen, oder Setext (Absatz mit `===`/`---` direkt darunter; **GRENZE:** mindestens 3 Zeichen). `#tag` ohne Leerzeichen ist ein Tag, keine Überschrift.
-3. **Listenpunkt:** beginnt mit `-`, `*`, `+`, `1.` oder `1)`.
-4. **Fortsetzung:** eine eingerückte Zeile direkt unter einem Listenpunkt; sie gehört zu diesem Punkt.
-5. **Sonstiges:** Zitate `>`, Tabellen `|`, HTML `<`, Zeilen nur mit Bild bzw. Embed, eingerückter Text ohne Punkt. Sie bleiben erhalten, beginnen aber nie ein Thema.
-6. **Absatz** auf Ebene 0 (ohne Einrückung).
+1. **Listenpunkt:** beginnt mit `-`, `*`, `+`, `1.` oder `1)`.
+2. **Fortsetzung:** eine Zeile direkt unter einem Listenpunkt (oder unter dessen Fortsetzung), **eingerückt oder nicht**; sie gehört zu diesem Punkt und beginnt kein Thema. Ausgenommen sind Zeilen der Klasse „Sonstiges“ ohne Einrückung.
+3. **Sonstiges:** Zitate `>`, Tabellen `|`, HTML `<`, Zeilen nur mit Bild bzw. Embed, eingerückter Text ohne Punkt. Sie bleiben erhalten, beginnen aber nie ein Thema.
+4. **Text** auf Ebene 0 (ohne Einrückung).
 
-### Themen
+**Überschriften sind gewöhnlicher Text** (geändert am 2026-10-21): `## Woche #w` wird angezeigt, wie es dasteht, und behandelt wie jede andere Textzeile. `#w` darin ist ein normaler Tag. Eine `===`-Unterstreichung ist ebenfalls Text; `---` direkt unter Text ist ein Trenner.
 
-- Ein Absatz auf Ebene 0 beginnt ein **Thema**, wenn er der erste Absatz der Notiz bzw. unter einer Überschrift ist oder wenn seit dem letzten Thema mindestens ein Listenpunkt kam.
-- Weitere Absätze *vor* dem ersten Listenpunkt sind **Erläuterung** und gehören noch zum Thema:
+### Thema
+
+- **Jede Notiz hat höchstens ein Thema:** die Textzeilen am Anfang der Notiz, vor dem ersten Listenpunkt. Mehrere solche Zeilen bilden zusammen das Thema (die zweite und weitere sind „Erläuterung“).
 
   ```markdown
   Elternabend #schule        ← Thema
   Vorher Raum klären.        ← Erläuterung (gehört zum Thema)
   - [ ] Beamer reservieren   ← erbt #schule
-  weiteres Thema             ← neues Thema
-  - [ ] Kopien               ← erbt #schule nicht
+  noch zum Beamer            ← Fortsetzung des Punkts darüber
+  - [ ] Kopien               ← erbt #schule
+
+  Neues Thema                ← neue Notiz, neues Thema
+  - [ ] Stühle               ← erbt #schule nicht
   ```
 
-- Eine Notiz darf beliebig viele Themen haben. Listenpunkte vor dem ersten Thema gehören zu einem unsichtbaren Thema ohne Tags.
-- **GRENZE:** Eine nicht eingerückte Textzeile **direkt** unter einem Listenpunkt (ohne Leerzeile) beginnt bei Merkweiser ein neues Thema, so wie im Konzeptbeispiel. Obsidian stellt sie als Fortsetzung des Punkts dar. Soll sie zum Punkt gehören, rücke sie ein.
-
-### Überschriften
-
-Eine Überschrift der Stufe *h* gilt bis zur nächsten Überschrift der Stufe ≤ *h* bzw. bis zum Notizende. Sie beendet das aktuelle Thema, ihre Tags gelten aber für alles darunter.
+- Nach dem ersten Listenpunkt beginnt nie ein Thema. Text, der nicht direkt unter einem Punkt steht (etwa nach einem Zitat), bleibt als „Sonstiges“ in der Notiz.
+- Beginnt eine Notiz mit einem Listenpunkt, hat sie **kein Thema**. Das ist z. B. bei einem einzelnen Todo zwischen Leerzeilen der Fall.
 
 ### Einrückung
 
-- Die Einrückung bestimmt die Verschachtelung. Eltern eines Punkts ist der nächste Punkt darüber mit kleinerer Einrückung im selben Thema.
+- Die Einrückung bestimmt die Verschachtelung. Eltern eines Punkts ist der nächste Punkt darüber mit kleinerer Einrückung in derselben Notiz.
 - **Tabs** springen zur nächsten Spalte, die ein Vielfaches von 4 ist (Tabstopps 4, 8, 12 …). Tabs und Leerzeichen dürfen gemischt werden; verglichen wird die errechnete Spalte. Die Zeichen selbst bleiben unverändert.
 - **GRENZE:** Ein eingerückter Punkt ohne passenden Elternpunkt wird flach unter dem Thema angezeigt; seine Einrückung bleibt in der Datei erhalten.
 
@@ -89,12 +92,14 @@ Eine Überschrift der Stufe *h* gilt bis zur nächsten Überschrift der Stufe �
 - Ein **Projekt** ist ein verschachtelter Tag mit einstellbarem Präfix, standardmäßig `#projekt/<name>`, z. B. `#projekt/umzug`.
   - „Projekt setzen“ ersetzt **alle** Projekt-Tags direkt in der Todo-Zeile durch genau eines, bzw. entfernt sie.
   - Geerbte Projekte wirken zusätzlich und werden als „geerbt“ angezeigt.
-- **Vererbung:** Ein Eintrag hat seine eigenen Tags, die seines Elternpunkts (entlang der Einrückung), die des aktuellen Themas (inklusive Erläuterung) und die aller umschließenden Überschriften. Ein neues Thema beendet die Themen-Vererbung.
+- **Vererbung:** Ein Eintrag hat seine eigenen Tags (inklusive seiner Fortsetzungszeilen), die seiner Elternpunkte (entlang der Einrückung) und die des Themas seiner Notiz (inklusive Erläuterung). Vererbung endet an der Notizgrenze, also an jeder Leerzeile.
 - **Suche:** Tag- und Projektfilter prüfen diese *effektiven* Tags. Mehrere Tags werden standardmäßig mit UND verknüpft; ODER lässt sich umschalten.
 
 ## Was Merkweiser selbst schreibt
 
-- **Neue Notiz:** Sie wird an die Tagesdatei von heute angehängt, mit Trenner. Es entsteht kein Metadatenblock.
+- **Neue Notiz:** Sie wird an die Tagesdatei von heute angehängt, mit einer Leerzeile davor (kein `---`). Es entsteht kein Metadatenblock. Enthält dein Text Leerzeilen, entstehen daraus mehrere Notizen.
+- **Notiz löschen:** Die Notiz verschwindet samt einer angrenzenden Lücke (Leerzeilen, alte Trenner), sodass keine doppelten Leerzeilen zurückbleiben.
+- **Leere Tagesdateien** (nur Leerzeichen, Tabs, Zeilenumbrüche und `---`) entfernt Merkweiser beim Start über das sichere Löschprotokoll, mit Backup. Nicht entfernt werden Dateien mit BOM, mit Frontmatter oder mit offenem Konflikt.
 - **Todo verschieben:** Das Todo wandert samt Unterpunkten in die Zieldatei, unter die Notiz mit dem Thema `Verschoben aus [[YYYY-MM-DD]]`. Gibt es diese Notiz schon, wird sie wiederverwendet. Geerbte Tags werden dabei ausdrücklich an das Todo geschrieben, damit Filter weiter greifen.
 - **Konfliktdateien:** Syncthing legt bei gleichzeitigen Änderungen `NAME.sync-conflict-YYYYMMDD-HHMMSS-GERÄT.md` an.
   - Kann Merkweiser eine eigene Änderung nicht sicher schreiben, legt es eine Konfliktdatei derselben Form an, mit der Gerätekennung `MERKWEISER…`.

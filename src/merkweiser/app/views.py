@@ -12,7 +12,7 @@ from datetime import date, timedelta
 
 from ..core.document import Document, ParsedNote
 from ..core.inline import TodoStatus
-from ..core.outline import Node, NodeKind
+from ..core.outline import Node
 from ..core.patch import Target
 from ..core.query import Hit
 
@@ -66,7 +66,7 @@ def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
 
 
 def display_text(line: str, node: Node) -> str:
-    """Anzeigetext ohne Listenmarker, Checkbox bzw. ``#``-Präfix einer Überschrift.
+    """Anzeigetext ohne Listenmarker und Checkbox.
 
     Args:
         line: Erste Zeile des Knotens.
@@ -77,9 +77,7 @@ def display_text(line: str, node: Node) -> str:
     """
     if node.item is not None:
         return line[node.item.body_start:].strip()
-    if node.kind is NodeKind.HEADING:
-        return line.strip().lstrip("#").strip()
-    return line.strip()
+    return line.strip()  # Überschriften sind gewöhnlicher Text: „# Woche“ bleibt sichtbar
 
 
 def _depth(note: ParsedNote, node: Node) -> int:

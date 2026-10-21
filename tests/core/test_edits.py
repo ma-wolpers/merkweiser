@@ -104,9 +104,10 @@ def test_add_todo_at_note_end_and_as_child() -> None:
 
 
 def test_append_note_rules() -> None:
-    """Anhängen: Trenner mit Leerzeilen; leere Datei/Frontmatter ohne Trenner; Umbruch ergänzt."""
-    assert append_note(doc("A\n- x"), "Neu\n- y") == b"A\n- x\n\n---\n\nNeu\n- y\n"
-    assert append_note(doc("A\r\n\r\n\r\n"), "N") == b"A\r\n\r\n---\r\n\r\nN\r\n"
+    """Anhängen: eine Leerzeile davor (kein ``---`` mehr); leere Datei/Frontmatter ohne; Umbruch ergänzt."""
+    assert append_note(doc("A\n- x"), "Neu\n- y") == b"A\n- x\n\nNeu\n- y\n"
+    assert append_note(doc("A\r\n\r\n\r\n"), "N") == b"A\r\n\r\nN\r\n"
+    assert append_note(doc("A\n\n---\n"), "N") == b"A\n\n---\n\nN\n"  # alter Trenner am Ende bleibt
     assert append_note(doc(""), "  \nN\n\n") == b"N\n"
     assert append_note(doc("---\na: 1\n---\n"), "N") == b"---\na: 1\n---\nN\n"
 
@@ -134,8 +135,24 @@ def test_replace_note_text_refuses_changed_boundaries() -> None:
     (("C",), b"A\n\n---\n\nB\n"),
 ])
 def test_delete_note_removes_one_separator(original: tuple[str, ...], expected: bytes) -> None:
-    """Löschen entfernt die Notiz und genau einen angrenzenden Trenner, Naht sauber."""
+    """Altes Format: Löschen entfernt die Notiz und genau eine angrenzende Lücke samt Trenner."""
     assert delete_note(doc("A\n\n---\n\nB\n\n---\n\nC\n"), original) == expected
+
+
+@pytest.mark.parametrize("original, expected", [
+    (("A",), b"B\n- [ ] b\n\n\nC\n"),  # Lücke B–C ist nicht betroffen
+    (("B", "- [ ] b"), b"A\n\nC\n"),
+    (("C",), b"A\n\nB\n- [ ] b\n"),
+])
+def test_delete_note_removes_one_blank_gap(original: tuple[str, ...], expected: bytes) -> None:
+    """Neues Format: Notizen nur durch Leerzeilen getrennt; Löschen hinterlässt keine doppelten Leerzeilen."""
+    assert delete_note(doc("A\n\nB\n- [ ] b\n\n\nC\n"), original) == expected
+
+
+def test_delete_only_note_leaves_empty_file() -> None:
+    """Die einzige Notiz samt Leerraum ringsum verschwindet; Frontmatter bleibt."""
+    assert delete_note(doc("\nA\n\n"), ("A",)) == b""
+    assert delete_note(doc("---\na: 1\n---\n\nA\n"), ("A",)) == b"---\na: 1\n---\n"
 
 
 def test_unsupported_encoding_is_never_written() -> None:

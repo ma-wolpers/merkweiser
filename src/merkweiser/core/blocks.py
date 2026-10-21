@@ -13,7 +13,10 @@ Regeln (verbindlich in ``docs/FORMAT.md``):
   in mindestens derselben Anzahl, danach nur Leerraum. Nicht geschlossen →
   bis Dateiende. Inhalt ist opak.
 * Trenner: Zeile, deren Inhalt ohne Leerraum genau ``---`` ist, außerhalb von
-  Code, direkt nach einer Leerzeile oder am Notizanfang.
+  Code (auch direkt unter Text; Setext-Überschriften gibt es nicht).
+* Notiz: zusammenhängender Lauf von Zeilen ohne Leerzeile und ohne Trenner.
+  **Jede** Leerzeile außerhalb von Code beendet eine Notiz (Formatänderung
+  vom 2026-10-21); Leerzeilen in Codeblöcken trennen nicht.
 """
 
 from __future__ import annotations
@@ -51,9 +54,13 @@ class Span:
 class NoteSpan:
     """Eine Notiz innerhalb einer Datei.
 
+    Seit der Formatänderung vom 2026-10-21 enthält eine Notiz nie Leerzeilen
+    am Rand; ``span`` und ``content`` sind deshalb gleich. Beide bleiben, damit
+    Aufrufer zwischen „Bereich“ und „Inhalt“ nicht unterscheiden müssen.
+
     Attributes:
-        span: Alle Zeilen zwischen den Trennern, inklusive Leerzeilen am Rand.
-        content: Der Bereich ohne Leerzeilen am Rand; ``None`` bei leerer Notiz.
+        span: Die Zeilen der Notiz.
+        content: Derselbe Bereich (nie ``None``; leere Notizen gibt es nicht mehr).
     """
 
     span: Span
@@ -72,8 +79,8 @@ class FileLayout:
     Attributes:
         frontmatter: Zeilen des Frontmatters inklusive beider Begrenzer, oder ``None``.
         fences: Codeblöcke inklusive Begrenzungszeilen.
-        separators: Zeilenindizes der Notiz-Trenner.
-        notes: Notizen in Dateireihenfolge (mindestens eine, ggf. leer).
+        separators: Zeilenindizes der Trenner ``---``.
+        notes: Notizen in Dateireihenfolge (keine bei leerer Datei).
     """
 
     frontmatter: Span | None
@@ -106,18 +113,11 @@ def analyze(lines: tuple[Line, ...]) -> FileLayout:
     body_start = frontmatter.end if frontmatter else 0
     fences = _find_fences(lines, body_start)
     code_lines = {no for fence in fences for no in range(fence.start, fence.end)}
-    separators: list[int] = []
-    note_start = body_start
-    for line in lines[body_start:]:
-        if line.no in code_lines or line.text.strip() != "---":
-            continue
-        at_note_start = line.no == note_start
-        after_blank = line.no > 0 and lines[line.no - 1].is_blank and (line.no - 1) not in code_lines
-        if at_note_start or after_blank:
-            separators.append(line.no)
-            note_start = line.no + 1
-    notes = _note_spans(lines, body_start, separators)
-    return FileLayout(frontmatter, tuple(fences), tuple(separators), notes)
+    separators = tuple(line.no for line in lines[body_start:]
+                       if line.no not in code_lines and line.text.strip() == "---")
+    breaks = set(separators) | {line.no for line in lines[body_start:] if line.is_blank and line.no not in code_lines}
+    notes = _note_spans(len(lines), body_start, breaks)
+    return FileLayout(frontmatter, tuple(fences), separators, notes)
 
 
 def _find_frontmatter(lines: tuple[Line, ...]) -> Span | None:
@@ -180,22 +180,25 @@ def _find_fence_close(lines: tuple[Line, ...], start: int, char: str, length: in
     return None
 
 
-def _note_spans(lines: tuple[Line, ...], body_start: int, separators: list[int]) -> tuple[NoteSpan, ...]:
-    """Bildet die Notiz-Spannen zwischen den Trennern.
+def _note_spans(count: int, body_start: int, breaks: set[int]) -> tuple[NoteSpan, ...]:
+    """Bildet die Notizen als Läufe von Zeilen zwischen Notiz-Enden.
 
     Args:
-        lines: Alle Zeilen.
+        count: Anzahl der Zeilen der Datei.
         body_start: Erste Zeile nach dem Frontmatter.
-        separators: Trenner-Zeilen in aufsteigender Reihenfolge.
+        breaks: Zeilen, die eine Notiz beenden (Leerzeilen außerhalb von Code, Trenner).
 
     Returns:
-        Eine Notiz pro Bereich zwischen Trennern (auch leere).
+        Eine Notiz je zusammenhängendem Lauf, in Dateireihenfolge.
     """
-    bounds = [body_start - 1, *separators, len(lines)]
-    notes = []
-    for before, after in zip(bounds, bounds[1:]):
-        span = Span(before + 1, after)
-        content_lines = [no for no in range(span.start, span.end) if not lines[no].is_blank]
-        content = Span(content_lines[0], content_lines[-1] + 1) if content_lines else None
-        notes.append(NoteSpan(span, content))
+    notes: list[NoteSpan] = []
+    start: int | None = None
+    for no in range(body_start, count + 1):
+        if no < count and no not in breaks:
+            start = no if start is None else start
+            continue
+        if start is not None:
+            span = Span(start, no)
+            notes.append(NoteSpan(span, span))
+            start = None
     return tuple(notes)

@@ -14,9 +14,7 @@ from merkweiser.core.query import (
 )
 
 DAY1 = """Uni #uni
-
 Erläuterung #klausur
-
 - [ ] Lernen
 - [x] Anmelden
 - [ ] ==Dringend abgeben==

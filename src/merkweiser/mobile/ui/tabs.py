@@ -38,6 +38,8 @@ def start_hint(report, guarantee: str = "voll") -> str:
         parts.append(f"{len(report.recovery.not_applied)} Änderung(en) wurden wegen eines Abbruchs nicht ausgeführt.")
     if any(m.state == "INCOMPLETE" for m in report.moves):
         parts.append("Ein Verschieben ist unvollständig – siehe Konflikte.")
+    if report.removed_empty:
+        parts.append(f"{len(report.removed_empty)} leere Datumsdatei(en) entfernt.")
     if report.automerges:
         parts.append(f"{len(report.automerges)} Sync-Konflikt(e) automatisch zusammengeführt.")
     return " ".join(parts)
@@ -101,11 +103,11 @@ def today_view(app: "MobileApp") -> list[ft.Control]:
 
 
 def _row(app: "MobileApp", row: Row) -> ft.Control:
-    """Eine Notizzeile: Todo als Checkbox, sonst Text (Überschrift/Thema fett)."""
+    """Eine Notizzeile: Todo als Checkbox, sonst Text (Thema fett)."""
     pad = ft.Padding.only(left=row.depth * INDENT)
     if row.kind == "todo":
         return ft.Container(content=_todo(app, row.text, row.done, row.urgent, row.target), padding=pad)
-    bold = row.kind in ("heading", "topic")
+    bold = row.kind == "topic"
     return ft.Container(content=ft.Text(row.text, weight=ft.FontWeight.BOLD if bold else None), padding=pad)
 
 

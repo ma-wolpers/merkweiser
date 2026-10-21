@@ -1,4 +1,4 @@
-"""Struktur einer Notiz: Überschriften, Themen, Listenpunkte, Sonstiges.
+"""Struktur einer Notiz: Thema, Listenpunkte, Sonstiges.
 
 Dritte Stufe der Parser-Pipeline. Erhält eine fertige ``NoteSpan`` (Grenzen
 entscheidet allein ``blocks``) und baut daraus einen Baum, dessen Knoten nur
@@ -6,11 +6,16 @@ auf Zeilennummern verweisen; Text wird nie kopiert oder neu gerendert.
 
 Zwei Durchgänge:
 
-1. ``_classify`` gruppiert Zeilen zu Blöcken (Absatz, Überschrift inklusive
-   Setext, Listenpunkt mit Fortsetzungszeilen, Sonstiges inklusive Codeblock).
+1. ``_classify`` gruppiert Zeilen zu Blöcken (Absatz, Listenpunkt mit
+   Fortsetzungszeilen, Sonstiges inklusive Codeblock).
 2. ``build_outline`` ordnet die Blöcke nach ``docs/FORMAT.md`` in den Baum ein:
-   Überschriften-Bereiche, Themen mit Erläuterungsabsätzen, implizite Themen,
-   Listen-Hierarchie nach Einrückungsspalte.
+   höchstens **ein** Thema je Notiz (die Absatzzeilen vor dem ersten
+   Listenpunkt), sonst ein implizites Thema, Listen-Hierarchie nach
+   Einrückungsspalte.
+
+Formatänderung vom 2026-10-21: Überschriften (``#``, Setext) sind gewöhnlicher
+Text; eine **nicht** eingerückte Textzeile direkt unter einem Listenpunkt ist
+dessen Fortsetzung; nach dem ersten Listenpunkt beginnt nie ein Thema.
 """
 
 from __future__ import annotations
@@ -23,8 +28,6 @@ from .blocks import FileLayout, NoteSpan
 from .inline import ListItem, Tag, find_tags, leading_whitespace, parse_list_item
 from .source import Line
 
-_ATX_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+|$)")
-_SETEXT_RE = re.compile(r"^ {0,3}(={3,}|-{3,})[ \t]*$")
 _OTHER_START = (">", "|", "<")
 _EMBED_ONLY_RE = re.compile(r"^\s*!\[\[[^\]]*\]\]\s*$|^\s*!\[[^\]]*\]\([^)]*\)\s*$")
 
@@ -32,7 +35,6 @@ _EMBED_ONLY_RE = re.compile(r"^\s*!\[\[[^\]]*\]\]\s*$|^\s*!\[[^\]]*\]\([^)]*\)\s
 class NodeKind(Enum):
     """Art eines Knotens im Notizbaum."""
 
-    HEADING = "heading"
     TOPIC = "topic"
     ITEM = "item"
     OTHER = "other"
@@ -45,11 +47,10 @@ class Node:
     Attributes:
         index: Position in ``Outline.nodes`` (Eltern haben immer kleinere Indizes).
         kind: Art des Knotens.
-        lines: Eigene Zeilen (Thema inklusive Erläuterungsabsätzen, Punkt
+        lines: Eigene Zeilen (Thema inklusive Erläuterungszeilen, Punkt
             inklusive Fortsetzungen); leer bei impliziten Themen.
         parent: Index des Elternknotens oder ``None``.
         children: Indizes der Kinder in Dateireihenfolge.
-        level: Überschriftenstufe (1–6), sonst 0.
         item: Analyse der ersten Zeile bei Listenpunkten, sonst ``None``.
         implicit: ``True`` für ein unsichtbares Thema ohne Text.
         tags: Explizite Tags aller eigenen Zeilen.
@@ -60,7 +61,6 @@ class Node:
     lines: tuple[int, ...]
     parent: int | None
     children: tuple[int, ...]
-    level: int = 0
     item: ListItem | None = None
     implicit: bool = False
     tags: tuple[Tag, ...] = ()
@@ -80,7 +80,7 @@ class Outline:
 
     @property
     def roots(self) -> tuple[Node, ...]:
-        """Knoten ohne Eltern (Überschriften erster Ebene, Themen, …)."""
+        """Knoten ohne Eltern (das Thema bzw. implizite Thema)."""
         return tuple(n for n in self.nodes if n.parent is None)
 
     def items(self) -> tuple[Node, ...]:
@@ -108,7 +108,6 @@ class _Block:
 
     kind: NodeKind
     lines: list[int]
-    level: int = 0
     item: ListItem | None = None
 
 
@@ -119,7 +118,6 @@ class _Draft:
     kind: NodeKind
     lines: list[int]
     parent: int | None
-    level: int = 0
     item: ListItem | None = None
     implicit: bool = False
     children: list[int] = field(default_factory=list)
@@ -142,15 +140,9 @@ def build_outline(lines: tuple[Line, ...], layout: FileLayout, note: NoteSpan) -
     drafts = _build_tree(blocks)
     nodes = tuple(
         Node(index=i, kind=d.kind, lines=tuple(d.lines), parent=d.parent, children=tuple(d.children),
-             level=d.level, item=d.item, implicit=d.implicit,
-             tags=tuple(tag for no in d.lines for tag in find_tags(lines[no].text) if not _is_setext(lines[no])))
+             item=d.item, implicit=d.implicit, tags=tuple(tag for no in d.lines for tag in find_tags(lines[no].text)))
         for i, d in enumerate(drafts))
     return Outline(note, nodes)
-
-
-def _is_setext(line: Line) -> bool:
-    """``True`` für eine Setext-Unterstreichung (enthält nie Tags)."""
-    return bool(_SETEXT_RE.match(line.text))
 
 
 def _classify(lines: tuple[Line, ...], layout: FileLayout, numbers: range) -> list[_Block]:
@@ -200,23 +192,13 @@ def _classify_line(line: Line, blocks: list[_Block], prev: str) -> str:
         Art dieser Zeile für den nächsten Aufruf.
     """
     text = line.text
-    setext = _SETEXT_RE.match(text)
-    if setext and prev == "paragraph":
-        blocks[-1].kind = NodeKind.HEADING
-        blocks[-1].level = 1 if setext.group(1)[0] == "=" else 2
-        blocks[-1].lines.append(line.no)
-        return "other"
-    atx = _ATX_RE.match(text)
-    if atx:
-        blocks.append(_Block(NodeKind.HEADING, [line.no], level=len(atx.group(1))))
-        return "other"
     item = parse_list_item(text)
     if item is not None:
         blocks.append(_Block(NodeKind.ITEM, [line.no], item=item))
         return "item"
     indented = bool(leading_whitespace(text))
-    if indented and prev == "item":
-        blocks[-1].lines.append(line.no)  # Fortsetzung des Punkts
+    if prev == "item" and (indented or not _is_other(text)):
+        blocks[-1].lines.append(line.no)  # Fortsetzung des Punkts, eingerückt oder nicht
         return "item"
     if indented or text.lstrip().startswith(_OTHER_START) or _EMBED_ONLY_RE.match(text):
         blocks.append(_Block(NodeKind.OTHER, [line.no]))
@@ -228,8 +210,25 @@ def _classify_line(line: Line, blocks: list[_Block], prev: str) -> str:
     return "paragraph"
 
 
+def _is_other(text: str) -> bool:
+    """``True`` für Zeilen der Klasse „Sonstiges“ (Zitat, Tabelle, HTML, nur Bild/Embed).
+
+    Args:
+        text: Zeileninhalt.
+
+    Returns:
+        Ob die Zeile nie Thema oder Fortsetzung ist.
+    """
+    return text.lstrip().startswith(_OTHER_START) or bool(_EMBED_ONLY_RE.match(text))
+
+
 def _build_tree(blocks: list[_Block]) -> list[_Draft]:
     """Durchgang 2: ordnet Blöcke in den Baum ein (Regeln aus FORMAT.md).
+
+    Höchstens ein Thema je Notiz: Absätze vor dem ersten Listenpunkt bilden es
+    (der erste beginnt es, weitere sind Erläuterung). Ein Absatz nach dem
+    ersten Listenpunkt, der nicht direkt unter einem Punkt steht (sonst wäre er
+    dessen Fortsetzung), bleibt als „Sonstiges“ erhalten.
 
     Args:
         blocks: Ergebnis von ``_classify``.
@@ -238,10 +237,9 @@ def _build_tree(blocks: list[_Block]) -> list[_Draft]:
         Knotenentwürfe; Eltern stehen immer vor ihren Kindern.
     """
     drafts: list[_Draft] = []
-    headings: list[int] = []        # Stapel offener Überschriften
-    topic: int | None = None        # aktuelles Thema
-    items_since_topic = False
-    item_stack: list[int] = []      # offene Listenpunkte im aktuellen Thema
+    topic: int | None = None        # das Thema (explizit oder implizit)
+    seen_item = False
+    item_stack: list[int] = []      # offene Listenpunkte
 
     def add(draft: _Draft) -> int:
         drafts.append(draft)
@@ -252,22 +250,18 @@ def _build_tree(blocks: list[_Block]) -> list[_Draft]:
     def ensure_topic() -> int:
         nonlocal topic
         if topic is None:
-            topic = add(_Draft(NodeKind.TOPIC, [], headings[-1] if headings else None, implicit=True))
+            topic = add(_Draft(NodeKind.TOPIC, [], None, implicit=True))
         return topic
 
     for block in blocks:
-        if block.kind is NodeKind.HEADING:
-            while headings and drafts[headings[-1]].level >= block.level:
-                headings.pop()
-            headings.append(add(_Draft(NodeKind.HEADING, block.lines, headings[-1] if headings else None,
-                                       level=block.level)))
-            topic, items_since_topic, item_stack = None, False, []
+        if block.kind is NodeKind.TOPIC and seen_item:
+            add(_Draft(NodeKind.OTHER, block.lines, ensure_topic()))  # nie ein zweites Thema
         elif block.kind is NodeKind.TOPIC:
-            if topic is None or items_since_topic or drafts[topic].implicit:
-                topic = add(_Draft(NodeKind.TOPIC, block.lines, headings[-1] if headings else None))
-                items_since_topic, item_stack = False, []
-            else:
-                drafts[topic].lines.extend(block.lines)  # Erläuterungsabsatz
+            if topic is None:
+                topic = add(_Draft(NodeKind.TOPIC, block.lines, None))
+            else:  # Erläuterung, oder Text nach „Sonstigem“ am Notizanfang füllt das Thema
+                drafts[topic].lines.extend(block.lines)
+                drafts[topic].implicit = False
         elif block.kind is NodeKind.ITEM:
             assert block.item is not None
             owner = ensure_topic()
@@ -275,7 +269,7 @@ def _build_tree(blocks: list[_Block]) -> list[_Draft]:
                 item_stack.pop()
             item_stack.append(add(_Draft(NodeKind.ITEM, block.lines, item_stack[-1] if item_stack else owner,
                                          item=block.item)))
-            items_since_topic = True
+            seen_item = True
         else:
             add(_Draft(NodeKind.OTHER, block.lines, ensure_topic()))
     return drafts

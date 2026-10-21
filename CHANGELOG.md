@@ -4,6 +4,11 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ## [Unreleased]
 
+### Changed
+
+- **Notizformat:** Jede Leerzeile beendet jetzt eine Notiz; `---` ist nicht mehr nötig (vorhandene `---` trennen weiter). Jede Notiz hat höchstens ein Thema. Text direkt unter einem Listenpunkt gehört zu diesem Punkt, auch ohne Einrückung. Überschriften (`#`, `##` …) sind normaler Text; Tags darin gelten weiter. Neue Notizen werden mit einer Leerzeile statt mit `---` angehängt. Bestehende Dateien bleiben unverändert, werden aber nach diesen Regeln gelesen (Details in `docs/FORMAT.md`).
+- **Leere Datumsdateien** (nur Leerraum und `---`) werden beim Start automatisch entfernt, mit Backup.
+
 ### Fixed
 
 - Änderungen sind nach 10 Sekunden endgültig abgeschlossen (vorher 2 Minuten). Wird die App früher geschlossen, schließt der nächste Start sie ab, statt von vorn zu warten; versteckte Sicherungsdateien `.NAME.mw-….old` bleiben nicht mehr liegen.

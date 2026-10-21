@@ -19,10 +19,10 @@ def note_texts(text: str) -> list[list[str]]:
     return result
 
 
-def test_separator_needs_blank_line_before() -> None:
-    """``---`` nach einer Leerzeile trennt, direkt unter Text ist es eine Setext-Überschrift."""
-    text = "A\n- x\n\n---\n\nB\nÜberschrift\n---\nC\n"
-    assert note_texts(text) == [["A", "- x"], ["B", "Überschrift", "---", "C"]]
+def test_every_blank_line_and_every_separator_ends_a_note() -> None:
+    """Formatänderung 2026-10-21: jede Leerzeile beendet eine Notiz; ``---`` trennt auch direkt unter Text."""
+    text = "A\n- x\n\n---\n\nB\nÜberschrift\n---\nC\n\n- [ ] allein\n"
+    assert note_texts(text) == [["A", "- x"], ["B", "Überschrift"], ["C"], ["- [ ] allein"]]
 
 
 def test_separator_with_surrounding_spaces() -> None:
@@ -30,11 +30,11 @@ def test_separator_with_surrounding_spaces() -> None:
     assert len(layout("A\n\n  ---  \nB\n").separators) == 1
 
 
-def test_separator_at_note_start() -> None:
-    """Zwei Trenner hintereinander erzeugen eine leere Notiz dazwischen."""
+def test_consecutive_separators_create_no_empty_note() -> None:
+    """Zwei Trenner hintereinander sind nur Trenner; leere Notizen gibt es nicht."""
     result = layout("A\n\n---\n---\nB\n")
     assert result.separators == (2, 3)
-    assert [n.is_empty for n in result.notes] == [False, True, False]
+    assert note_texts("A\n\n---\n---\nB\n") == [["A"], ["B"]]
 
 
 def test_frontmatter_is_not_a_note() -> None:
@@ -89,17 +89,20 @@ def test_backtick_fence_with_backtick_in_info_is_no_fence() -> None:
     assert layout("``` a`b\n\n---\nX\n").fences == ()
 
 
-def test_note_content_excludes_blank_margins() -> None:
-    """Leerzeilen am Rand gehören zur Spanne, aber nicht zum Inhalt."""
-    note = layout("\n\nA\nB\n\n").notes[0]
-    assert note.span == Span(0, 5)
-    assert note.content == Span(2, 4)
+def test_note_span_has_no_blank_margins() -> None:
+    """Eine Notiz enthält nie Leerzeilen am Rand; Spanne und Inhalt sind gleich."""
+    [note] = layout("\n\nA\nB\n\n").notes
+    assert note.span == note.content == Span(2, 4)
 
 
-def test_empty_file_has_one_empty_note() -> None:
-    """Eine leere Datei hat genau eine leere Notiz."""
-    notes = layout("").notes
-    assert len(notes) == 1 and notes[0].is_empty
+def test_blank_line_inside_code_block_does_not_split() -> None:
+    """Leerzeilen in einem Codeblock beenden die Notiz nicht."""
+    assert note_texts("A\n```\nx\n\ny\n```\nB\n\nC\n") == [["A", "```", "x", "", "y", "```", "B"], ["C"]]
+
+
+def test_empty_file_has_no_notes() -> None:
+    """Eine leere bzw. nur aus Leerraum und Trennern bestehende Datei hat keine Notizen."""
+    assert layout("").notes == () and layout("\n  \n---\n\n").notes == ()
 
 
 def test_crlf_does_not_affect_separators() -> None:

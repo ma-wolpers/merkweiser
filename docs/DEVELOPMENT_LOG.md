@@ -2,6 +2,15 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Formatänderung: Leerzeilen trennen Notizen; Aufräumen leerer Tagesdateien
+
+- Nutzerentscheidung: Jede Leerzeile beendet eine Notiz (außer in Codeblöcken); `---` bleibt Trenner, auch direkt unter Text, wird aber nicht mehr geschrieben; höchstens ein Thema je Notiz; nicht eingerückter Text direkt unter einem Punkt ist Fortsetzung; Überschriften sind gewöhnlicher Text (`#tags` darin bleiben Tags).
+- `blocks.analyze`: Notizen als Läufe ohne Leerzeile/Trenner, keine leeren Notizen. `outline`: `NodeKind.HEADING` und `Node.level` entfernt, ein Thema je Notiz, Fortsetzung ohne Einrückung, Text nach „Sonstigem“ wird `OTHER`. `note_ops`: `append_note` ohne `---`, `delete_note` entfernt eine Lücke. `move_plan.remove_moved_source`: ganze Notiz samt Lücke. `views`: `# …` wird unverändert angezeigt.
+- Folge für bestehende Dateien (dokumentiert in `FORMAT.md` und im Fixture-Test): Thema und Liste mit Leerzeile dazwischen sind getrennte Notizen, „lockere“ Listen zerfallen in Einzelnotizen ohne Verschachtelung und Vererbung.
+- Neu: `core/cleanup.py` und Schritt im Start: leere Tagesdateien (nur Leerraum und `---`, kein BOM, kein offener Konflikt) über `Writer.remove`; `StartReport.removed_empty`, Hinweis in der Mobile-App, Zähler im Diagnosebericht.
+- Tests angepasst (Blocks, Outline, Query, Edits, Move, Views, Fixture-Semantik) und ergänzt (Leerzeile im Codeblock, lockere Liste, Fortsetzung ohne Einrückung, Überschrift als Text, Setext, Lücke beim Löschen und Verschieben, Aufräumen).
+- Plan: weiterer „noch zu planen“-Wunsch (gleiche Notiz in zwei Dateien).
+
 ## 2026-10-21 – Schreibschutz-Modus
 
 - Ordner ohne sichere Schreibweise öffnen jetzt schreibgeschützt statt mit Fehler (Plan „No-Go“): `NotesService.read_only`, Decorator `_writes`, `ReadOnlyVaultError`, Start nur mit Scan. Mobile öffnet lesbare Ordner; Diagnosebericht nennt `schreibgeschuetzt`.

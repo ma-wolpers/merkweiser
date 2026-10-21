@@ -6,7 +6,8 @@ Aktion folgt demselben Muster: Datei frisch lesen → Operation planen →
 danach ``StaleTargetError`` (die UI lädt neu und meldet es).
 
 ``start()`` führt die feste Startreihenfolge aus: Tausch-Wiederherstellung →
-Resolve-Ops → Moves → Aufbewahrung → Scan → Auto-Merge.
+Resolve-Ops → Moves → Aufbewahrung → leere Tagesdateien entfernen → Scan →
+Auto-Merge.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from typing import Callable
 
 from ..core import conflict_files as cf
 from ..core.appdata import open_vault_data
+from ..core.cleanup import empty_day_files
 from ..core.automerge_log import AutoMergeEntry, automerge_log, undone_manual_paths
 from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
@@ -76,6 +78,7 @@ class StartReport:
     resolves: list[ResolveOutcome] = field(default_factory=list)
     moves: list[MoveResult] = field(default_factory=list)
     automerges: list[str] = field(default_factory=list)
+    removed_empty: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -148,6 +151,7 @@ class NotesService:
         prune_sidecars(self.root, self.data)
         prune_ops(self.root, self.data, self.store, self.clock, self.settings.retention_days)
         self.rescan()
+        report.removed_empty = self._remove_empty_day_files()
         report.automerges = self.auto_merge_all()
         self._watch = observe(self.root)
         return report
@@ -309,6 +313,25 @@ class NotesService:
         return result
 
     # --- intern -----------------------------------------------------------------------
+
+    def _remove_empty_day_files(self) -> list[str]:
+        """Entfernt leere Tagesdateien (nur Leerraum und ``---``) über das sichere Löschprotokoll.
+
+        Ändert sich eine Datei zwischen Prüfung und Löschen, bleibt sie stehen.
+
+        Returns:
+            Entfernte Pfade (relativ zum Vault).
+        """
+        removed = []
+        for relpath, raw in empty_day_files(self.root, self.index, self.busy):
+            try:
+                self.writer.remove(relpath, raw)
+            except ChangedBeforeWriteError:
+                continue
+            removed.append(relpath)
+        if removed:
+            self.rescan()
+        return removed
 
     def _parse(self, raw: bytes) -> Document:
         """Liest Bytes mit dem eingestellten Projekt-Präfix ein."""

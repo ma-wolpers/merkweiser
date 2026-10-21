@@ -5,11 +5,9 @@ Interpretiert **keine** Struktur selbst: ``outline`` liefert Eltern-Beziehungen,
 
     effektiv(Knoten) = explizit(Knoten) ∪ effektiv(Eltern)
 
-Weil Listenpunkte am Eltern-Punkt bzw. Thema hängen, Themen an der
-umschließenden Überschrift und Überschriften an der übergeordneten, ergibt
-das genau „explizit ∪ Eltern-Punkt ∪ aktuelles Thema ∪ umschließende
-Überschriften“. Ein neues Thema beendet die Vererbung automatisch, weil
-spätere Punkte am neuen Thema hängen.
+Weil Listenpunkte am Eltern-Punkt bzw. am Thema ihrer Notiz hängen, ergibt
+das genau „explizit ∪ Eltern-Punkte ∪ Thema der Notiz“. Vererbung endet an
+der Notizgrenze (jede Leerzeile, Formatänderung vom 2026-10-21).
 """
 
 from __future__ import annotations

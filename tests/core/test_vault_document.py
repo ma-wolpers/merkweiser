@@ -119,16 +119,23 @@ def test_fixture_corpus_roundtrip(fixture: str) -> None:
 
 
 def test_realistic_fixture_semantics() -> None:
-    """Die realistische Fixture: Frontmatter, zwei Notizen, Code ohne Todos, Tags vererbt."""
+    """Die realistische Fixture im alten Format, gelesen nach dem Format vom 2026-10-21.
+
+    Jede Leerzeile beendet eine Notiz: Thema, Erläuterung und Liste sind getrennte Notizen, die
+    Todos erben das Projekt des Themas deshalb nicht mehr; ``## Abschnitt #woche`` ist eine eigene
+    Notiz (Überschriften sind Text) und vererbt nichts. Der Codeblock bleibt eine Notiz ohne Todos.
+    """
     doc = parse_document((FIXTURES / "realistic.md").read_bytes())
     assert doc.layout.frontmatter is not None
-    notes = [n for n in doc.notes if not n.note.is_empty]
-    assert len(notes) == 2
-    first = notes[0]
-    todos = [n for n in first.outline.items() if n.item and n.item.is_todo]
-    assert len(todos) == 4
-    assert all("Testprojekt" in first.tags[t.index].effective_projects for t in todos)
-    second = notes[1]
-    texts = [doc.line_text(n.lines[0]) for n in second.outline.items()]
-    assert texts == ["- [ ] mit Bild ![[bild.png]]"]
-    assert "woche" in second.tags[second.outline.items()[0].index].effective
+    firsts = [doc.line_text(n.note.span.start) for n in doc.notes]
+    assert firsts == ["Notiz-Thema (worum geht es?) #projekt/Testprojekt", "Erläuterung mit [Link]"
+                      "(https://example.org/#anker) und `#kein-tag`.", "- teilpunkt", "## Abschnitt #woche",
+                      "Zweites Thema", "```python", "Text"]
+    todos = [(n, t) for n in doc.notes for t in n.outline.items() if t.item and t.item.is_todo]
+    assert len(todos) == 5
+    assert all(not note.tags[t.index].effective_projects for note, t in todos)
+    second_topic = doc.notes[4]
+    [item] = second_topic.outline.items()
+    assert doc.line_text(item.lines[0]) == "- [ ] mit Bild ![[bild.png]]"
+    assert second_topic.tags[item.index].effective == frozenset()
+    assert doc.notes[5].outline.items() == ()

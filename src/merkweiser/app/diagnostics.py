@@ -127,4 +127,4 @@ def _start_lines(report: StartReport | None) -> list[str]:
     return [f"wiederhergestellt={len(recovery.results)} nicht_ausgefuehrt={len(recovery.not_applied)} "
             f"verwaist={len(recovery.orphans)}",
             f"resolves={len(report.resolves)} moves={[m.state for m in report.moves]} "
-            f"automerges={len(report.automerges)}"]
+            f"automerges={len(report.automerges)} leere_entfernt={len(report.removed_empty)}"]

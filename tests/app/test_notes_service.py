@@ -47,7 +47,7 @@ def test_append_note_creates_today_and_then_appends(tmp_path: Path) -> None:
     settle(svc)
     svc.append_note("Zweite")
     settle(svc)
-    assert (svc.root / "2026-01-15.md").read_bytes() == b"Erste\n- [ ] a\n\n---\n\nZweite\n"
+    assert (svc.root / "2026-01-15.md").read_bytes() == b"Erste\n- [ ] a\n\nZweite\n"
     assert [f.relpath for f in svc.day(date(2026, 1, 15))] == ["2026-01-15.md"]
 
 
