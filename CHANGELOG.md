@@ -11,7 +11,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
-- Wer in Obsidian kurz nach einer Änderung durch Merkweiser in derselben Notiz weiterschreibt, bekommt keine überflüssige Konfliktdatei mehr. Merkweiser prüft jetzt, ob seine Änderung in der Datei noch vollständig enthalten ist.
+- Wer in Obsidian kurz nach einer Änderung durch Merkweiser in derselben Notiz weiterschreibt, bekommt keine überflüssige Konfliktdatei mehr. Merkweiser prüft jetzt, ob seine Änderung in der Datei noch enthalten ist; Weitertippen in derselben Zeile zählt nicht als Verlust.
 - In der Notizansicht fehlten Erläuterungen unter dem Thema und Fortsetzungszeilen unter Todos und Listenpunkten. Jetzt: Thema fett, Erläuterung darunter in deutlich schwächerer Schrift, Listenpunkte mit „•“ auf derselben Textkante wie Todos, Fortsetzungen bündig darunter.
 - Im Dark Mode waren die farbig hinterlegten Zeilen im Konfliktvergleich unlesbar (helle Schrift auf hellem Grün bzw. Rot).
 - Änderungen sind nach 10 Sekunden endgültig abgeschlossen (vorher 2 Minuten). Wird die App früher geschlossen, schließt der nächste Start sie ab, statt von vorn zu warten; versteckte Sicherungsdateien `.NAME.mw-….old` bleiben nicht mehr liegen.

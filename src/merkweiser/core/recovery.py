@@ -21,7 +21,8 @@ from pathlib import Path
 
 from . import conflict_files as cf
 from .ops import Op
-from .safe_write import WriteResult, Writer, contains_all_lines, side_paths
+from .kept import change_kept, contains_all_lines
+from .safe_write import WriteResult, Writer, side_paths
 
 _SIDE_FILE_RE = re.compile(r"^\.(?P<name>.+)\.mw-(?P<op>[0-9]{8}-[0-9]{6}-[A-Z2-7]{8})\.(?:tmp|old|partial)$")
 
@@ -120,8 +121,8 @@ def _recover_displaced(writer: Writer, op: Op, main: Path, tmp: Path, old: Path,
         else:  # fremder Stand gewinnt, N wird sichtbar
             writer.fs.rename_no_replace(old, main)
             return _conflicted(writer, op, main, tmp, new)
-    elif main.read_bytes() != new and (writer.superseded(op, new) or contains_all_lines(main.read_bytes(), new)):
-        # Zeile 4a: eigene Folge-Op, oder ein externer Stand baut auf N auf (N vollständig enthalten)
+    elif main.read_bytes() != new and (writer.superseded(op, new) or change_kept(main.read_bytes(), expected, new)):
+        # Zeile 4a: eigene Folge-Op, oder ein externer Stand enthält Merkweisers Änderung E → N
         _drop_tmp(writer, tmp, new)
         return writer.save_displaced(op, main, old, expected or b"", restore_to_main=False)
     elif main.read_bytes() != new:  # Zeile 4: P extern belegt

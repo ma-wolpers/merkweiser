@@ -214,7 +214,42 @@ def test_external_edit_dropping_a_line_of_n_still_conflicts(env: Env) -> None:
 
 def test_contains_all_lines() -> None:
     """Zeilen-Teilfolge: Reihenfolge zählt, Einschübe erlaubt, Zeilenenden egal."""
-    from merkweiser.core.safe_write import contains_all_lines
+    from merkweiser.core.kept import contains_all_lines
     assert contains_all_lines(b"a\r\nx\r\nb\r\n", b"a\nb\n")
     assert not contains_all_lines(b"b\na\n", b"a\nb\n")
     assert not contains_all_lines(b"a\n", b"a\nb\n")
+
+
+def test_typing_on_in_the_same_line_during_quarantine_is_no_conflict(env: Env) -> None:
+    """Befund S4 Teil E: Merkweiser liest „ddd“, hängt ein Todo an; Obsidian tippt in derselben Zeile weiter."""
+    (env.root / "2026-01-01.md").write_bytes(b"ddd\n")
+    env.writer.write("2026-01-01.md", b"ddd\n", b"ddd\n- [ ] E1\n")
+    (env.root / "2026-01-01.md").write_bytes(b"dddddddd\n- [ ] E1\n")
+    assert [r.state for r in env.finish()] == ["DONE"]
+    assert env.conflicts() == []
+
+
+def test_lost_toggle_still_conflicts_even_with_typing(env: Env) -> None:
+    """Überschreibt Obsidian den Haken mit altem Stand (plus Getipptem), wird N sichtbar."""
+    env.writer.write("2026-01-01.md", E, N)
+    (env.root / "2026-01-01.md").write_bytes(E.replace(b"Thema", b"Thema erweitert"))
+    env.finish()
+    assert env.conflicts() == [N]
+
+
+def test_lost_duplicate_insert_is_detected_by_count(env: Env) -> None:
+    """Fügt Merkweiser eine Zeile ein, die es schon gibt, zählt die Anzahl: fehlt die neue, ist es ein Konflikt."""
+    (env.root / "2026-01-01.md").write_bytes(b"T\n- [ ] a\n")
+    env.writer.write("2026-01-01.md", b"T\n- [ ] a\n", b"T\n- [ ] a\n- [ ] a\n")
+    (env.root / "2026-01-01.md").write_bytes(b"T neu\n- [ ] a\n")
+    env.finish()
+    assert len(env.conflicts()) == 1
+
+
+def test_undone_deletion_still_conflicts(env: Env) -> None:
+    """Löscht Merkweiser Zeilen und schreibt Obsidian sie mit altem Stand zurück, wird N sichtbar."""
+    (env.root / "2026-01-01.md").write_bytes(b"A\n\nB\n")
+    env.writer.write("2026-01-01.md", b"A\n\nB\n", b"A\n")
+    (env.root / "2026-01-01.md").write_bytes(b"A neu\n\nB\n")
+    env.finish()
+    assert env.conflicts() == [b"A\n"]

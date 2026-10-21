@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – S4 Teil E: Obsidian behält den Tab; Abschlussprüfung prüft die Änderung statt ganz N
+
+- Teil E mit echtem `Writer`: Obsidian schließt den Tab nicht und führt Merkweisers Änderungen selbst in den offenen Text ein. S4 abgeschlossen.
+- Aber: fünf Konfliktdateien, alle Fehlalarme. `N` enthielt die gerade getippte Zeile in älterer Länge; die Regel „alle Zeilen von N enthalten“ war zu streng. Neu `core/kept.py` mit `change_kept` (Änderung `E → N` muss erhalten sein, mit Zählung gegen zufällig gleiche Zeilen); `contains_all_lines` dorthin verschoben (Rückfall für Create-only).
+- Tests: Weitertippen in derselben Zeile → kein Konflikt; verlorener Haken, verlorene doppelte Einfügung, zurückgekehrte Löschung → Konflikt.
+
 ## 2026-10-21 – Obsidian-Tests ausgewertet; Abschlussprüfung mit Zeilen-Teilfolge; S4 Teil E
 
 - Test A (Handy): bestanden. Test B (PC, Teile A–D): Befunde in `ARCHITEKTUR.md`.
