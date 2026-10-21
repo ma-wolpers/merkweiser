@@ -180,3 +180,42 @@ def test_move_dialog_quick_choice_moves_todo(tmp_path: Path) -> None:
     vault = Path(fake.settings.vault)
     assert b"Aufgabe" in (vault / "2026-01-16.md").read_bytes()
     assert b"Aufgabe" not in (vault / "2026-01-15.md").read_bytes()
+
+
+def _texts(controls) -> list[str]:
+    """Alle Text-Inhalte einer Control-Liste (rekursiv über content/controls)."""
+    found = []
+    for control in controls:
+        if isinstance(control, ft.Text):
+            found.append(control.value)
+        for child in getattr(control, "controls", None) or []:
+            found += _texts([child])
+        if isinstance(getattr(control, "content", None), ft.Control):
+            found += _texts([control.content])
+    return found
+
+
+def test_automerge_section_offers_undo_and_then_shows_open_case(tmp_path: Path) -> None:
+    """Start führt einen Syncthing-Konflikt zusammen; „Rückgängig“ macht daraus einen offenen Fall."""
+    import asyncio
+
+    root = tmp_path / "vault"
+    root.mkdir()
+    (root / "2026-01-15.md").write_bytes(b"Notiz\n- [ ] A\n")
+    (root / "2026-01-15.sync-conflict-20260115-120000-ABCDEFG.md").write_bytes(b"Notiz\n- [ ] A\n- [ ] B\n")
+    service = NotesService(root, tmp_path / "app", Settings(vault=str(root)), FakeClock())
+    assert service.start().automerges
+    fake = SimpleNamespace(service=service, page=FakePage(), say=lambda _m: None, render=lambda: None)
+
+    async def act(action):
+        return action(service)
+
+    fake.act = act
+    controls = conflict_view.conflicts_view(fake)
+    assert "Automatisch zusammengeführt" in _texts(controls)
+    undo = next(c for c in controls if isinstance(c, ft.Row) and any(
+        isinstance(b, ft.Button) and b.content == "Rückgängig" for b in c.controls))
+    asyncio.run(undo.controls[0].on_click(None))
+    texts = _texts(conflict_view.conflicts_view(fake))
+    assert "Rückgängig gemacht – die Konfliktversion steht wieder oben." in texts
+    assert [c.kind.value for c in service.conflicts()] == ["manual"]

@@ -6,12 +6,13 @@ from pathlib import Path
 import pytest
 
 from merkweiser.core.appdata import open_vault_data
-from merkweiser.core.conflicts import CaseKind, auto_merge, classify, undo_automerge
+from merkweiser.core.automerge_log import automerge_log, undo_automerge, undone_manual_paths
+from merkweiser.core.conflicts import CaseKind, auto_merge, classify
 from merkweiser.core.fsops import FsOps, SimulatedCrash
 from merkweiser.core.ops import OpStore
 from merkweiser.core.recovery import recover
 from merkweiser.core.resolve import manual_only_paths, recover_resolves, resolve
-from merkweiser.core.safe_write import Writer
+from merkweiser.core.safe_write import ChangedBeforeWriteError, Writer
 from merkweiser.core.vault import DayPattern, scan
 from tests.fakes import FakeClock
 
@@ -54,7 +55,8 @@ class Env:
         return path.read_bytes() if path.exists() else None
 
     def cases(self):
-        return classify(self.root, self.writer, scan(self.root, DayPattern()), set(), manual_only_paths(self.store))
+        manual = manual_only_paths(self.store) | undone_manual_paths(self.store)
+        return classify(self.root, self.writer, scan(self.root, DayPattern()), set(), manual)
 
     def die(self) -> None:
         """Simuliertes Prozessende: Das Betriebssystem gibt alle Locks dieser Instanz frei."""
@@ -221,3 +223,67 @@ def test_main_deleted_restore_one_version_rest_manual(tmp_path: Path) -> None:
     assert env.get(MAIN) == b"Version A\n"
     [case] = env.cases()
     assert case.conflict.relpath == other and case.kind is CaseKind.MANUAL
+
+
+def _merged(env: Env) -> str:
+    """Konzeptbeispiel automatisch zusammenführen und Quarantänen abschließen; liefert die op-id."""
+    env.put(MAIN, BASE + b"- [ ] Aufgabe B\n")
+    env.put(CONF, BASE + b"- [ ] Aufgabe C\n")
+    op_id = auto_merge(env.writer, env.store, env.cases()[0])
+    env.settle()
+    return op_id
+
+
+def test_undone_automerge_stays_manual_forever(tmp_path: Path) -> None:
+    """Garantie 4: Nach „Rückgängig“ wird dieselbe Konfliktdatei nie wieder automatisch zusammengeführt."""
+    env = Env(tmp_path)
+    op_id = _merged(env)
+    assert undo_automerge(env.writer, env.store, op_id) == CONF
+    env.settle()
+    [case] = env.cases()
+    assert case.kind is CaseKind.MANUAL and case.conflict.relpath == CONF
+
+
+def test_automerge_log_lists_before_after_and_undo_state(tmp_path: Path) -> None:
+    """Die Liste zeigt Hauptdatei, Konfliktpfad, vorher/nachher und ob rückgängig gemacht wurde."""
+    env = Env(tmp_path)
+    op_id = _merged(env)
+    [entry] = automerge_log(env.store)
+    assert (entry.op_id, entry.relpath, entry.conflict_relpath, entry.undone) == (op_id, MAIN, CONF, None)
+    assert entry.before == BASE + b"- [ ] Aufgabe B\n" and entry.after == BASE + b"- [ ] Aufgabe B\n- [ ] Aufgabe C\n"
+    undo_automerge(env.writer, env.store, op_id)
+    assert automerge_log(env.store)[0].undone == "erledigt"
+
+
+def test_undo_after_later_edit_changes_nothing(tmp_path: Path) -> None:
+    """Hauptdatei seit dem Merge verändert: Rückgängig scheitert ohne Wirkung, keine Markierung bleibt."""
+    env = Env(tmp_path)
+    op_id = _merged(env)
+    env.put(MAIN, BASE + b"- [ ] Aufgabe B\n- [ ] Aufgabe C\n- [ ] neu\n")
+    with pytest.raises(ChangedBeforeWriteError):
+        undo_automerge(env.writer, env.store, op_id)
+    assert env.get(CONF) is None and undone_manual_paths(env.store) == set()
+    assert automerge_log(env.store)[0].undone is None
+
+
+def test_undo_twice_is_idempotent(tmp_path: Path) -> None:
+    """Zweites Rückgängig (z. B. nach Abbruch) überspringt Erledigtes und legt nichts doppelt an."""
+    env = Env(tmp_path)
+    op_id = _merged(env)
+    undo_automerge(env.writer, env.store, op_id)
+    env.settle()
+    assert undo_automerge(env.writer, env.store, op_id) == CONF
+    env.settle()
+    assert sorted(p.name for p in env.root.iterdir()) == sorted([MAIN, CONF])
+
+
+def test_retention_keeps_undone_automerge_while_conflict_exists(tmp_path: Path) -> None:
+    """Die Aufbewahrung löscht die Op nicht, solange die „nur manuell“-Konfliktdatei existiert."""
+    from merkweiser.core.retention import prune_ops
+    env = Env(tmp_path)
+    op_id = _merged(env)
+    undo_automerge(env.writer, env.store, op_id)
+    env.settle()
+    env.clock.advance(40 * 24 * 3600)
+    prune_ops(env.root, env.data, env.store, env.clock, 30)
+    assert op_id in env.store.all_ids()

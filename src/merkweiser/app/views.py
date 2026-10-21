@@ -178,18 +178,35 @@ class DiffRow:
 
 
 def conflict_diff(case: ConflictCase, context: int = 1) -> list[DiffRow]:
-    """Zeilenvergleich für die Konfliktanzeige; lange gleiche Strecken werden gekürzt.
+    """Zeilenvergleich für die Konfliktanzeige (Hauptdatei ↔ Konfliktversion).
 
     Args:
         case: Konfliktfall (fehlt die Hauptdatei, ist alles „nur Konfliktversion“).
         context: Gleiche Zeilen, die um jede Abweichung herum sichtbar bleiben.
 
     Returns:
+        Siehe ``line_diff``.
+    """
+    return line_diff(case.main_bytes, case.conflict_bytes, context)
+
+
+def line_diff(first: bytes | None, second: bytes, context: int = 1) -> list[DiffRow]:
+    """Zeilenvergleich zweier Fassungen; lange gleiche Strecken werden gekürzt.
+
+    Die Seiten heißen ``"haupt"`` (nur in ``first``) und ``"konflikt"`` (nur in
+    ``second``); beim Auto-Merge-Protokoll bedeuten sie „vorher“ bzw. „nachher“.
+
+    Args:
+        first: Erste Fassung oder ``None`` (fehlt: alles gehört zur zweiten).
+        second: Zweite Fassung.
+        context: Gleiche Zeilen, die um jede Abweichung herum sichtbar bleiben.
+
+    Returns:
         Zeilen in Lesereihenfolge. Sind beide Fassungen gleich, nur ``"beide"``-
         bzw. ``"ausgelassen"``-Zeilen.
     """
-    main = [l.text for l in SourceText.from_bytes(case.main_bytes or b"").lines]
-    other = [l.text for l in SourceText.from_bytes(case.conflict_bytes).lines]
+    main = [l.text for l in SourceText.from_bytes(first or b"").lines]
+    other = [l.text for l in SourceText.from_bytes(second).lines]
     rows: list[DiffRow] = []
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(a=main, b=other, autojunk=False).get_opcodes():
         if tag == "equal":

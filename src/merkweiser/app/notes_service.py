@@ -18,8 +18,9 @@ from typing import Callable
 
 from ..core import conflict_files as cf
 from ..core.appdata import open_vault_data
+from ..core.automerge_log import AutoMergeEntry, automerge_log, undone_manual_paths
+from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
-from ..core.conflicts import undo_automerge as _undo_automerge
 from ..core.doc_cache import DocumentCache
 from ..core.document import Document, parse_document
 from ..core.edits import add_todo, set_done, set_project, set_urgent
@@ -142,7 +143,8 @@ class NotesService:
 
     def conflicts(self) -> list[ConflictCase]:
         """Aktuelle Konfliktfälle."""
-        return classify(self.root, self.writer, self.index, self.busy, manual_only_paths(self.store))
+        manual = manual_only_paths(self.store) | undone_manual_paths(self.store)
+        return classify(self.root, self.writer, self.index, self.busy, manual)
 
     def auto_merge_all(self) -> list[str]:
         """Führt alle automatisch zusammenführbaren Fälle aus (Kette je Hauptdatei)."""
@@ -158,10 +160,29 @@ class NotesService:
             self.rescan()
         return done
 
-    def undo_automerge(self, op_id: str) -> None:
-        """Macht einen Auto-Merge rückgängig."""
-        _undo_automerge(self.writer, self.store, op_id)
+    def automerges(self, limit: int = 20) -> list[AutoMergeEntry]:
+        """Liste „Automatisch zusammengeführt“, neueste zuerst.
+
+        Args:
+            limit: Höchstzahl der Einträge.
+
+        Returns:
+            Einträge mit Bytes vorher/nachher und Rückgängig-Zustand.
+        """
+        return automerge_log(self.store, limit)
+
+    def undo_automerge(self, op_id: str) -> str:
+        """Macht einen Auto-Merge rückgängig; die Konfliktdatei bleibt danach „nur manuell“.
+
+        Args:
+            op_id: Die Automerge-Op.
+
+        Returns:
+            Pfad der wiederhergestellten Konfliktdatei.
+        """
+        restored = _undo_automerge(self.writer, self.store, op_id)
         self.rescan()
+        return restored
 
     def resolve(self, case: ConflictCase, result: bytes, decision: str,
                 manual_only: tuple[str, ...] = ()) -> ResolveOutcome:

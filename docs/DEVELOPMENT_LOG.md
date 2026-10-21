@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-21 – Auto-Merge-Liste mit Rückgängig
+
+- Befund beim Umsetzen: `undo_automerge` legte die Konfliktdatei wieder an, aber nichts hinderte den nächsten Start daran, sie erneut automatisch zusammenzuführen (Verstoß gegen Garantie 4). Neu `core/automerge_log.py` mit Markierung `nur_manuell` im Op-Zustand, idempotentem Rückgängig und Liste; `undo_automerge` ist aus `conflicts.py` dorthin umgezogen.
+- `OpStore.read_blob` (lesen ohne Lock, Hash geprüft), Aufbewahrung schont Ops mit existierender `nur_manuell`-Datei, `NotesService.automerges`/`undo_automerge` (gibt den Pfad zurück), `views.line_diff`.
+- Mobile: Abschnitt „Automatisch zusammengeführt“ im Tab Konflikte.
+- Tests: bleibt nach Rückgängig manuell, Liste vorher/nachher und Zustand, Rückgängig nach späterer Änderung ohne Wirkung, zweimal Rückgängig, Aufbewahrung; Mobile-Durchlauf Start → Merge → Rückgängig → offener Fall.
+
 ## 2026-10-21 – Mobile: Datumswahl beim Verschieben
 
 - Das Kalendersymbol am Todo öffnet jetzt einen Dialog (vorher: sofort auf morgen). „Morgen“ ist der erste Knopf, die Funktion bleibt also mit einem Tipp mehr erhalten.

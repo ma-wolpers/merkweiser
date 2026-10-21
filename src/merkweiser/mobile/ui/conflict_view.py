@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import Choice, conflict_diff, conflict_origin, conflict_result
+from ...app.views import Choice, DiffRow, conflict_diff, conflict_origin, conflict_result, line_diff
 from ...core.conflicts import CaseKind
 
 if TYPE_CHECKING:
@@ -47,13 +47,62 @@ def conflicts_view(app: "MobileApp") -> list[ft.Control]:
     """
     cases = app.service.conflicts()
     if not cases:
-        return [ft.Text("Keine offenen Konflikte.")]
-    controls: list[ft.Control] = [ft.Text(
-        "Rot (−) steht nur in der Hauptdatei, grün (+) nur in der Konfliktversion.", size=12)]
+        controls: list[ft.Control] = [ft.Text("Keine offenen Konflikte.")]
+    else:
+        controls = [ft.Text("Rot (−) steht nur in der Hauptdatei, grün (+) nur in der Konfliktversion.", size=12)]
     for case in cases:
         controls.append(ft.Divider())
         controls += _case_controls(app, case, cases)
+    return controls + _automerge_controls(app)
+
+
+def _automerge_controls(app: "MobileApp") -> list[ft.Control]:
+    """Abschnitt „Automatisch zusammengeführt“ mit Vergleich und „Rückgängig“.
+
+    Ein rückgängig gemachter Eintrag zeigt das an; seine Konfliktdatei steht
+    dann oben als offener Fall und wird nie wieder automatisch zusammengeführt.
+
+    Args:
+        app: Die laufende App.
+
+    Returns:
+        Controls des Abschnitts (leer, wenn es keine Auto-Merges gibt).
+    """
+    entries = app.service.automerges()
+    if not entries:
+        return []
+    controls: list[ft.Control] = [
+        ft.Divider(thickness=3), ft.Text("Automatisch zusammengeführt", weight=ft.FontWeight.BOLD),
+        ft.Text("Rot (−) stand vorher in der Hauptdatei, grün (+) ist durch das Zusammenführen dazugekommen.",
+                size=12)]
+    for entry in entries:
+        when = entry.created.astimezone().strftime("%d.%m. %H:%M")
+        controls += [ft.Divider(), ft.Text(f"{entry.relpath} – {when}", weight=ft.FontWeight.BOLD),
+                     _diff_box(line_diff(entry.before, entry.after))]
+        if entry.undone == "erledigt":
+            controls.append(ft.Text("Rückgängig gemacht – die Konfliktversion steht wieder oben.", size=12,
+                                    italic=True))
+        else:
+            controls.append(_undo_button(app, entry.op_id))
     return controls
+
+
+def _undo_button(app: "MobileApp", op_id: str) -> ft.Control:
+    """Knopf „Rückgängig“ für einen Auto-Merge.
+
+    Args:
+        app: Die laufende App.
+        op_id: Die Automerge-Op.
+
+    Returns:
+        Knopf mit Erklärzeile.
+    """
+    async def undo(_e) -> None:
+        await app.act(lambda s: s.undo_automerge(op_id))
+
+    return ft.Row([ft.Button("Rückgängig", on_click=undo),
+                   ft.Text("Hauptdatei wie vorher, Konfliktversion wieder als offener Fall.", size=11,
+                           expand=True)])
 
 
 def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
@@ -74,22 +123,21 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     ]
     if case.main_bytes is None:
         controls.append(ft.Text("Die Hauptdatei fehlt; unten steht nur die Konfliktversion.", size=12))
-    controls.append(_diff_box(case))
+    controls.append(_diff_box(conflict_diff(case)))
     if case.kind is not CaseKind.BUSY:
         controls += _choices(app, case, cases)
     return controls
 
 
-def _diff_box(case) -> ft.Control:
+def _diff_box(rows: list[DiffRow]) -> ft.Control:
     """Zeilenvergleich als Kasten mit farbig hinterlegten Abweichungen.
 
     Args:
-        case: Der Konfliktfall.
+        rows: Vergleichszeilen (``conflict_diff`` bzw. ``line_diff``).
 
     Returns:
         Ein Container mit einer Zeile je ``DiffRow``.
     """
-    rows = conflict_diff(case)
     if all(row.side in ("beide", "ausgelassen") for row in rows):
         rows_controls = [ft.Text("Beide Fassungen sind inhaltlich gleich.", size=12, italic=True)]
     else:

@@ -49,6 +49,8 @@ def prune_ops(root: Path, data: VaultData, store: OpStore, clock: Clock, days: i
             continue
         if any((root / manifest[key]).exists() for key in ("konflikt", "marker") if manifest.get(key)):
             continue
+        if any((root / path).exists() for path in state.get("nur_manuell") or ()):
+            continue  # rückgängig gemachter Auto-Merge: Markierung „nur manuell“ muss bleiben
         shutil.rmtree(data.ops_dir / op_id)
         removed.append(op_id)
     return removed

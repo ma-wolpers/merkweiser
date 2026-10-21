@@ -14,7 +14,7 @@ Fallarten:
 * ``BUSY``: eine andere Instanz arbeitet an der Datei.
 
 Auto-Merges laufen als Op ``automerge`` (Backup von Haupt- und Konfliktdatei
-sowie Ergebnis) und sind über ``undo_automerge`` rückgängig zu machen.
+sowie Ergebnis); Liste und „Rückgängig“ stehen in ``automerge_log``.
 """
 
 from __future__ import annotations
@@ -181,29 +181,3 @@ def auto_merge(writer: Writer, store: OpStore, case: ConflictCase) -> str | None
     op.set_state("DONE")
     op.release()
     return op.id
-
-
-def undo_automerge(writer: Writer, store: OpStore, op_id: str) -> None:
-    """Macht einen Auto-Merge rückgängig: Hauptdatei zurück, Konfliktdatei wieder anlegen.
-
-    Args:
-        writer: Writer.
-        store: Op-Store.
-        op_id: Die Automerge-Op.
-
-    Raises:
-        ChangedBeforeWriteError: Die Hauptdatei wurde seitdem verändert.
-    """
-    op = store.open_for_recovery(op_id)
-    if op is None:
-        raise RuntimeError("Op ist gerade gesperrt")
-    blobs, manifest = op.manifest["blobs"], op.manifest
-    before, conflict = op.blob("haupt", blobs["haupt"]), op.blob("konflikt", blobs["konflikt"])
-    result = op.blob("ergebnis", blobs["ergebnis"])
-    op.release()
-    writer.write(manifest["relpath"], result, before)
-    target = writer.root / manifest["konflikt"]
-    if target.exists():
-        cf.create_from_bytes(writer.fs, writer.root / manifest["relpath"], conflict, writer.clock)
-    else:
-        writer.write(manifest["konflikt"], None, conflict)

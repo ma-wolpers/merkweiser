@@ -20,7 +20,7 @@
 | 6 – App-Schicht | erledigt (`NotesService`, `Settings`, Aufbewahrung) |
 | bw-gui-Teilplan | erledigt: `WrappedTextField.get_raw()` und `load()` (bw-gui `410b9e5`, `d9ad7fb`) |
 | 7 – Desktop-UI | offen |
-| 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19). Läuft auf dem Gerät; dazu Schreibgarantie-Anzeige, Konfliktvergleich, Diagnosebericht. Notizen bearbeiten/löschen und Datumswahl beim Verschieben erledigt. Offen: Hunk-Auswahl, Auto-Merge-Liste mit Rückgängig, Schreibschutz-Modus. |
+| 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19). Läuft auf dem Gerät; dazu Schreibgarantie-Anzeige, Konfliktvergleich, Diagnosebericht. Notizen bearbeiten/löschen, Datumswahl beim Verschieben und Auto-Merge-Liste mit Rückgängig erledigt. Offen: Hunk-Auswahl, Schreibschutz-Modus. |
 | 9 – Abschluss | offen |
 
 ## Spätere Schritte (eigene Planrunde im Planmodus, noch nicht ausgearbeitet)

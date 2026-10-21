@@ -197,6 +197,25 @@ class OpStore:
         load = lambda name: json.loads((folder / name).read_text(encoding="utf-8")) if (folder / name).exists() else {}
         return load("manifest.json"), load("state.json")
 
+    def read_blob(self, op_id: str, role: str, sha: str) -> bytes:
+        """Liest einen Blob ohne Lock (nur zur Anzeige) und prüft seinen Hash.
+
+        Args:
+            op_id: Die Op.
+            role: Rolle, z. B. ``haupt``.
+            sha: Erwarteter SHA-1 (aus dem Manifest).
+
+        Returns:
+            Die Bytes.
+
+        Raises:
+            OSError: Blob fehlt oder ist beschädigt.
+        """
+        data = (self._dir / op_id / f"{role}-{sha}").read_bytes()
+        if hashlib.sha1(data).hexdigest() != sha:
+            raise OSError(f"Blob {role} von {op_id} ist beschädigt")
+        return data
+
     def is_final(self, op_id: str) -> bool:
         """``True``, wenn die Op abgeschlossen ist (oder nie vorbereitet wurde: dann ``False``)."""
         path = self._dir / op_id / "state.json"
