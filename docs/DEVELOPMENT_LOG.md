@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Einfüge-Leiste in den Editoren (Teilschritt 5)
+
+- `app/text_tools.py` (UI-neutral) mit Funktionsvertrag laut Plan: Bereich, Leerzeilen unverändert, unbekannte Position → nichts, Auswahl mitgerechnet, UTF-16-Umrechnung.
+- `mobile/ui/note_editor.py`: `editor_toolbar` in „Neue Notiz“ und „Notiz bearbeiten“ (Leiste über dem Feld; Test-Indizes angepasst).
+- `BAUSTELLE(Offsets)`: Ob Flet 0.86.5 Auswahl-Offsets in UTF-16 liefert, ist ohne Gerät nicht prüfbar (Dart-Quellen nicht lokal); Annahme UTF-16 mit Gegenprüfung über `selected_text`.
+
 ## 2026-10-22 – Kleinere Textfelder (Teilschritt 4)
 
 - Bearbeiten-Dialog: `min_lines=3`, `max_lines=8`, `AlertDialog(scrollable=True)`; Editor „Neue Notiz“: `min_lines=2`, `max_lines=6`. Abnahme im Gerätetest (Knöpfe mit offener Tastatur erreichbar); reicht es nicht, folgt eine Vollbild-Bearbeitung (`page.views`).

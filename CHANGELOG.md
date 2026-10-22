@@ -24,6 +24,8 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Einfüge-Knöpfe beim Schreiben und Bearbeiten von Notizen:** Checkbox (macht die Zeile zum Todo bzw. wieder zu Text), Einrücken, Ausrücken und `#` (vor das markierte Wort bzw. ans Zeilenende). Sie wirken auf die Zeile mit dem Cursor bzw. auf alle markierten Zeilen.
+
 - **Android-App (erste Fassung):**
   - Einrichtung mit „Zugriff auf alle Dateien“ und Wahl des Notizordners (auch per eingetipptem Pfad).
   - Tab **Heute**: neue Notiz schreiben; die heutigen Notizen mit abhakbaren Todos, Dringend-Stern und **Verschieben** (Schnellwahl morgen, übermorgen, nächster Montag, in einer Woche, oder ein Datum im Kalender); jede Notiz lässt sich **bearbeiten** und (nach Rückfrage) **löschen**.

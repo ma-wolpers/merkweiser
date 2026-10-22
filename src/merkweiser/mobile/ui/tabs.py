@@ -16,6 +16,7 @@ import flet as ft
 from ...app.views import HitRow, hit_rows, note_ref, note_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 from .note_dialogs import note_actions
+from .note_editor import editor_toolbar
 from .note_view import note_row, todo_line
 
 if TYPE_CHECKING:
@@ -83,7 +84,7 @@ def today_view(app: "MobileApp") -> list[ft.Control]:
         if text.strip():
             await app.act(lambda s: s.append_note(text))
 
-    controls: list[ft.Control] = [editor, ft.Button("Notiz speichern", on_click=save)]
+    controls: list[ft.Control] = [editor_toolbar(editor), editor, ft.Button("Notiz speichern", on_click=save)]
     today = service.clock.today()
     for day_file in service.day(today):
         if day_file.has_conflict:
@@ -95,7 +96,7 @@ def today_view(app: "MobileApp") -> list[ft.Control]:
                 column = [note_row(app, r) for r in rows] + [note_actions(app, ref)]
                 controls.append(ft.Container(content=ft.Column(column), padding=8, border_radius=8,
                                              bgcolor=ft.Colors.SURFACE_CONTAINER))
-    if len(controls) == 2:
+    if len(controls) == 3:  # Leiste, Editor, Speichern
         controls.append(ft.Text(f"Noch keine Notizen am {today.isoformat()}."))
     return controls
 

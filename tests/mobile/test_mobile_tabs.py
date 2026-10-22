@@ -135,7 +135,7 @@ def test_edit_dialog_replaces_note_text(tmp_path: Path) -> None:
     [day] = fake.service.day(fake.service.clock.today())
     ref = note_ref(day.relpath, day.document, day.document.notes[0])
     dialog = note_dialogs._edit_dialog(fake, ref)
-    dialog.content.controls[0].value = "Heute #h\n- [ ] Neu formuliert"
+    dialog.content.controls[1].value = "Heute #h\n- [ ] Neu formuliert"  # [0] ist die Einfüge-Leiste
     asyncio.run(dialog.actions[1].on_click(None))
     assert (Path(fake.settings.vault) / day.relpath).read_bytes() == b"Heute #h\n- [ ] Neu formuliert\n"
 
@@ -151,10 +151,10 @@ def test_edit_dialog_rejects_empty_text(tmp_path: Path) -> None:
     ref = note_ref(day.relpath, day.document, day.document.notes[0])
     dialog = note_dialogs._edit_dialog(fake, ref)
     fake.page.show_dialog(dialog)
-    dialog.content.controls[0].value = "  \n"
-    dialog.content.controls[1].update = lambda: None  # ohne Seite kein Update möglich
+    dialog.content.controls[1].value = "  \n"
+    dialog.content.controls[2].update = lambda: None  # ohne Seite kein Update möglich
     asyncio.run(dialog.actions[1].on_click(None))
-    assert fake.page.dialogs == [dialog] and "Löschen" in dialog.content.controls[1].value
+    assert fake.page.dialogs == [dialog] and "Löschen" in dialog.content.controls[2].value
     assert (Path(fake.settings.vault) / day.relpath).read_bytes() == ref.planned_raw
 
 
@@ -322,7 +322,40 @@ def test_editors_are_bounded_and_the_edit_dialog_scrolls(tmp_path: Path) -> None
     fake = _dialog_app(tmp_path)
     [day] = fake.service.day(fake.service.clock.today())
     dialog = note_dialogs._edit_dialog(fake, note_ref(day.relpath, day.document, day.document.notes[0]))
-    field = dialog.content.controls[0]
+    field = dialog.content.controls[1]
     assert dialog.scrollable and (field.min_lines, field.max_lines) == (3, 8)
-    editor = tabs.today_view(fake)[0]
+    editor = tabs.today_view(fake)[1]
     assert (editor.min_lines, editor.max_lines) == (2, 6)
+
+
+def _toolbar(text: str):
+    """Hilfsfunktion: Feld mit Leiste, ohne Seite (``update``/``focus`` als Attrappen)."""
+    from merkweiser.mobile.ui.note_editor import editor_toolbar
+    field = ft.TextField(value=text, multiline=True)
+    bar = editor_toolbar(field)
+    field.update = lambda: None
+
+    async def focus() -> None:
+        return None
+
+    field.focus = focus
+    return field, bar
+
+
+def test_toolbar_uses_the_remembered_utf16_selection(tmp_path: Path) -> None:
+    """Checkbox-Knopf: gemerkte Auswahl (UTF-16, Emoji vor dem Caret) → Todo, Caret danach passend gesetzt."""
+    import asyncio
+    field, bar = _toolbar("😀 x")
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(4, 4), selected_text="")))
+    asyncio.run(bar.controls[0].on_click(None))
+    assert field.value == "- [ ] 😀 x"
+    assert (field.selection.start, field.selection.end) == (10, 10)  # Index 9 → 10 UTF-16-Einheiten
+
+
+def test_toolbar_does_nothing_without_known_position(tmp_path: Path) -> None:
+    """Ohne gemerkte Position verändert kein Knopf den Text."""
+    import asyncio
+    field, bar = _toolbar("a\nb")
+    for button in bar.controls:
+        asyncio.run(button.on_click(None))
+    assert field.value == "a\nb" and field.selection is None

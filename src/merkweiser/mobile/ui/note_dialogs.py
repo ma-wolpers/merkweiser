@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from ...app.views import NoteRef
+from .note_editor import editor_toolbar
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -73,7 +74,7 @@ def _edit_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:
         app.page.pop_dialog()
 
     return ft.AlertDialog(modal=True, title="Notiz bearbeiten", scrollable=True,
-                          content=ft.Column([field, hint], tight=True),
+                          content=ft.Column([editor_toolbar(field), field, hint], tight=True),
                           actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
 
 
