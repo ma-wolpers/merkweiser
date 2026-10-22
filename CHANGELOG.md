@@ -14,6 +14,9 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Im Editor sprang der Cursor nach Checkbox, Listenpunkt, Einrücken und Ausrücken an eine andere Stelle; er bleibt jetzt beim selben Zeichen.
+- Wird ein eingerückter Listenpunkt oder ein eingerücktes Todo wieder zu normalem Text (per Knopf oder Enter), verliert die Zeile auch ihre Einrückung.
+
 - Beim Bearbeiten einer Notiz überdeckte das Textfeld mit offener Tastatur „Abbrechen“ und „Speichern“. Der Dialog hat keine Überschrift mehr, das Feld ist höchstens 9 Zeilen hoch (danach scrollt es), und der Dialog lässt sich scrollen.
 
 - Wer in Obsidian kurz nach einer Änderung durch Merkweiser in derselben Notiz weiterschreibt, bekommt keine überflüssige Konfliktdatei mehr. Merkweiser prüft jetzt, ob seine Änderung in der Datei noch enthalten ist; Weitertippen in derselben Zeile zählt nicht als Verlust.

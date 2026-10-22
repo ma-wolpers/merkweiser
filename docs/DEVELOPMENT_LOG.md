@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Editor: Cursor springt nicht mehr, Ent-Listen ohne Einrückung
+
+- Vermutete Ursache des Springens (Gerätebefund): Ein neues `value` setzt in Flutter den Caret ans Ende, und das zugehörige `on_selection_change` überschrieb die gemerkte Position. Jetzt gehen `value` und `selection` in einem Update raus, nach dem Fokus noch einmal die Auswahl; Ereignisse ohne Nutzerursache (`cause` `None`/`UNKNOWN`) werden 1 s lang ignoriert. BAUSTELLE(Caret) bis zum Gerätetest.
+- `toggle_todo`/`toggle_list` zurück zu Text entfernen auch die Einrückung (Enter im leeren Punkt tat das schon).
+
 ## 2026-10-22 – Listen im Editor: Listen-Knopf, Enter, strukturbewusstes Einrücken
 
 - `text_tools.toggle_list`; die Hilfsfunktionen heißen jetzt `line_spans`, `affected_lines`, `apply_text_edits` (von `list_editing` mitgenutzt). Das alte `indent` (Tab auf alle Zeilen) ist entfallen.

@@ -116,11 +116,12 @@ def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int
     """Macht die Zeilen zu Todos bzw. wieder zu Text.
 
     Sind alle nicht leeren Zeilen des Bereichs Todos (offen oder abgehakt),
-    wird zurückgeschaltet: ``- [ ] x``/``- [x] x`` → ``x`` (der Marker kommt
-    nicht zurück). Sonst wird jede Zeile ohne Todo eines: ``x`` → ``- [ ] x``,
-    ``- x``/``1. x`` → Checkbox hinter dem Marker. ``[-]`` und andere
-    Statuszeichen bleiben unverändert (GRENZE laut FORMAT.md). Die Einrückung
-    bleibt immer erhalten. Eine einzelne leere Zeile (auch nur Leerraum) wird
+    wird zurückgeschaltet: ``  - [ ] x``/``- [x] x`` → ``x`` (Marker und
+    Einrückung verschwinden, Text ist nie eingerückt). Sonst wird jede Zeile
+    ohne Todo eines: ``x`` → ``- [ ] x``, ``- x``/``1. x`` → Checkbox hinter dem
+    Marker; die Einrückung bleibt dabei erhalten. ``[-]`` und andere
+    Statuszeichen bleiben unverändert (GRENZE laut FORMAT.md). Der Caret bleibt
+    beim selben Zeichen. Eine einzelne leere Zeile (auch nur Leerraum) wird
     zu ``- [ ] `` hinter ihrem Leerraum; der Caret steht danach am Zeilenende.
 
     Args:
@@ -145,9 +146,8 @@ def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int
     items = [(offset, line, parse_list_item(line)) for offset, line in rows]
     edits: list[Edit] = []
     if items and all(item and item.is_todo for _o, _l, item in items):
-        for offset, line, item in items:
-            indent = len(leading_whitespace(line))
-            edits.append((offset + indent, item.body_start - indent, ""))  # type: ignore[union-attr]
+        for offset, _line, item in items:  # Text hat keine Einrückung: Leerraum und Marker weg
+            edits.append((offset, item.body_start, ""))  # type: ignore[union-attr]
     else:
         for offset, line, item in items:
             if item is None:
@@ -162,10 +162,12 @@ def toggle_list(text: str, start: int | None, end: int | None) -> tuple[str, int
     """Macht die Zeilen zu Listenpunkten bzw. wieder zu Text (Gegenstück zu ``toggle_todo``).
 
     Sind alle nicht leeren Zeilen des Bereichs schon Listenpunkte ohne
-    Checkbox, wird zurückgeschaltet: ``- x`` → ``x``. Sonst wird jede Zeile ein
-    Listenpunkt, egal was sie war: ``x`` → ``- x``, Todos (auch abgehakte und
-    ``[-]``) verlieren ihre Checkbox: ``- [ ] x`` → ``- x``. Eine einzelne leere
-    Zeile wird zu ``- `` (Caret dahinter). Die Einrückung bleibt immer erhalten.
+    Checkbox, wird zurückgeschaltet: ``  - x`` → ``x`` (Marker und Einrückung
+    verschwinden). Sonst wird jede Zeile ein Listenpunkt, egal was sie war:
+    ``x`` → ``- x``, Todos (auch abgehakte und ``[-]``) verlieren ihre
+    Checkbox: ``- [ ] x`` → ``- x``; die Einrückung bleibt dabei erhalten. Eine
+    einzelne leere Zeile wird zu ``- `` (Caret dahinter). Sonst bleibt der Caret
+    beim selben Zeichen.
 
     Args:
         text: Editortext.
@@ -187,9 +189,8 @@ def toggle_list(text: str, start: int | None, end: int | None) -> tuple[str, int
     items = [(offset, line, parse_list_item(line)) for offset, line in rows if line.strip()]
     edits: list[Edit] = []
     if items and all(item and item.status is TodoStatus.NONE for _o, _l, item in items):
-        for offset, line, item in items:
-            indent = len(leading_whitespace(line))
-            edits.append((offset + indent, item.body_start - indent, ""))  # type: ignore[union-attr]
+        for offset, _line, item in items:  # Text hat keine Einrückung: Leerraum und Marker weg
+            edits.append((offset, item.body_start, ""))  # type: ignore[union-attr]
         return apply_text_edits(text, start, end, edits)
     for offset, line, item in items:
         if item is None:

@@ -20,8 +20,10 @@ def test_toggle_todo_at_caret_keeps_indentation_and_selection() -> None:
 
 
 def test_toggle_todo_back_counts_done_todos_and_drops_the_marker() -> None:
-    """Rückumschalten von offenen und abgehakten Todos ergibt ``x`` (Marker kommt nicht zurück)."""
-    assert toggle_todo("  - [x] fertig", 14, 14) == ("  fertig", 8, 8)
+    """Rückumschalten von offenen und abgehakten Todos ergibt ``x``: Marker und Einrückung verschwinden,
+    der Caret bleibt beim selben Zeichen."""
+    assert toggle_todo("  - [x] fertig", 14, 14) == ("fertig", 6, 6)
+    assert toggle_todo("\t- [ ] abc", 8, 8) == ("abc", 1, 1)  # Caret hinter „a“ bleibt hinter „a“
     assert toggle_todo("- [ ] a\n- [X] b", 0, 15) == ("a\nb", 0, 3)
 
 
@@ -58,8 +60,9 @@ def test_toggle_list_turns_anything_into_a_list_item() -> None:
 
 
 def test_toggle_list_back_to_text_only_when_all_are_list_items() -> None:
-    """Nur Listenpunkte (ohne Checkbox) → zurück zu Text; gemischt → alle werden Listenpunkte."""
-    assert toggle_list("\t- a\n1. b", 0, 9) == ("\ta\nb", 0, 4)
+    """Nur Listenpunkte (ohne Checkbox) → zurück zu Text ohne Einrückung; gemischt → alle werden Listenpunkte."""
+    assert toggle_list("\t- a\n1. b", 0, 9) == ("a\nb", 0, 3)
+    assert toggle_list("    - abc", 7, 7) == ("abc", 1, 1)
     assert toggle_list("- a\n- [ ] b", 0, 11) == ("- a\n- b", 0, 7)
 
 

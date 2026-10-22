@@ -494,3 +494,25 @@ def test_list_button_and_indent_width(tmp_path: Path) -> None:
     assert field.value == "- a\n- b"
     asyncio.run(bar.controls[2].on_click(None))
     assert field.value == "- a\n  - b"
+
+
+def test_programmatic_selection_echo_does_not_move_the_remembered_caret(tmp_path: Path) -> None:
+    """Nach einem Knopf: Text und Auswahl in einem Update; ein Echo ohne Nutzerursache (Caret ans Ende) wird
+    ignoriert, der nächste Knopf wirkt an derselben Stelle. Echte Nutzer-Ereignisse gelten weiter."""
+    import asyncio
+    field, bar = _toolbar("- a\n- b\n- c")
+    updates = []
+    field.update = lambda: updates.append((field.value, field.selection))
+    tap = ft.TextSelectionChangeCause.TAP
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(6, 6), selected_text="", cause=tap)))
+    asyncio.run(bar.controls[2].on_click(None))  # Einrücken „b“
+    assert field.value == "- a\n    - b\n- c"
+    assert updates[0] == (field.value, ft.TextSelection(10, 10))  # Text und Caret im selben Update
+    echo = SimpleNamespace(selection=ft.TextSelection(15, 15), selected_text="", cause=ft.TextSelectionChangeCause.UNKNOWN)
+    asyncio.run(field.on_selection_change(echo))
+    asyncio.run(bar.controls[0].on_click(None))  # Checkbox wirkt weiter auf „b“, nicht auf „c“
+    assert field.value == "- a\n    - [ ] b\n- c"
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(19, 19), selected_text="",
+                                                          cause=tap)))
+    asyncio.run(bar.controls[0].on_click(None))
+    assert field.value == "- a\n    - [ ] b\n- [ ] c"
