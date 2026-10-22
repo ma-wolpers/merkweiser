@@ -4,13 +4,17 @@ Jede Funktion nimmt ``(text, start, end)`` und liefert ein Tripel gleicher
 Form. ``start``/``end`` sind Python-Indizes (Codepoints) der Auswahl; ist die
 Position unbekannt (``None``), passiert **nichts**.
 
-Bereich (``toggle_todo``, ``indent``): bei einem Caret die Zeile des Carets,
+Bereich (``toggle_todo``, ``toggle_list``): bei einem Caret die Zeile des Carets,
 bei einer Auswahl alle Zeilen, in denen mindestens ein Zeichen ausgewählt ist
 (endet die Auswahl genau am Zeilenanfang, zählt diese Zeile nicht). Leerzeilen
 dazwischen gehören zum Bereich, werden aber **nicht verändert**: Eine Leerzeile
 ist eine Notizgrenze (``docs/FORMAT.md``), und ``- [ ] `` würde sie aufheben.
 Ausnahme: Ist der Bereich genau **eine** leere Zeile (z. B. Caret in einer
-neuen Zeile oder im leeren Editor), setzt ``toggle_todo`` dort ``- [ ] `` ein.
+neuen Zeile oder im leeren Editor), setzt ``toggle_todo`` dort ``- [ ] `` ein
+(``toggle_list``: ``- ``).
+
+Strukturbewusstes Einrücken/Ausrücken und das Fortsetzen von Listen mit Enter
+stehen in ``list_editing``.
 
 Die Auswahl wird so umgerechnet, dass sie danach dieselben Zeichen umfasst
 (Einfügungen an oder vor einer Position verschieben sie).
@@ -23,8 +27,8 @@ from __future__ import annotations
 
 from ..core.inline import TodoStatus, leading_whitespace, parse_list_item
 
-TAB = "\t"
 _CHECKBOX = "[ ] "
+_BULLET = "- "
 
 # (Position im alten Text, Anzahl entfernter Zeichen, eingefügter Text)
 Edit = tuple[int, int, str]
@@ -61,7 +65,7 @@ def index_to_utf16(text: str, index: int) -> int:
     return sum(2 if ord(char) > 0xFFFF else 1 for char in text[:index])
 
 
-def _lines(text: str) -> list[tuple[int, int]]:
+def line_spans(text: str) -> list[tuple[int, int]]:
     """``(anfang, ende)`` jeder Zeile (ohne ``\\n``)."""
     spans, start = [], 0
     for line in text.split("\n"):
@@ -70,16 +74,16 @@ def _lines(text: str) -> list[tuple[int, int]]:
     return spans
 
 
-def _affected(text: str, start: int, end: int) -> list[int]:
+def affected_lines(text: str, start: int, end: int) -> list[int]:
     """Indizes der betroffenen Zeilen (siehe Moduldokumentation)."""
-    spans = _lines(text)
+    spans = line_spans(text)
     if start == end:
         return [next(i for i, (a, b) in enumerate(spans) if a <= start <= b)]
     hits = [i for i, (a, b) in enumerate(spans) if start < b + 1 and end > a]
     return list(range(hits[0], hits[-1] + 1)) if hits else []
 
 
-def _apply(text: str, start: int, end: int, edits: list[Edit]) -> tuple[str, int, int]:
+def apply_text_edits(text: str, start: int, end: int, edits: list[Edit]) -> tuple[str, int, int]:
     """Wendet Edits an und rechnet die Auswahl um.
 
     Args:
@@ -129,12 +133,12 @@ def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int
     """
     if start is None or end is None:
         return text, start, end
-    spans = _lines(text)
-    rows = [(spans[i][0], text[spans[i][0]:spans[i][1]]) for i in _affected(text, start, end)]
+    spans = line_spans(text)
+    rows = [(spans[i][0], text[spans[i][0]:spans[i][1]]) for i in affected_lines(text, start, end)]
     if len(rows) == 1 and not rows[0][1].strip():  # einzelne leere Zeile: neues Todo, Caret dahinter
         offset, line = rows[0]
         insert = "- " + _CHECKBOX
-        new_text, _s, _e = _apply(text, start, end, [(offset + len(line), 0, insert)])
+        new_text, _s, _e = apply_text_edits(text, start, end, [(offset + len(line), 0, insert)])
         caret = offset + len(line) + len(insert)
         return new_text, caret, caret
     rows = [(offset, line) for offset, line in rows if line.strip()]
@@ -151,40 +155,48 @@ def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int
             elif item.status is TodoStatus.NONE:
                 gap = "" if line[item.body_start - 1:item.body_start].isspace() else " "
                 edits.append((offset + item.body_start, 0, gap + _CHECKBOX))
-    return _apply(text, start, end, edits)
+    return apply_text_edits(text, start, end, edits)
 
 
-def indent(text: str, start: int | None, end: int | None, delta: int) -> tuple[str, int | None, int | None]:
-    """Rückt die Zeilen des Bereichs um eine Ebene ein (``+1``) oder aus (``-1``).
+def toggle_list(text: str, start: int | None, end: int | None) -> tuple[str, int | None, int | None]:
+    """Macht die Zeilen zu Listenpunkten bzw. wieder zu Text (Gegenstück zu ``toggle_todo``).
 
-    Eine Ebene ist ein Tab. Ausrücken entfernt einen führenden Tab oder bis zu
-    vier führende Leerzeichen; Zeilen ohne Einrückung bleiben unverändert.
+    Sind alle nicht leeren Zeilen des Bereichs schon Listenpunkte ohne
+    Checkbox, wird zurückgeschaltet: ``- x`` → ``x``. Sonst wird jede Zeile ein
+    Listenpunkt, egal was sie war: ``x`` → ``- x``, Todos (auch abgehakte und
+    ``[-]``) verlieren ihre Checkbox: ``- [ ] x`` → ``- x``. Eine einzelne leere
+    Zeile wird zu ``- `` (Caret dahinter). Die Einrückung bleibt immer erhalten.
 
     Args:
         text: Editortext.
         start: Auswahlanfang oder ``None``.
         end: Auswahlende oder ``None``.
-        delta: ``+1`` oder ``-1``.
 
     Returns:
         ``(text, start, end)``; unverändert bei unbekannter Position.
     """
     if start is None or end is None:
         return text, start, end
-    spans = _lines(text)
+    spans = line_spans(text)
+    rows = [(spans[i][0], text[spans[i][0]:spans[i][1]]) for i in affected_lines(text, start, end)]
+    if len(rows) == 1 and not rows[0][1].strip():
+        offset, line = rows[0]
+        new_text, _s, _e = apply_text_edits(text, start, end, [(offset + len(line), 0, _BULLET)])
+        caret = offset + len(line) + len(_BULLET)
+        return new_text, caret, caret
+    items = [(offset, line, parse_list_item(line)) for offset, line in rows if line.strip()]
     edits: list[Edit] = []
-    for index in _affected(text, start, end):
-        offset, stop = spans[index]
-        line = text[offset:stop]
-        if not line.strip():
-            continue
-        if delta > 0:
-            edits.append((offset, 0, TAB))
-        elif line.startswith(TAB):
-            edits.append((offset, 1, ""))
-        elif line.startswith(" "):
-            edits.append((offset, min(4, len(line) - len(line.lstrip(" "))), ""))
-    return _apply(text, start, end, edits)
+    if items and all(item and item.status is TodoStatus.NONE for _o, _l, item in items):
+        for offset, line, item in items:
+            indent = len(leading_whitespace(line))
+            edits.append((offset + indent, item.body_start - indent, ""))  # type: ignore[union-attr]
+        return apply_text_edits(text, start, end, edits)
+    for offset, line, item in items:
+        if item is None:
+            edits.append((offset + len(leading_whitespace(line)), 0, _BULLET))
+        elif item.status_col is not None:  # Checkbox entfernen: „[?]“ samt folgendem Leerraum
+            edits.append((offset + item.status_col - 1, item.body_start - item.status_col + 1, ""))
+    return apply_text_edits(text, start, end, edits)
 
 
 def insert_tag(text: str, start: int | None, end: int | None) -> tuple[str, int | None, int | None]:
@@ -212,9 +224,9 @@ def insert_tag(text: str, start: int | None, end: int | None) -> tuple[str, int 
             word -= 1
         if text[word:word + 1] == "#":
             return text, start, end
-        return _apply(text, start, end, [(word, 0, "#")])
-    line_start, line_end = _lines(text)[_affected(text, start, end)[0]]
+        return apply_text_edits(text, start, end, [(word, 0, "#")])
+    line_start, line_end = line_spans(text)[affected_lines(text, start, end)[0]]
     line = text[line_start:line_end]
     insert = "#" if not line or line[-1].isspace() else " #"
-    new_text, _s, _e = _apply(text, start, end, [(line_end, 0, insert)])
+    new_text, _s, _e = apply_text_edits(text, start, end, [(line_end, 0, insert)])
     return new_text, line_end + len(insert), line_end + len(insert)

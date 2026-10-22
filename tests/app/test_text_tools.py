@@ -2,14 +2,13 @@
 
 import pytest
 
-from merkweiser.app.text_tools import index_to_utf16, indent, insert_tag, toggle_todo, utf16_to_index
+from merkweiser.app.text_tools import index_to_utf16, insert_tag, toggle_list, toggle_todo, utf16_to_index
 
 
 def test_unknown_position_does_nothing() -> None:
     """Unbekannte Cursorposition → nichts verändern (kein Ausweichen aufs Textende)."""
-    for tool in (toggle_todo, insert_tag):
+    for tool in (toggle_todo, toggle_list, insert_tag):
         assert tool("a\nb", None, None) == ("a\nb", None, None)
-    assert indent("a", None, None, 1) == ("a", None, None)
 
 
 def test_toggle_todo_at_caret_keeps_indentation_and_selection() -> None:
@@ -49,11 +48,19 @@ def test_selection_ending_at_line_start_excludes_that_line() -> None:
     assert toggle_todo(new, start, end) == ("a\nb", 0, 2)
 
 
-def test_indent_and_outdent() -> None:
-    """Einrücken mit Tab; Ausrücken entfernt einen Tab oder bis zu vier Leerzeichen; Leerzeilen bleiben."""
-    assert indent("a\n\nb", 0, 4, 1) == ("\ta\n\n\tb", 1, 6)
-    assert indent("\ta\n      b", 0, 10, -1) == ("a\n  b", 0, 5)
-    assert indent("a", 1, 1, -1) == ("a", 1, 1)
+def test_toggle_list_turns_anything_into_a_list_item() -> None:
+    """Text, Todo (offen, erledigt, ``[-]``) → Listenpunkt; Einrückung bleibt; leere Zeile → ``- ``."""
+    assert toggle_list("x", 1, 1) == ("- x", 3, 3)
+    assert toggle_list("  - [ ] a", 9, 9) == ("  - a", 5, 5)
+    assert toggle_list("- [x] a\n- [-] b\nc", 0, 17) == ("- a\n- b\n- c", 0, 11)
+    assert toggle_list("", 0, 0) == ("- ", 2, 2)
+    assert toggle_list("a\n\t\nb", 2, 2) == ("a\n\t- \nb", 5, 5)
+
+
+def test_toggle_list_back_to_text_only_when_all_are_list_items() -> None:
+    """Nur Listenpunkte (ohne Checkbox) → zurück zu Text; gemischt → alle werden Listenpunkte."""
+    assert toggle_list("\t- a\n1. b", 0, 9) == ("\ta\nb", 0, 4)
+    assert toggle_list("- a\n- [ ] b", 0, 11) == ("- a\n- b", 0, 7)
 
 
 def test_insert_tag_at_word_start_or_line_end() -> None:

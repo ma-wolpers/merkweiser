@@ -261,3 +261,24 @@ def test_search_notes_groups_hits_per_note_and_keeps_duplicates_apart(tmp_path: 
     assert all(m.day == date(2026, 1, 2) for m in matches)
     with pytest.raises(InvalidQuery):
         svc.search_notes(Filter(text=TextQuery("(", TextMode.REGEX)))
+
+
+def test_indent_width_setting_is_validated() -> None:
+    """Einrückbreite 2 oder 4 (Standard 4); andere Werte werden abgelehnt."""
+    assert Settings().indent_width == 4 and Settings(indent_width=2).validated().indent_width == 2
+    with pytest.raises(ValueError):
+        Settings(indent_width=3).validated()
+
+
+@pytest.mark.parametrize("indent", ["  ", "    ", "\t"])
+def test_moving_a_todo_takes_its_subtodos_and_subitems(tmp_path: Path, indent: str) -> None:
+    """Untertodos und Unterpunkte (jede Einrückungsart, auch zwei Ebenen tief) wandern automatisch mit."""
+    svc = service(tmp_path)
+    source = f"T\n- [ ] a\n{indent}- [ ] sub\n{indent}{indent}- tief\n{indent}- punkt\n- [ ] b\n"
+    (svc.root / "2026-01-02.md").write_text(source, encoding="utf-8")
+    svc.start()
+    assert svc.move_todo(Target("2026-01-02.md", 1, "- [ ] a"), date(2026, 1, 20)).state == "DONE"
+    settle(svc)
+    assert (svc.root / "2026-01-02.md").read_text(encoding="utf-8") == "T\n- [ ] b\n"
+    moved = (svc.root / "2026-01-20.md").read_text(encoding="utf-8")
+    assert moved == f"T\n- [ ] a\n{indent}- [ ] sub\n{indent}{indent}- tief\n{indent}- punkt\n"

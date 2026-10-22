@@ -83,7 +83,7 @@ def editor_dialog(app: "MobileApp", text: str, on_save: Callable[[str], Awaitabl
         app.page.pop_dialog()
 
     return ft.AlertDialog(modal=True, scrollable=True,
-                          content=ft.Column([editor_toolbar(field), field, hint], tight=True),
+                          content=ft.Column([editor_toolbar(field, app.settings.indent_width), field, hint], tight=True),
                           actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
 
 

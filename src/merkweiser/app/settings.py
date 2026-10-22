@@ -1,7 +1,8 @@
 """Einstellungen als JSON in den App-Daten (nie im Vault).
 
 Felder laut PLAN.md: Notizordner, Dateinamensmuster, Projekt-Präfix,
-Poll-Intervall und Aufbewahrung (Backups und Historie, Standard 30 Tage).
+Poll-Intervall und Aufbewahrung (Backups und Historie, Standard 30 Tage);
+dazu die Einrückbreite des Editors (2 oder 4 Leerzeichen).
 Einstellungen, die nur die Oberfläche betreffen, verändern nie den Vault.
 """
 
@@ -13,6 +14,7 @@ from pathlib import Path
 
 from ..core.appdata import write_json_atomic
 from ..core.vault import DEFAULT_PATTERN, DayPattern
+from .list_editing import INDENT_WIDTHS
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,8 @@ class Settings:
         retention_days: Aufbewahrung von Backups und veralteten Historienständen.
         report_dir: Ordner für Diagnoseberichte (z. B. ein per Syncthing geteilter
             Ordner außerhalb des Vaults) oder ``None``.
+        indent_width: Leerzeichen je Einrückungsebene im Editor (2 oder 4;
+            Standard 4 = ein Tab in Obsidian).
     """
 
     vault: str | None = None
@@ -35,6 +39,7 @@ class Settings:
     poll_seconds: float = 5.0
     retention_days: int = 30
     report_dir: str | None = None
+    indent_width: int = 4
 
     def validated(self) -> "Settings":
         """Prüft die Werte.
@@ -50,6 +55,8 @@ class Settings:
             raise ValueError("Projekt-Präfix ohne Leerzeichen und ohne #")
         if self.poll_seconds <= 0 or self.retention_days < 1:
             raise ValueError("Poll-Intervall > 0 und Aufbewahrung ≥ 1 Tag")
+        if self.indent_width not in INDENT_WIDTHS:
+            raise ValueError("Einrückung: 2 oder 4 Leerzeichen")
         return self
 
 

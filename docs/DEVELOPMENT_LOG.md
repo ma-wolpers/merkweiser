@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Listen im Editor: Listen-Knopf, Enter, strukturbewusstes Einrücken
+
+- `text_tools.toggle_list`; die Hilfsfunktionen heißen jetzt `line_spans`, `affected_lines`, `apply_text_edits` (von `list_editing` mitgenutzt). Das alte `indent` (Tab auf alle Zeilen) ist entfallen.
+- Neu `app/list_editing.py`: `shift_item` (nur erste Zeile des Punkts, Teilbaum wandert in beide Richtungen mit, Grenze vorheriger Punkt + 1, Breite aus `Settings.indent_width`) und `continue_list` (Enter-Erkennung über alten/neuen Wert und gemerkten Caret).
+- `Settings.indent_width` (2/4, Standard 4) mit Auswahl in den Einstellungen.
+- Nutzerentscheidungen: Einrücken nimmt Unterpunkte mit (symmetrisch zum Ausrücken); Standardbreite 4.
+- Verschieben mit Untertodos/-punkten war schon so umgesetzt (`plan_move` nimmt den Teilbaum); jetzt zusätzlich über den Service für 2/4 Leerzeichen und Tab getestet.
+
 ## 2026-10-22 – Ein Notiz-Editor für Neu und Bearbeiten
 
 - `note_dialogs.editor_dialog` als einziger Editor (ohne Titel, max. 9 Zeilen); `new_note_dialog` (leer → `append_note`) und `_edit_dialog` (→ `replace_note_text`) liefern nur noch das Speichern. Das Schreibfeld im Tab „Tag“ ist durch den Knopf „Neue Notiz“ ersetzt.

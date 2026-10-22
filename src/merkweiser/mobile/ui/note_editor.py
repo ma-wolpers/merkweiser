@@ -1,10 +1,18 @@
-"""Einfüge-Leiste für die Notiz-Editoren (Mobile): Checkbox, Einrücken, Ausrücken, ``#``.
+"""Einfüge-Leiste und Listen-Verhalten der Notiz-Editoren (Mobile).
 
-Die Textlogik steckt UI-neutral in ``app.text_tools``; hier geht es nur um Flet:
+Knöpfe: Checkbox, Listenpunkt, Einrücken, Ausrücken, ``#``. Dazu setzt Enter
+in einem Listenpunkt/Todo die Liste fort bzw. beendet sie. Die Textlogik
+steckt UI-neutral in ``app.text_tools`` und ``app.list_editing``; hier geht es
+nur um Flet:
 
 * Die letzte Auswahl wird über ``on_selection_change`` gemerkt, weil ein Tipp
   auf einen Knopf dem Feld den Fokus nehmen kann.
-* Nach der Änderung: ``value`` setzen, ``update()``, ``await focus()``, dann
+* Enter wird über ``on_change`` erkannt: Der neue Wert ist der alte plus genau
+  ein ``\\n`` (``list_editing.continue_list``); der gemerkte Caret entscheidet,
+  wenn die Position mehrdeutig ist. GRENZE(Enter): Tastaturen, die beim Enter
+  zugleich ein Wort autokorrigieren, liefern mehr als ein Zeichen auf einmal;
+  dann bleibt es beim normalen Zeilenumbruch.
+* Nach einer Änderung: ``value`` setzen, ``update()``, ``await focus()``, dann
   ``selection`` (laut Flet-Doku muss das Feld vor dem Setzen der Auswahl den
   Fokus haben), ``update()``.
 * **BAUSTELLE(Offsets):** Flutter zählt Positionen in UTF-16-Einheiten. Ob Flet
@@ -19,21 +27,24 @@ from typing import Callable
 
 import flet as ft
 
-from ...app.text_tools import index_to_utf16, indent, insert_tag, toggle_todo, utf16_to_index
+from ...app.list_editing import continue_list, shift_item
+from ...app.text_tools import index_to_utf16, insert_tag, toggle_list, toggle_todo, utf16_to_index
 
 Tool = Callable[[str, int | None, int | None], tuple[str, int | None, int | None]]
 
 
-def editor_toolbar(field: ft.TextField) -> ft.Row:
-    """Knopfleiste über einem Notiz-Editor.
+def editor_toolbar(field: ft.TextField, indent_width: int = 4) -> ft.Row:
+    """Knopfleiste über einem Notiz-Editor; belegt auch Enter (Listen fortsetzen).
 
     Args:
-        field: Mehrzeiliges Textfeld; ``on_selection_change`` wird hier belegt.
+        field: Mehrzeiliges Textfeld; ``on_selection_change`` und ``on_change``
+            werden hier belegt.
+        indent_width: Leerzeichen je Einrückungsebene (Einstellung, 2 oder 4).
 
     Returns:
-        Eine Zeile mit vier Symbolknöpfen.
+        Eine Zeile mit fünf Symbolknöpfen.
     """
-    state: dict = {"start": None, "end": None, "utf16": True}
+    state: dict = {"start": None, "end": None, "utf16": True, "value": field.value or ""}
 
     def to_index(text: str, offset: int) -> int:
         return utf16_to_index(text, offset) if state["utf16"] else min(offset, len(text))
@@ -48,12 +59,10 @@ def editor_toolbar(field: ft.TextField) -> ft.Row:
             state["utf16"] = text[selection.start:selection.end] != event.selected_text
         state["start"], state["end"] = to_index(text, selection.start), to_index(text, selection.end)
 
-    async def run(tool: Tool) -> None:
-        text = field.value or ""
-        new_text, start, end = tool(text, state["start"], state["end"])
-        if start is None or end is None or (new_text, start, end) == (text, state["start"], state["end"]):
-            return
+    async def show(new_text: str, start: int, end: int) -> None:
+        """Schreibt Text und Auswahl ins Feld (Reihenfolge siehe Moduldokumentation)."""
         field.value = new_text
+        state["value"] = new_text
         field.update()
         await field.focus()
         convert = (lambda i: index_to_utf16(new_text, i)) if state["utf16"] else (lambda i: i)
@@ -61,13 +70,30 @@ def editor_toolbar(field: ft.TextField) -> ft.Row:
         field.update()
         state["start"], state["end"] = start, end
 
+    async def changed(_e) -> None:
+        old, new = state["value"], field.value or ""
+        state["value"] = new
+        result = continue_list(old, new, state["start"] if state["start"] == state["end"] else None)
+        if result is not None:
+            await show(result[0], result[1], result[1])
+
+    async def run(tool: Tool) -> None:
+        text = field.value or ""
+        new_text, start, end = tool(text, state["start"], state["end"])
+        if start is None or end is None or (new_text, start, end) == (text, state["start"], state["end"]):
+            return
+        await show(new_text, start, end)
+
     def button(icon, tooltip: str, tool: Tool) -> ft.IconButton:
         async def click(_e) -> None:
             await run(tool)
         return ft.IconButton(icon=icon, tooltip=tooltip, on_click=click)
 
     field.on_selection_change = remember
-    return ft.Row([button(ft.Icons.CHECK_BOX_OUTLINED, "Checkbox", toggle_todo),
-                   button(ft.Icons.FORMAT_INDENT_INCREASE, "Einrücken", lambda t, s, e: indent(t, s, e, 1)),
-                   button(ft.Icons.FORMAT_INDENT_DECREASE, "Ausrücken", lambda t, s, e: indent(t, s, e, -1)),
-                   button(ft.Icons.TAG, "Tag (#)", insert_tag)], spacing=0)
+    field.on_change = changed
+    return ft.Row([
+        button(ft.Icons.CHECK_BOX_OUTLINED, "Checkbox", toggle_todo),
+        button(ft.Icons.FORMAT_LIST_BULLETED, "Listenpunkt", toggle_list),
+        button(ft.Icons.FORMAT_INDENT_INCREASE, "Einrücken", lambda t, s, e: shift_item(t, s, e, 1, indent_width)),
+        button(ft.Icons.FORMAT_INDENT_DECREASE, "Ausrücken", lambda t, s, e: shift_item(t, s, e, -1, indent_width)),
+        button(ft.Icons.TAG, "Tag (#)", insert_tag)], spacing=0)

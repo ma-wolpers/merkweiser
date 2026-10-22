@@ -24,7 +24,9 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
-- **Einfüge-Knöpfe beim Schreiben und Bearbeiten von Notizen:** Checkbox (macht die Zeile zum Todo bzw. wieder zu Text; in einer leeren Zeile beginnt sie ein neues Todo), Einrücken, Ausrücken und `#` (vor das markierte Wort bzw. ans Zeilenende). Sie wirken auf die Zeile mit dem Cursor bzw. auf alle markierten Zeilen.
+- **Einfüge-Knöpfe beim Schreiben und Bearbeiten von Notizen:** Checkbox (macht die Zeile zum Todo bzw. wieder zu Text; in einer leeren Zeile beginnt sie ein neues Todo), Listenpunkt (macht die Zeile zum Listenpunkt, auch aus einem Todo; auf einem Listenpunkt wieder zu Text), Einrücken, Ausrücken und `#` (vor das markierte Wort bzw. ans Zeilenende). Sie wirken auf die Zeile mit dem Cursor bzw. auf alle markierten Zeilen.
+- **Einrücken und Ausrücken** wirken nur auf Listenpunkte und Todos (auch wenn der Cursor in einer Fortsetzungszeile steht) und verschieben den Punkt mit allen Unterpunkten. Eingerückt wird höchstens eine Ebene tiefer als der Punkt darüber; ohne Punkt darüber gar nicht. Eine Ebene sind 2 oder 4 Leerzeichen (Einstellungen, Standard 4).
+- **Enter in Listen:** In einem Listenpunkt oder Todo mit Text beginnt Enter darunter einen neuen leeren Punkt bzw. ein neues Todo mit gleicher Einrückung; in einem leeren Punkt verschwindet der Marker, und die Zeile wird normaler Text.
 
 - **Android-App (erste Fassung):**
   - Einrichtung mit „Zugriff auf alle Dateien“ und Wahl des Notizordners (auch per eingetipptem Pfad).
@@ -33,7 +35,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
   - Tab **Todos**: alle Todos mit Filter nach Status und Tags (UND/ODER).
   - Tab **Suche**: Teilstring oder regulärer Ausdruck. Treffer erscheinen als **ganze Notizen**, die sich wie im Tab „Tag“ bearbeiten, abhaken und verschieben lassen; ein Tipp auf das Datum öffnet den Tab „Tag“ mit genau diesem Datum.
   - Tab **Konflikte**: Syncthing-Konflikte werden beim Start automatisch zusammengeführt. Übrige Fälle zeigen, woher die Konfliktversion stammt, und beide Fassungen im Vergleich (rot nur in der Hauptdatei, grün nur in der Konfliktversion); Entscheidung per „Hauptdatei behalten“, „Konfliktversion übernehmen“ oder „Zusammenführen“, jeweils mit Erklärung. Bei widersprüchlichen Änderungen lässt sich **jeder Abschnitt einzeln** entscheiden (Hauptdatei, Konfliktversion, beide oder selbst bearbeitet). Die Art des Konflikts steht verständlich auf Deutsch da. Darunter die Liste **„Automatisch zusammengeführt“** mit Vergleich vorher/nachher und **„Rückgängig“**; eine so wiederhergestellte Konfliktversion wird danach nie wieder automatisch zusammengeführt. Einträge lassen sich einzeln oder alle auf einmal **ausblenden** (das Backup bleibt erhalten).
-  - Tab **Einstellungen**: Projekt-Präfix, Prüfintervall, Ordner wechseln; Anzeige der **Schreibgarantie** des Notizordners (ist sie eingeschränkt, steht das auch beim Start).
+  - Tab **Einstellungen**: Projekt-Präfix, Prüfintervall, Einrückung im Editor (2 oder 4 Leerzeichen), Ordner wechseln; Anzeige der **Schreibgarantie** des Notizordners (ist sie eingeschränkt, steht das auch beim Start).
   - Speichern funktioniert auch auf Speicher ohne Hardlinks (z. B. SD-Karte); Merkweiser prüft beim Öffnen jedes Notizordners, welche sichere Schreibweise dort geht.
   - **Diagnosebericht** (Einstellungen): schreibt den Zustand der App ohne Notizinhalte als Textdatei in einen wählbaren Ordner, z. B. einen Syncthing-Ordner.
   - Ein Notizordner, in dem Merkweiser nicht sicher speichern kann, öffnet sich **schreibgeschützt**: Lesen und Suchen gehen, Änderungen werden mit Hinweis abgelehnt.

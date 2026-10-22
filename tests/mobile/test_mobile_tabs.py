@@ -460,3 +460,37 @@ def _walk(control) -> list:
 def _walk_all(controls) -> list:
     """Alle Controls einer Liste rekursiv."""
     return [found for control in controls for found in _walk(control)]
+
+
+def test_enter_in_a_todo_continues_the_list(tmp_path: Path) -> None:
+    """Enter (on_change mit genau einem ``\n`` mehr) in einem Todo → neues leeres Todo, Caret dahinter."""
+    import asyncio
+    field, _bar = _toolbar("- [ ] a")
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(7, 7), selected_text="")))
+    field.value = "- [ ] a\n"
+    asyncio.run(field.on_change(None))
+    assert field.value == "- [ ] a\n- [ ] "
+    assert (field.selection.start, field.selection.end) == (14, 14)
+    field.value = "- [ ] a\n- [ ] \n"  # Enter im leeren Todo → wird Text
+    asyncio.run(field.on_change(None))
+    assert field.value == "- [ ] a\n"
+
+
+def test_list_button_and_indent_width(tmp_path: Path) -> None:
+    """Listen-Knopf macht aus dem Todo einen Punkt; Einrücken nutzt die eingestellte Breite."""
+    import asyncio
+
+    from merkweiser.mobile.ui.note_editor import editor_toolbar
+    field = ft.TextField(value="- a\n- [ ] b", multiline=True)
+    bar = editor_toolbar(field, 2)
+    field.update = lambda: None
+
+    async def focus() -> None:
+        return None
+
+    field.focus = focus
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(11, 11), selected_text="")))
+    asyncio.run(bar.controls[1].on_click(None))
+    assert field.value == "- a\n- b"
+    asyncio.run(bar.controls[2].on_click(None))
+    assert field.value == "- a\n  - b"

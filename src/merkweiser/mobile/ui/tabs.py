@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
+from ...app.list_editing import INDENT_WIDTHS
 from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 from .date_pick import open_date_picker
@@ -209,9 +210,11 @@ def _date_button(app: "MobileApp", day: date) -> ft.Control:
 
 
 def settings_view(app: "MobileApp") -> list[ft.Control]:
-    """Einstellungen: Ordner, Projekt-Präfix, Prüfintervall."""
+    """Einstellungen: Ordner, Projekt-Präfix, Prüfintervall, Einrückbreite des Editors."""
     prefix = ft.TextField(label="Projekt-Präfix", value=app.settings.project_prefix)
     poll = ft.TextField(label="Prüfintervall (Sekunden)", value=str(app.settings.poll_seconds))
+    width = ft.Dropdown(label="Einrückung im Editor", value=str(app.settings.indent_width), options=[
+        ft.DropdownOption(key=str(w), text=f"{w} Leerzeichen") for w in INDENT_WIDTHS])
 
     async def save(_e) -> None:
         try:
@@ -220,7 +223,8 @@ def settings_view(app: "MobileApp") -> list[ft.Control]:
             app.say("Prüfintervall muss eine Zahl sein.")
             app.render()
             return
-        await app.save_settings(replace(app.settings, project_prefix=(prefix.value or "").strip(), poll_seconds=seconds))
+        await app.save_settings(replace(app.settings, project_prefix=(prefix.value or "").strip(), poll_seconds=seconds,
+                                        indent_width=int(width.value or app.settings.indent_width)))
 
     async def change_folder(_e) -> None:
         app.show_setup()
@@ -233,7 +237,7 @@ def settings_view(app: "MobileApp") -> list[ft.Control]:
     guarantee = f"Schreibgarantie: {app.service.write_guarantee} ({app.service.fs.install_mode})" if app.service else ""
     return [ft.Text(f"Notizordner: {app.settings.vault}"), ft.Text(guarantee, size=12),
             ft.Button("Ordner wechseln", on_click=change_folder),
-            prefix, poll, ft.Button("Speichern", on_click=save), ft.Divider(),
+            prefix, poll, width, ft.Button("Speichern", on_click=save), ft.Divider(),
             ft.Text("Diagnosebericht: Zustand der App als Textdatei, ohne Notizinhalte. "
                     "Leeres Feld = Ordner auswählen.", size=12),
             report_dir, ft.Button("Diagnosebericht speichern", on_click=save_report),
