@@ -54,7 +54,9 @@ def _edit_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:
     Returns:
         Der (noch nicht geöffnete) Dialog.
     """
-    field = ft.TextField(value=ref.text, multiline=True, min_lines=4, max_lines=14, autofocus=True)
+    # Höchstens 8 Zeilen (danach scrollt das Feld) und ein scrollbarer Dialog: Mit offener
+    # Tastatur überdeckte das Feld sonst „Abbrechen“ und „Speichern“ (Nutzerbefund 2026-10-22).
+    field = ft.TextField(value=ref.text, multiline=True, min_lines=3, max_lines=8, autofocus=True)
     hint = ft.Text("", size=12, color=ft.Colors.ERROR)
 
     async def save(_e) -> None:
@@ -70,7 +72,8 @@ def _edit_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:
     async def cancel(_e) -> None:
         app.page.pop_dialog()
 
-    return ft.AlertDialog(modal=True, title="Notiz bearbeiten", content=ft.Column([field, hint], tight=True),
+    return ft.AlertDialog(modal=True, title="Notiz bearbeiten", scrollable=True,
+                          content=ft.Column([field, hint], tight=True),
                           actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
 
 

@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Kleinere Textfelder (Teilschritt 4)
+
+- Bearbeiten-Dialog: `min_lines=3`, `max_lines=8`, `AlertDialog(scrollable=True)`; Editor „Neue Notiz“: `min_lines=2`, `max_lines=6`. Abnahme im Gerätetest (Knöpfe mit offener Tastatur erreichbar); reicht es nicht, folgt eine Vollbild-Bearbeitung (`page.views`).
+
 ## 2026-10-22 – Tag-Dialog vor dem Herauslösen (Teilschritt 3)
 
 - Core: `tags.tag_from_input`; `edits.with_tags` (aus `move_plan` verlegt), `tagged_line`, `add_tag`, `insert_topic`; `move_plan.move_context`/`MoveContext.project_conflict` und `tag_for_move` (ein Patch, neu aufgelöstes Target).

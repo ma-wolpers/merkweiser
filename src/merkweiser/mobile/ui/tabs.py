@@ -76,7 +76,7 @@ def setup_view(app: "MobileApp") -> list[ft.Control]:
 def today_view(app: "MobileApp") -> list[ft.Control]:
     """Heute: neue Notiz und die Notizen des heutigen Tages."""
     service = app.service
-    editor = ft.TextField(label="Neue Notiz", multiline=True, min_lines=3)
+    editor = ft.TextField(label="Neue Notiz", multiline=True, min_lines=2, max_lines=6)
 
     async def save(_e) -> None:
         text = editor.value or ""

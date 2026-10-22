@@ -313,3 +313,16 @@ def test_tag_dialog_offers_the_shared_project(tmp_path: Path) -> None:
     fake, _target = _flow(tmp_path, b"T #projekt/umzug\n- [ ] eins\n- [ ] zwei\n", 1)
     [dialog] = fake.page.dialogs
     assert dialog.actions[1].content == "Mit bestehendem Tag verschieben (#projekt/umzug)"
+
+
+def test_editors_are_bounded_and_the_edit_dialog_scrolls(tmp_path: Path) -> None:
+    """Bearbeiten: höchstens 8 Zeilen, Dialog scrollbar (Knöpfe bleiben mit Tastatur erreichbar); Neue Notiz: höchstens 6."""
+    from merkweiser.app.views import note_ref
+    from merkweiser.mobile.ui import note_dialogs
+    fake = _dialog_app(tmp_path)
+    [day] = fake.service.day(fake.service.clock.today())
+    dialog = note_dialogs._edit_dialog(fake, note_ref(day.relpath, day.document, day.document.notes[0]))
+    field = dialog.content.controls[0]
+    assert dialog.scrollable and (field.min_lines, field.max_lines) == (3, 8)
+    editor = tabs.today_view(fake)[0]
+    assert (editor.min_lines, editor.max_lines) == (2, 6)

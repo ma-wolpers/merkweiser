@@ -14,6 +14,8 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Beim Bearbeiten einer Notiz überdeckte das Textfeld mit offener Tastatur „Abbrechen“ und „Speichern“. Das Feld ist jetzt höchstens 8 Zeilen hoch (danach scrollt es), der Dialog lässt sich scrollen; das Feld für neue Notizen ist höchstens 6 Zeilen hoch.
+
 - Wer in Obsidian kurz nach einer Änderung durch Merkweiser in derselben Notiz weiterschreibt, bekommt keine überflüssige Konfliktdatei mehr. Merkweiser prüft jetzt, ob seine Änderung in der Datei noch enthalten ist; Weitertippen in derselben Zeile zählt nicht als Verlust.
 - In der Notizansicht fehlten Erläuterungen unter dem Thema und Fortsetzungszeilen unter Todos und Listenpunkten. Jetzt: Thema fett, Erläuterung darunter in deutlich schwächerer Schrift, Listenpunkte mit „•“ auf derselben Textkante wie Todos, Fortsetzungen bündig darunter.
 - Im Dark Mode waren die farbig hinterlegten Zeilen im Konfliktvergleich unlesbar (helle Schrift auf hellem Grün bzw. Rot).
