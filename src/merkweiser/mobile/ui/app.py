@@ -32,16 +32,18 @@ from pathlib import Path
 import flet as ft
 
 from ...app.diagnostics import build_report, write_report
+from ...app.interrupted import open_issue_count
 from ...app.nav import Nav, PageRef
 from ...app.notes_service import NotesService, StartReport
 from ...app.settings import Settings, load_settings, save_settings
 from ...core.clock import SystemClock
 from ...ports.storage_access import AppStorage, FolderAccess
 from ..platform.flet_access import FletFolderAccess, resolve_app_storage
-from . import conflict_view, pages, tabs
+from . import pages, tabs
 
-TAB_NAMES = ("Tag", "Todos", "Suche", "Konflikte", "Einstellungen")
-TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.SYNC_PROBLEM, ft.Icons.SETTINGS)
+TAB_NAMES = ("Tag", "Todos", "Suche", "Einstellungen")
+TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.SETTINGS)
+SETTINGS_TAB = TAB_NAMES.index("Einstellungen")
 
 
 class MobileApp:
@@ -62,6 +64,7 @@ class MobileApp:
         self.day: date = date.today()  # beim Öffnen des Vaults auf „heute“ laut Service-Uhr gesetzt
         self.messages: deque[tuple[datetime, str]] = deque(maxlen=30)
         self.status = ft.Text("", size=12, color=ft.Colors.ERROR)
+        self.status_link = ft.TextButton("Konflikte ansehen", visible=False, on_click=self._open_conflicts)
         self.body = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
         self.nav = ft.NavigationBar(
             destinations=[ft.NavigationBarDestination(icon=i, label=n) for i, n in zip(TAB_ICONS, TAB_NAMES)],
@@ -71,7 +74,8 @@ class MobileApp:
         """Baut die Seite auf und öffnet den Vault oder die Einrichtung."""
         self.page.title = "Merkweiser"
         self.page.on_app_lifecycle_state_change = self._on_lifecycle
-        self.page.add(ft.SafeArea(content=ft.Column([self.status, self.body], expand=True), expand=True))
+        self.page.add(ft.SafeArea(content=ft.Column([self.status, self.status_link, self.body], expand=True),
+                                  expand=True))
         self.page.navigation_bar = self.nav
         root_view = self.page.views[0]
         root_view.can_pop = False
@@ -97,7 +101,8 @@ class MobileApp:
             return
         self.nav.visible = True
         self.day = self.service.clock.today()  # beim Öffnen der App ist immer „heute“ gewählt
-        self.say(tabs.start_hint(self.report, self.service.write_guarantee))
+        issues = open_issue_count(self.service)
+        self.say(tabs.start_hint(self.report, self.service.write_guarantee, issues), link=issues > 0)
         self.render()
 
     @property
@@ -114,6 +119,26 @@ class MobileApp:
         self.day = day
         self.pages.show_root(0)
         self.render()
+
+    def open_page(self, page: PageRef) -> None:
+        """Öffnet eine Unterseite im aktuellen Tab.
+
+        Args:
+            page: Die Seite.
+        """
+        self.pages.push(page)
+        self.render()
+
+    def open_conflicts(self) -> None:
+        """Zeigt Einstellungen → Konflikte (Start-Hinweis, Konflikt beim Schreiben)."""
+        self.pages.show_root(SETTINGS_TAB)
+        self.pages.push(PageRef("konflikte"))
+        self.say("")
+        self.render()
+
+    async def _open_conflicts(self, _e) -> None:
+        """Klick auf „Konflikte ansehen“."""
+        self.open_conflicts()
 
     def open_tag(self, tag: str) -> None:
         """Öffnet die Tag-Seite im aktuellen Tab (W2).
@@ -171,7 +196,7 @@ class MobileApp:
 
         Endet ein Schreibvorgang als ``CONFLICTED`` (die Datei wurde
         zwischenzeitlich verändert), wird das sofort gemeldet, statt dass die
-        Konfliktdatei erst später im Tab Konflikte auffällt.
+        Konfliktdatei erst später unter Einstellungen → Konflikte auffällt.
 
         Args:
             action: Funktion ``service → beliebig``.
@@ -186,15 +211,21 @@ class MobileApp:
             result = action(self.service)
             conflicted = getattr(result, "state", None) == "CONFLICTED"
             self.say("Die Datei wurde zwischendurch verändert. Deine Fassung liegt als Konfliktdatei vor "
-                     "(Tab Konflikte)." if conflicted else "")
+                     "(Einstellungen → Konflikte)." if conflicted else "", link=conflicted)
         except Exception as exc:  # Fehler sichtbar machen, nichts verschlucken
             self.say(f"{type(exc).__name__}: {exc}")
         self.service.rescan()
         self.render()
         return result
 
-    def say(self, message: str) -> None:
-        """Zeigt eine Statusmeldung (leer = ausblenden)."""
+    def say(self, message: str, link: bool = False) -> None:
+        """Zeigt eine Statusmeldung (leer = ausblenden).
+
+        Args:
+            message: Text der Meldung.
+            link: Darunter „Konflikte ansehen“ anbieten (führt zu Einstellungen → Konflikte).
+        """
+        self.status_link.visible = bool(message) and link
         if message:
             self.messages.append((datetime.now(), message))
         self.status.color = ft.Colors.ERROR
@@ -233,11 +264,17 @@ class MobileApp:
 
     def render(self) -> None:
         """Zeichnet die oberste Seite des aktuellen Tabs (Unterseite oder Tab-Wurzel) neu."""
-        builders = (tabs.day_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view, tabs.settings_view)
+        builders = (tabs.day_view, tabs.todos_view, tabs.search_view, tabs.settings_view)
         top = self.pages.top()
         self.body.controls = pages.build_page(self, top) if top else builders[self.pages.current](self)
         self.nav.selected_index = self.pages.current
+        self._update_badge()
         self.page.update()
+
+    def _update_badge(self) -> None:
+        """Badge am Einstellungen-Symbol: offene Konflikte und unterbrochene Vorgänge (W4)."""
+        count = open_issue_count(self.service) if self.service else 0
+        self.nav.destinations[SETTINGS_TAB].icon = ft.Icon(ft.Icons.SETTINGS, badge=str(count) if count else None)
 
     async def _on_tab(self, event) -> None:
         """Tab gewählt: Stapel der anderen Tabs bleiben, der aktive springt zur Wurzel."""

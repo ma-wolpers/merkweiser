@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Konflikte unter Einstellungen:** Der Tab „Konflikte“ ist jetzt eine Seite unter *Einstellungen → Konflikte*. Eine Zahl am Einstellungen-Symbol zeigt offene Konflikte und unterbrochene Vorgänge. Start- und Konfliktmeldungen haben einen Knopf „Konflikte ansehen“.
 - **Verschieben von Todos:** Es entsteht keine Notiz „Verschoben aus …“ mehr. Ist das Todo das einzige seiner Notiz, wandert die ganze Notiz mit, und am alten Tag bleibt nichts zurück. Sonst wandert das Todo mit dem Thema seiner Notiz. Gibt es am Zieltag schon genau eine Notiz mit demselben Thema, landet es dort unten. Verschieben auf denselben Tag wird abgelehnt.
 - **Gemeinsamer Tag beim Verschieben:** Hat die Notiz weitere Todos, fragt Merkweiser vorher nach und bietet an, Todo und Überpunkt einen gemeinsamen Tag oder Projekttag zu geben, damit du sie wiederfindest. Gibt es den Tag schon, erscheint ein Hinweis. Haben beide schon ein gemeinsames Projekt, heißt der Knopf „Mit bestehendem Tag verschieben“. Ein vorhandenes anderes Projekt wird nie überschrieben.
 - **Leeres Thema:** Eine Themenzeile aus nur `...` oder nur Tags (z. B. `#schule`) wird als „kein Thema“ angezeigt, mit ihren Tags. Die Tags gelten weiter für die Todos darunter.
@@ -28,6 +29,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Unterbrochene Vorgänge** stehen jetzt sichtbar unter *Einstellungen → Konflikte* (bisher verwies der Start-Hinweis „Verschieben unvollständig“ ins Leere). Für ein unterbrochenes Verschieben: „Erneut versuchen“, „Quelle trotzdem entfernen“ oder „Beide behalten“.
 - **Dringende Todos zuerst:** Offene Todos mit Stern stehen in jeder Notiz oben (je Ebene; Unterpunkte bleiben bei ihrem Todo), ebenso in der Liste „Todos“. In der Suche stehen Notizen mit einem offenen dringenden Todo vorn. Die Datei selbst wird nicht umsortiert.
 - **Tags antippen:** Tags im Notiztext sind farbig und öffnen eine eigene Seite mit allen Notizen, die diesen Tag tragen (neueste zuerst, Todos dort abhakbar). Ein Zurück-Pfeil oben und die Android-Zurück-Taste führen zurück.
 - **Jeder Tab merkt sich seine Seite:** Wer z. B. in „Todos“ eine Tag-Seite öffnet und zur Suche wechselt, findet sie beim Zurückkehren wieder. Erneutes Antippen des aktiven Tabs führt zu seiner Startseite. Android-Zurück geht erst innerhalb des Tabs zurück, dann zum Tab „Tag“ und erst dort aus der App.

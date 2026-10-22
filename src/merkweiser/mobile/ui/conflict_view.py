@@ -1,4 +1,4 @@
-"""Tab „Konflikte“: Hauptdatei und Konfliktversion im Vergleich, Entscheidung per Knopf.
+"""Seite „Konflikte“ (Einstellungen → Konflikte): Hauptdatei und Konfliktversion im Vergleich, Entscheidung per Knopf.
 
 Jeder Fall zeigt:
 

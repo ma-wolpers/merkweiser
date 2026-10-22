@@ -4,8 +4,12 @@ Jede Unterseite ist ein ``PageRef`` (Daten) und wird hier frisch gebaut. Die
 Kopfzeile hat immer einen Zurück-Knopf; Android-Zurück wirkt gleich
 (``MobileApp._on_confirm_pop``).
 
-Bisher: ``tag`` – die Tag-Seite (W2): alle Notizen mit diesem Tag als ganze,
-bedienbare Karten, neueste zuerst, Karten mit offenem dringendem Todo vorn.
+Seiten:
+
+* ``tag`` – die Tag-Seite (W2): alle Notizen mit diesem Tag als ganze,
+  bedienbare Karten, neueste zuerst, Karten mit offenem dringendem Todo vorn.
+* ``konflikte`` – unter Einstellungen (W4): unterbrochene Vorgänge, offene
+  Sync-Konflikte und automatisch zusammengeführte Konflikte.
 """
 
 from __future__ import annotations
@@ -17,6 +21,8 @@ import flet as ft
 from ...app.nav import PageRef
 from ...app.ordering import note_is_pressing, stable_first
 from ...core.query import Filter
+from . import conflict_view
+from .interrupted_view import interrupted_controls
 from .note_view import note_card
 from .tabs import date_button
 
@@ -59,7 +65,20 @@ def tag_page(app: "MobileApp", tag: str) -> list[ft.Control]:
     return controls
 
 
-BUILDERS = {"tag": tag_page}
+def conflicts_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
+    """Konflikte-Seite: unterbrochene Vorgänge, dann Sync-Konflikte und Auto-Merges.
+
+    Args:
+        app: Die laufende App.
+        _arg: unbenutzt.
+
+    Returns:
+        Kopfzeile und Inhalt.
+    """
+    return [page_header(app, "Konflikte"), *interrupted_controls(app), *conflict_view.conflicts_view(app)]
+
+
+BUILDERS = {"tag": tag_page, "konflikte": conflicts_page}
 
 
 def build_page(app: "MobileApp", page: PageRef) -> list[ft.Control]:

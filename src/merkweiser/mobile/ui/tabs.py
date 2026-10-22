@@ -1,4 +1,4 @@
-"""Ansichten der Mobile-App: Einrichtung, Tag, Todos, Suche, Konflikte, Einstellungen.
+"""Ansichten der Mobile-App: Einrichtung, Tag, Todos, Suche, Einstellungen (mit Unterseiten).
 
 Jede Funktion baut die Controls eines Tabs aus den UI-neutralen
 Anzeigemodellen (``merkweiser.app.views``). Aktionen laufen über
@@ -13,7 +13,9 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
+from ...app.interrupted import open_issue_count
 from ...app.list_editing import INDENT_WIDTHS
+from ...app.nav import PageRef
 from ...app.ordering import is_pressing, note_is_pressing, stable_first
 from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
@@ -25,12 +27,13 @@ if TYPE_CHECKING:
     from .app import MobileApp
 
 
-def start_hint(report, guarantee: str = "voll") -> str:
-    """Hinweis nach dem Start (nicht ausgeführte Änderungen, unvollständige Vorgänge).
+def start_hint(report, guarantee: str = "voll", open_issues: int = 0) -> str:
+    """Hinweis nach dem Start (nicht ausgeführte Änderungen, unvollständige Vorgänge, offene Konflikte).
 
     Args:
         report: ``StartReport`` oder ``None``.
         guarantee: Schreibgarantie des Vaults; alles außer „voll“ wird gemeldet.
+        open_issues: Offene Konflikte und unterbrochene Vorgänge (Badge-Zahl).
     """
     if report is None:
         return ""
@@ -38,11 +41,13 @@ def start_hint(report, guarantee: str = "voll") -> str:
     if report.recovery.not_applied:
         parts.append(f"{len(report.recovery.not_applied)} Änderung(en) wurden wegen eines Abbruchs nicht ausgeführt.")
     if any(m.state == "INCOMPLETE" for m in report.moves):
-        parts.append("Ein Verschieben ist unvollständig – siehe Konflikte.")
+        parts.append("Ein Verschieben ist unvollständig – siehe Einstellungen → Konflikte.")
     if report.removed_empty:
         parts.append(f"{len(report.removed_empty)} leere Datumsdatei(en) entfernt.")
     if report.automerges:
         parts.append(f"{len(report.automerges)} Sync-Konflikt(e) automatisch zusammengeführt.")
+    if open_issues:
+        parts.append(f"{open_issues} offene(r) Konflikt(e) bzw. Vorgang/Vorgänge – Einstellungen → Konflikte.")
     return " ".join(parts)
 
 
@@ -212,8 +217,29 @@ def date_button(app: "MobileApp", day: date) -> ft.Control:
     return ft.TextButton(day_label(day, app.service.clock.today()), icon=ft.Icons.TODAY, on_click=open_day)
 
 
+def hub_entries(app: "MobileApp") -> list[ft.Control]:
+    """Einträge oben in den Einstellungen, die Unterseiten öffnen (W4).
+
+    Args:
+        app: Die laufende App.
+
+    Returns:
+        Je Unterseite ein ``ListTile``; „Konflikte“ mit Anzahl.
+    """
+    count = open_issue_count(app.service)
+
+    async def conflicts(_e) -> None:
+        app.open_page(PageRef("konflikte"))
+
+    title = f"Konflikte ({count})" if count else "Konflikte"
+    return [ft.ListTile(leading=ft.Icon(ft.Icons.SYNC_PROBLEM, color=ft.Colors.ERROR if count else None),
+                        title=ft.Text(title), subtitle=ft.Text("Sync-Konflikte, unterbrochene Vorgänge"),
+                        trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT), on_click=conflicts),
+            ft.Divider()]
+
+
 def settings_view(app: "MobileApp") -> list[ft.Control]:
-    """Einstellungen: Ordner, Projekt-Präfix, Prüfintervall, Einrückbreite des Editors."""
+    """Einstellungen: Unterseiten (Konflikte …), Ordner, Projekt-Präfix, Prüfintervall, Einrückbreite."""
     prefix = ft.TextField(label="Projekt-Präfix", value=app.settings.project_prefix)
     poll = ft.TextField(label="Prüfintervall (Sekunden)", value=str(app.settings.poll_seconds))
     width = ft.Dropdown(label="Einrückung im Editor", value=str(app.settings.indent_width), options=[
@@ -238,7 +264,7 @@ def settings_view(app: "MobileApp") -> list[ft.Control]:
         await app.save_diagnostics((report_dir.value or "").strip() or None)
 
     guarantee = f"Schreibgarantie: {app.service.write_guarantee} ({app.service.fs.install_mode})" if app.service else ""
-    return [ft.Text(f"Notizordner: {app.settings.vault}"), ft.Text(guarantee, size=12),
+    return [*hub_entries(app), ft.Text(f"Notizordner: {app.settings.vault}"), ft.Text(guarantee, size=12),
             ft.Button("Ordner wechseln", on_click=change_folder),
             prefix, poll, width, ft.Button("Speichern", on_click=save), ft.Divider(),
             ft.Text("Diagnosebericht: Zustand der App als Textdatei, ohne Notizinhalte. "

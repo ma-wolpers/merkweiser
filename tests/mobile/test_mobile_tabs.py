@@ -586,3 +586,31 @@ def test_mobile_app_keeps_tag_page_per_tab_and_handles_android_back(tmp_path: Pa
         asyncio.run(mobile._on_confirm_pop(event))
     assert answers == [False, False, True]  # Tag-Seite zu, Todos → Tag, Wurzel von Tag → System
     assert mobile.tab == 0
+
+
+def test_settings_hub_opens_conflicts_page_with_badge(tmp_path: Path) -> None:
+    """W4: Einstellungen zeigen „Konflikte (n)“; die Unterseite enthält die Konflikte; Badge und Start-Link führen hin."""
+    import asyncio
+
+    from merkweiser.mobile.ui.app import SETTINGS_TAB, MobileApp
+    root = tmp_path / "vault"
+    root.mkdir()
+    (root / "2026-01-15.md").write_bytes(b"Thema\n- [ ] a\n")
+    (root / "2026-01-15.sync-conflict-20260115-120000-AAAAAAA.sync-conflict-20260116-120000-BBBBBBB.md").write_bytes(
+        b"Thema\n- [ ] b\n")  # verschachtelt → bleibt manuell
+    page = SimpleNamespace(update=lambda: None)
+    mobile = MobileApp(page, SimpleNamespace(data_dir=tmp_path / "app"), FakeAccess())
+    mobile.settings = Settings(vault=str(root))
+    asyncio.run(mobile.open_vault())
+    assert mobile.status_link.visible and "Einstellungen → Konflikte" in mobile.status.value
+    assert mobile.nav.destinations[SETTINGS_TAB].icon.badge == "1"
+    asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=SETTINGS_TAB))))
+    [hub] = [c for c in mobile.body.controls if isinstance(c, ft.ListTile)]
+    assert hub.title.value == "Konflikte (1)"
+    asyncio.run(hub.on_click(None))
+    assert _texts(mobile.body.controls)[0] == "Konflikte"
+    assert any("verschachtelte" in (t or "") for t in _texts(mobile.body.controls))
+    mobile.pages.show_root(0)
+    mobile.open_conflicts()
+    assert mobile.tab == SETTINGS_TAB and _texts(mobile.body.controls)[0] == "Konflikte"
+    assert not mobile.status_link.visible

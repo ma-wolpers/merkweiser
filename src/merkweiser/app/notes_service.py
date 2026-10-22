@@ -87,8 +87,7 @@ def _writes(method):
     """
     @functools.wraps(method)
     def guarded(self, *args, **kwargs):
-        if self.read_only:
-            raise ReadOnlyVaultError("Der Notizordner ist schreibgeschützt geöffnet; Änderungen sind nicht möglich.")
+        self.check_writable()
         return method(self, *args, **kwargs)
     return guarded
 
@@ -195,6 +194,15 @@ class NotesService:
         report.automerges = self.auto_merge_all()
         self._watch = observe(self.root)
         return report
+
+    def check_writable(self) -> None:
+        """Wirft ``ReadOnlyVaultError``, wenn der Vault schreibgeschützt geöffnet ist.
+
+        Für schreibende Aktionen außerhalb dieser Klasse (z. B. ``app.interrupted``),
+        damit sie dieselbe Sperre nutzen wie die mit ``_writes`` markierten Methoden.
+        """
+        if self.read_only:
+            raise ReadOnlyVaultError("Der Notizordner ist schreibgeschützt geöffnet; Änderungen sind nicht möglich.")
 
     @property
     def write_guarantee(self) -> str:

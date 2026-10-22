@@ -28,6 +28,13 @@ Trag in die `.stignore` des Notizordners ein:
 
 Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncthing soll sie nicht verteilen.
 
+## Bedienung
+
+- **Tabs:** Tag (Notizen eines Datums), Todos, Suche, Einstellungen. Jeder Tab merkt sich die zuletzt geöffnete Unterseite; erneutes Antippen des aktiven Tabs führt zu seiner Startseite.
+- **Tags antippen** öffnet eine Seite mit allen Notizen dieses Tags. Zurück geht es mit dem Pfeil oben oder der Android-Zurück-Taste.
+- **Dringende Todos** (Stern) stehen in jeder Notiz und in den Listen oben.
+- **Konflikte** findest du unter *Einstellungen → Konflikte*. Eine Zahl am Einstellungen-Symbol zeigt, wie viele offen sind. Dort stehen auch **unterbrochene Vorgänge**, z. B. ein Verschieben, bei dem sich die Quelle inzwischen geändert hat; Merkweiser ändert dann bewusst nichts weiter und lässt dich wählen.
+
 ## Diagnosebericht
 
 *Einstellungen → Diagnosebericht speichern* legt eine Datei `merkweiser-diagnose-<Datum>-<Uhrzeit>.txt` an. Den Zielordner tippst du ins Feld darüber, oder du lässt es leer und wählst ihn aus; Merkweiser merkt sich den Ordner.

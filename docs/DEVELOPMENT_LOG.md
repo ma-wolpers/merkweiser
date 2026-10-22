@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Phase 2: Einstellungen als Hub, Konflikte als Unterseite, Badge
+
+- Tabs jetzt Tag, Todos, Suche, Einstellungen. Der Tab „Zeit“ kommt erst mit seinem Inhalt (Phase 8), damit kein leerer Tab entsteht; die Badge-Position folgt `SETTINGS_TAB`.
+- Neu `app/interrupted.py` (B7 des Plans): Für `INCOMPLETE`-Moves gab es keine Anzeige, obwohl der Start-Hinweis auf „Konflikte“ verwies. „Beide behalten“/„Verwerfen“ setzt `DONE` mit `verworfen` (nur App-Daten); danach greift die normale Aufbewahrung.
+- `NotesService.check_writable` (von `_writes` und `app.interrupted` genutzt).
+- `start_hint(report, guarantee, open_issues)`; `MobileApp.say(message, link=…)` mit `status_link`.
+- `open_issue_count` ruft bei jedem `render` `classify` auf (liest nur Konfliktdateien); bei vielen Konfliktdateien ggf. später zwischenspeichern.
+
 ## 2026-10-22 – Phase 1: dringend zuerst (W1), Tag-Seite (W2), Navigation je Tab
 
 - Neu `app/ordering.py`, `app/tag_spans.py`, `app/nav.py`, `mobile/ui/pages.py`; `note_view.rich_text`; `tabs.date_button` öffentlich (von `pages` genutzt).
