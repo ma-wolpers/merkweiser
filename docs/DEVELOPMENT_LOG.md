@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Phase 4: doppelte Notizen
+
+- Neu `core/duplicates.py`, `app/duplicate_service.py`, `mobile/ui/duplicate_view.py`; `NotesService.start` ruft `recover_duplicates`; `interrupted` kennt `duplikat` (Erneut prüfen); Badge zählt Duplikatgruppen.
+- Steht die Notiz in einer anderen Datei doppelt, löscht `delete_note` sie nicht (nicht eindeutig) → diese Fundstelle wird übersprungen und gemeldet, statt per Position zu raten.
+- Zwischenspeicher hängt am Service und vergleicht Dokumente per Identität (hält sie fest, damit `id`-Wiederverwendung keine falschen Treffer liefert).
+
 ## 2026-10-22 – Phase 3: Backups mit Rückgängig einzelner Änderungen
 
 - Neu `core/backups.py`, `core/undo_merge.py`, `app/backup_views.py`, `mobile/ui/backup_view.py`; `conflict_view.diff_box` öffentlich; `NotesService.start` ruft `recover_undos` nach `recover_moves`; `StartReport.undos`.

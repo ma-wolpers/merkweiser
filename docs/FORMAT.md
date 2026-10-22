@@ -115,3 +115,7 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
   - Hast du über einen Konflikt entschieden, die Auflösung ist aber noch nicht abgeschlossen, endet die Kennung auf `…MWENTSCHIEDEN`.
   - Merkweiser schreibt **nie** Konfliktmarker in deine Notizen.
 - Hilfsdateien `.NAME.mw-*.tmp`/`.old`/`.partial` existieren nur während eines Schreibvorgangs. Trag `.*.mw-*` in die `.stignore` von Syncthing ein.
+
+## Doppelte Notizen
+
+Steht eine Notiz mit genau denselben Zeilen (Zeilenenden LF/CRLF zählen nicht, sonst keine Normalisierung) in mindestens zwei verschiedenen Tagesdateien, meldet Merkweiser sie unter *Einstellungen → Konflikte*. Du wählst, welche Fundstelle bleibt; die anderen werden gelöscht (mit Backup). Gleiche Notizen innerhalb derselben Datei werden nicht gemeldet.

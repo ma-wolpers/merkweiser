@@ -33,7 +33,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 1 | W1 + W2, Navigation je Tab (`Nav`) | erledigt (Gerätetest mit Phase 2) |
 | 2 | W4a Tabs Tag/Todos/Suche/Einstellungen (Zeit ab Phase 8), Konflikte als Unterseite, unterbrochene Vorgänge, Badge | erledigt (Gerätetest ausstehend) |
 | 3 | W4b Backups mit Rückgängig | erledigt (Gerätetest mit Phase 4) |
-| 4 | W3 Duplikate | offen |
+| 4 | W3 Duplikate | erledigt (APK für Gerätetest Phasen 1–4 gebaut) |
 | 5 | W6a YAML-Kern | offen |
 | 6 | W6b YAML-Merge | offen |
 | 7 | W6c Tracker-Core | offen |

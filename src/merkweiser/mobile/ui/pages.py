@@ -24,6 +24,7 @@ from ...app.nav import PageRef
 from ...app.ordering import note_is_pressing, stable_first
 from ...core.query import Filter
 from . import backup_view, conflict_view
+from .duplicate_view import duplicate_controls
 from .interrupted_view import interrupted_controls
 from .note_view import note_card
 from .tabs import date_button
@@ -68,7 +69,7 @@ def tag_page(app: "MobileApp", tag: str) -> list[ft.Control]:
 
 
 def conflicts_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
-    """Konflikte-Seite: unterbrochene Vorgänge, dann Sync-Konflikte und Auto-Merges.
+    """Konflikte-Seite: unterbrochene Vorgänge, doppelte Notizen, dann Sync-Konflikte und Auto-Merges.
 
     Args:
         app: Die laufende App.
@@ -77,7 +78,8 @@ def conflicts_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
     Returns:
         Kopfzeile und Inhalt.
     """
-    return [page_header(app, "Konflikte"), *interrupted_controls(app), *conflict_view.conflicts_view(app)]
+    return [page_header(app, "Konflikte"), *interrupted_controls(app), *duplicate_controls(app),
+            *conflict_view.conflicts_view(app)]
 
 
 def backups_page(app: "MobileApp", _arg: str) -> list[ft.Control]:

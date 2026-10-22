@@ -10,8 +10,9 @@ Aktionen je Art:
 * ``move``: „Erneut versuchen“ (``resume_move``), „Quelle trotzdem entfernen“
   (``force_source``, nur mit exaktem Zielnachweis), „Beide behalten“
   (Vorgang als erledigt quittieren, keine Dateiänderung).
-* andere Arten (ab den Phasen 3, 4, 7): „Erneut prüfen“ bzw. „Verwerfen“ über
-  ihre eigenen Module; bis dahin nur „Verwerfen“.
+* ``duplikat``: „Erneut prüfen“ (``resume_duplicate``: prüft die behaltene
+  Fassung und löscht nur exakt gleiche Fundstellen) oder „Verwerfen“.
+* andere Arten: „Verwerfen“ (weitere „Erneut prüfen“ kommen mit ihren Modulen).
 
 „Verwerfen“/„Beide behalten“ ändert nur App-Daten (Zustand ``DONE`` mit
 ``verworfen``); danach greift die normale Aufbewahrung.
@@ -22,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..core.duplicates import resume_duplicate
 from ..core.move_exec import MoveResult, resume_move
 from ..core.ops import OpStore
 
@@ -32,6 +34,7 @@ ART_LABELS = {"move": "Verschieben", "zeitbuchung": "Zeit eintragen", "umbenenne
               "duplikat": "Doppelte Notiz entfernen", "rueckgaengig": "Rückgängig machen"}
 RETRY, FORCE, DISMISS = "retry", "force", "dismiss"
 ACTION_LABELS = {RETRY: "Erneut versuchen", FORCE: "Quelle trotzdem entfernen", DISMISS: "Verwerfen"}
+ACTIONS = {"move": (RETRY, FORCE, DISMISS), "duplikat": (RETRY, DISMISS)}
 
 
 @dataclass(frozen=True)
@@ -73,7 +76,7 @@ def interrupted(store: OpStore) -> list[Interrupted]:
             continue
         art = manifest.get("art", "")
         detail = f"{manifest.get('src', '')} → {manifest.get('dst', '')}" if art == "move" else ""
-        actions = (RETRY, FORCE, DISMISS) if art == "move" else (DISMISS,)
+        actions = ACTIONS.get(art, (DISMISS,))
         found.append(Interrupted(op_id, art, ART_LABELS.get(art, art), state.get("hinweis", ""),
                                  manifest.get("erstellt", ""), detail, actions))
     return found
@@ -91,6 +94,8 @@ def action_label(entry: Interrupted, action: str) -> str:
     """
     if entry.art == "move" and action == DISMISS:
         return "Beide behalten"
+    if entry.art != "move" and action == RETRY:
+        return "Erneut prüfen"
     return ACTION_LABELS[action]
 
 
@@ -112,9 +117,13 @@ def apply_action(service: "NotesService", op_id: str, action: str) -> str:
     manifest, _state = service.store.read(op_id)
     if action == DISMISS:
         return _dismiss(service.store, op_id)
-    if manifest.get("art") != "move" or action not in (RETRY, FORCE):
+    if action not in ACTIONS.get(manifest.get("art", ""), (DISMISS,)):
         raise ValueError(f"Aktion {action} für {manifest.get('art')} nicht möglich")
     service.check_writable()
+    if manifest["art"] == "duplikat":
+        hint = resume_duplicate(service.writer, service.store, op_id, service.settings.project_prefix)
+        service.rescan()
+        return hint
     result: MoveResult = resume_move(service.writer, service.store, op_id, service.settings.project_prefix,
                                      force_source=action == FORCE)
     return "" if result.state == "DONE" else result.hint
@@ -139,7 +148,7 @@ def _dismiss(store: OpStore, op_id: str) -> str:
 
 
 def open_issue_count(service: "NotesService") -> int:
-    """Zahl für das Einstellungen-Badge: offene Konflikte und unterbrochene Vorgänge.
+    """Zahl für das Einstellungen-Badge: offene Konflikte, Duplikatgruppen und unterbrochene Vorgänge.
 
     Args:
         service: Geöffneter Service.
@@ -147,4 +156,6 @@ def open_issue_count(service: "NotesService") -> int:
     Returns:
         Anzahl (0 = kein Badge).
     """
-    return len(service.conflicts()) + len(interrupted(service.store))
+    from .duplicate_service import duplicates
+
+    return len(service.conflicts()) + len(duplicates(service)) + len(interrupted(service.store))
