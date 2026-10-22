@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Phase 1: dringend zuerst (W1), Tag-Seite (W2), Navigation je Tab
+
+- Neu `app/ordering.py`, `app/tag_spans.py`, `app/nav.py`, `mobile/ui/pages.py`; `note_view.rich_text`; `tabs.date_button` öffentlich (von `pages` genutzt).
+- Entscheidung „dringend“ für die Sortierung: offen **und** `==…==`; erledigte dringende Todos rücken nicht nach oben. Suche und Tag-Seite zeigen Notizkarten, daher: Karten mit offenem dringendem Todo vorn, sonst neueste zuerst.
+- Flet 0.86.5 geprüft (Python `controls/core/view.py`, Dart `page.dart`/`view.dart`): Mit nur einer View ruft System-Zurück `PopScope` der Wurzel-View; mit `can_pop=False` und `on_confirm_pop` kommt das Ereignis nach Python, `confirm_pop(True)` an der Wurzel ruft `SystemNavigator.pop`. Deshalb kein zweiter View-Stapel; `Nav` ist die einzige Wahrheit. Ob `NavigationBar` beim erneuten Antippen des aktiven Ziels ein Ereignis schickt, ist ungeprüft (dann bleibt „zur Wurzel“ nur über Zurück).
+- BAUSTELLE(Zurück): Gerätetest nach Phase 2 (Zurück mit offenem Dialog, Tag-Span innerhalb des Abhak-`GestureDetector`).
+
 ## 2026-10-22 – Spätere Schritte W1–W6: Plan, Phase 0 (Schrittprotokoll, Retention)
 
 - Planrunde W1–W6 abgeschlossen (Fragerunden 1–7, Review mit Befunden Y1–Y12); Plan in `docs/PLAN-SPAETERE-SCHRITTE.md`, an die Nutzer-Commits vom selben Tag angepasst (Tab „Tag“, Suche mit Notizkarten, kein „Verschoben aus“).

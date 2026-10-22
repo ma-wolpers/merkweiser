@@ -10,6 +10,11 @@ Layout (Nutzerwunsch vom 2026-10-21):
 
 Ein Tipp auf den Todo-Text hakt ab wie ein Tipp auf die Checkbox. „verschieben …“
 startet ``tag_dialog.show_move_flow`` (Tag-Dialog nur bei weiteren Todos der Notiz).
+
+W1/W2 (PLAN-SPAETERE-SCHRITTE.md): Offene dringende Todos stehen je
+Geschwistergruppe oben (``ordering.urgent_first``, nur Anzeige). Tags im Text
+sind fett in der Primärfarbe und öffnen per Tipp die Tag-Seite
+(``MobileApp.open_tag``); ``rich_text`` nutzt dafür ``TextSpan.on_click``.
 """
 
 from __future__ import annotations
@@ -18,6 +23,8 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
+from ...app.ordering import urgent_first
+from ...app.tag_spans import text_parts
 from ...app.views import Row, note_ref, note_rows
 from ...core.document import Document, ParsedNote
 from .note_dialogs import note_actions
@@ -29,6 +36,7 @@ if TYPE_CHECKING:
 
 INDENT = 18
 MARKER_WIDTH = 40
+TAG_STYLE = ft.TextStyle(weight=ft.FontWeight.W_600, color=ft.Colors.PRIMARY)
 
 
 def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
@@ -48,7 +56,7 @@ def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
     Returns:
         Die Karte oder ``None`` bei einer Notiz ohne anzeigbare Zeilen.
     """
-    rows = note_rows(relpath, doc, note)
+    rows = urgent_first(note_rows(relpath, doc, note))
     ref = note_ref(relpath, doc, note)
     if not rows or ref is None:
         return None
@@ -68,18 +76,18 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
     """
     pad = ft.Padding.only(left=row.depth * INDENT)
     if row.kind == "topic":
-        head = ft.Text(row.text, italic=True, color=EXPLANATION) if row.empty_topic \
-            else ft.Text(row.text, weight=ft.FontWeight.BOLD)
+        head = rich_text(app, row.text, italic=True, color=EXPLANATION) if row.empty_topic \
+            else rich_text(app, row.text, weight=ft.FontWeight.BOLD)
         lines = [head]
-        lines += [ft.Text(line, color=EXPLANATION) for line in row.more]
+        lines += [rich_text(app, line, color=EXPLANATION) for line in row.more]
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":
         head = todo_line(app, row.text, row.done, row.urgent, row.target)
     elif row.kind == "item":
-        head = _marked(ft.Text("•", size=18), ft.Text(row.text))
+        head = _marked(ft.Text("•", size=18), rich_text(app, row.text))
     else:
         return ft.Container(content=ft.Text("\n".join((row.text, *row.more))), padding=pad)
-    continuation = [ft.Container(content=ft.Text(line), padding=ft.Padding.only(left=MARKER_WIDTH))
+    continuation = [ft.Container(content=rich_text(app, line), padding=ft.Padding.only(left=MARKER_WIDTH))
                     for line in row.more]
     return ft.Container(content=ft.Column([head, *continuation], spacing=0), padding=pad)
 
@@ -114,10 +122,39 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgent: bool, targ
 
     label = text.strip("=") if urgent else text
     checkbox = ft.Checkbox(value=bool(done), on_change=toggle, visual_density=ft.VisualDensity.COMPACT)
-    return _marked(checkbox, ft.GestureDetector(content=ft.Text(label), on_tap=tap), [
+    return _marked(checkbox, ft.GestureDetector(content=rich_text(app, label), on_tap=tap), [
         ft.IconButton(icon=ft.Icons.STAR if urgent else ft.Icons.STAR_BORDER, on_click=urgency, tooltip="dringend"),
         ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
     ])
+
+
+def rich_text(app: "MobileApp", text: str, **style) -> ft.Text:
+    """Text, dessen Tags antippbar sind (öffnen die Tag-Seite).
+
+    Ohne Tags entsteht ein gewöhnliches ``ft.Text(text)``; mit Tags ein
+    ``ft.Text(spans=…)``, in dem jeder Tag ein eigener ``TextSpan`` mit
+    ``on_click`` ist. Der Handler greift erst beim Tippen auf ``app`` zu.
+
+    Args:
+        app: Die laufende App.
+        text: Anzeigetext.
+        **style: Weitere ``ft.Text``-Eigenschaften (z. B. ``weight``, ``color``).
+
+    Returns:
+        Das Text-Control.
+    """
+    parts = text_parts(text)
+    if all(tag is None for _piece, tag in parts):
+        return ft.Text(text, **style)
+
+    def opener(tag: str):
+        async def click(_e) -> None:
+            app.open_tag(tag)
+        return click
+
+    spans = [ft.TextSpan(text=piece, style=TAG_STYLE, on_click=opener(tag)) if tag else ft.TextSpan(text=piece)
+             for piece, tag in parts]
+    return ft.Text(spans=spans, **style)
 
 
 def _marked(marker: ft.Control, body: ft.Control, actions: list[ft.Control] | None = None) -> ft.Control:

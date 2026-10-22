@@ -28,6 +28,9 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Dringende Todos zuerst:** Offene Todos mit Stern stehen in jeder Notiz oben (je Ebene; Unterpunkte bleiben bei ihrem Todo), ebenso in der Liste „Todos“. In der Suche stehen Notizen mit einem offenen dringenden Todo vorn. Die Datei selbst wird nicht umsortiert.
+- **Tags antippen:** Tags im Notiztext sind farbig und öffnen eine eigene Seite mit allen Notizen, die diesen Tag tragen (neueste zuerst, Todos dort abhakbar). Ein Zurück-Pfeil oben und die Android-Zurück-Taste führen zurück.
+- **Jeder Tab merkt sich seine Seite:** Wer z. B. in „Todos“ eine Tag-Seite öffnet und zur Suche wechselt, findet sie beim Zurückkehren wieder. Erneutes Antippen des aktiven Tabs führt zu seiner Startseite. Android-Zurück geht erst innerhalb des Tabs zurück, dann zum Tab „Tag“ und erst dort aus der App.
 - **Einfüge-Knöpfe beim Schreiben und Bearbeiten von Notizen:** Checkbox (macht die Zeile zum Todo bzw. wieder zu Text; in einer leeren Zeile beginnt sie ein neues Todo), Listenpunkt (macht die Zeile zum Listenpunkt, auch aus einem Todo; auf einem Listenpunkt wieder zu Text), Einrücken, Ausrücken und `#` (vor das markierte Wort bzw. ans Zeilenende). Sie wirken auf die Zeile mit dem Cursor bzw. auf alle markierten Zeilen.
 - **Einrücken und Ausrücken** wirken nur auf Listenpunkte und Todos (auch wenn der Cursor in einer Fortsetzungszeile steht) und verschieben den Punkt mit allen Unterpunkten. Eingerückt wird höchstens eine Ebene tiefer als der Punkt darüber; ohne Punkt darüber gar nicht. Eine Ebene sind 2 oder 4 Leerzeichen (Einstellungen, Standard 4).
 - **Enter in Listen:** In einem Listenpunkt oder Todo mit Text beginnt Enter darunter einen neuen leeren Punkt bzw. ein neues Todo mit gleicher Einrückung; in einem leeren Punkt verschwindet der Marker, und die Zeile wird normaler Text.

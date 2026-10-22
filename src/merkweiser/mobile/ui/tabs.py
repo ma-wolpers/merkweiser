@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from ...app.list_editing import INDENT_WIDTHS
+from ...app.ordering import is_pressing, note_is_pressing, stable_first
 from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 from .date_pick import open_date_picker
@@ -135,7 +136,7 @@ def day_view(app: "MobileApp") -> list[ft.Control]:
 
 
 def todos_view(app: "MobileApp") -> list[ft.Control]:
-    """Todos aus allen Tagesdateien mit Status- und Tag-Filter."""
+    """Todos aus allen Tagesdateien mit Status- und Tag-Filter; neueste zuerst, offene dringende vorn (W1)."""
     state = app.__dict__.setdefault("_todo_filter", {"status": "offen", "tags": "", "oder": False})
     status = ft.Dropdown(label="Status", value=state["status"], options=[
         ft.DropdownOption(key="offen", text="offen"), ft.DropdownOption(key="erledigt", text="erledigt"),
@@ -152,8 +153,8 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
     either.on_change = apply
     criteria = Filter(nur_todos=True, status=StatusFilter(state["status"]),
                       tags=tuple(state["tags"].split()), tag_modus=TagMode.ODER if state["oder"] else TagMode.UND)
-    rows = hit_rows(app.service.search(criteria))
-    return [status, tags, either, *[_hit(app, r) for r in reversed(rows)]] or [ft.Text("Keine Todos.")]
+    rows = stable_first(list(reversed(hit_rows(app.service.search(criteria)))), is_pressing)
+    return [status, tags, either, *[_hit(app, r) for r in rows]] or [ft.Text("Keine Todos.")]
 
 
 def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
@@ -167,7 +168,8 @@ def search_view(app: "MobileApp") -> list[ft.Control]:
     """Freitextsuche (Teilstring oder Regex, identisch zum Desktop) mit ganzen Notizen als Ergebnis.
 
     Jede Notiz mit Treffer erscheint einmal als Karte (bearbeitbar, abhakbar,
-    verschiebbar wie im Tab „Tag“), neuestes Datum zuerst. Nach jeder Aktion
+    verschiebbar wie im Tab „Tag“), neuestes Datum zuerst; Karten mit offenem
+    dringendem Todo stehen vorn (W1). Nach jeder Aktion
     zeichnet ``render`` neu und rechnet die Treffer frisch über ``NotesService``.
     """
     state = app.__dict__.setdefault("_search", {"text": "", "regex": False})
@@ -188,12 +190,13 @@ def search_view(app: "MobileApp") -> list[ft.Control]:
         except ValueError as exc:
             controls.append(ft.Text(f"Ungültiger Ausdruck: {exc}", color=ft.Colors.ERROR))
             return controls
-        cards = (note_card(app, m.relpath, m.document, m.note, _date_button(app, m.day)) for m in reversed(matches))
+        ordered = stable_first(list(reversed(matches)), lambda m: note_is_pressing(m.relpath, m.document, m.note))
+        cards = (note_card(app, m.relpath, m.document, m.note, date_button(app, m.day)) for m in ordered)
         controls += [card for card in cards if card is not None] or [ft.Text("Nichts gefunden.")]
     return controls
 
 
-def _date_button(app: "MobileApp", day: date) -> ft.Control:
+def date_button(app: "MobileApp", day: date) -> ft.Control:
     """Kopf einer Suchkarte: das Datum; ein Tipp öffnet den Tab „Tag“ mit genau diesem Datum.
 
     Args:

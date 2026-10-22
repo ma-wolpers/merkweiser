@@ -205,7 +205,7 @@ def _texts(controls) -> list[str]:
     found = []
     for control in controls:
         if isinstance(control, ft.Text):
-            found.append(control.value)
+            found.append("".join(s.text for s in control.spans) if control.spans else control.value)
         for child in getattr(control, "controls", None) or []:
             found += _texts([child])
         if isinstance(getattr(control, "content", None), ft.Control):
@@ -516,3 +516,73 @@ def test_programmatic_selection_echo_does_not_move_the_remembered_caret(tmp_path
                                                           cause=tap)))
     asyncio.run(bar.controls[0].on_click(None))
     assert field.value == "- a\n    - [ ] b\n- [ ] c"
+
+
+def _spans(controls) -> list:
+    """Alle TextSpans einer Control-Liste (rekursiv)."""
+    found = []
+    for control in controls:
+        if isinstance(control, ft.Text) and control.spans:
+            found += control.spans
+        for child in getattr(control, "controls", None) or []:
+            found += _spans([child])
+        if isinstance(getattr(control, "content", None), ft.Control):
+            found += _spans([control.content])
+    return found
+
+
+def test_tags_are_tappable_and_open_the_tag_page(tmp_path: Path) -> None:
+    """W2: Der Tag im Thema ist ein eigener Span; Tippen ruft ``open_tag`` mit dem Schlüssel."""
+    import asyncio
+    fake = _dialog_app(tmp_path)
+    opened = []
+    fake.open_tag = opened.append
+    [tag_span] = [s for s in _spans(tabs.day_view(fake)) if s.on_click]
+    assert tag_span.text == "#h"
+    asyncio.run(tag_span.on_click(None))
+    assert opened == ["h"]
+
+
+def test_tag_page_lists_whole_notes_newest_first_with_urgent_first(tmp_path: Path) -> None:
+    """W2/W1: Tag-Seite zeigt ganze Notizen mit dem Tag; Karte mit offenem dringendem Todo vorn."""
+    from merkweiser.mobile.ui import pages
+    fake = _dialog_app(tmp_path)
+    root = Path(fake.settings.vault)
+    (root / "2026-01-10.md").write_bytes(b"Alt #h\n- [ ] ==wichtig==\n")
+    (root / "2026-01-12.md").write_bytes(b"Mitte #h\n- [ ] normal\n\nOhne Tag\n- [ ] x\n")
+    fake.service.rescan()
+    controls = pages.tag_page(fake, "h")
+    cards = [c for c in controls if isinstance(c, ft.Container)]
+    heads = [_texts([c])[0] for c in cards]  # der Datumsknopf hat keinen Text-Control
+    assert heads == ["Alt #h", "Heute #h", "Mitte #h"]
+    assert "Ohne Tag" not in _texts(controls)
+
+
+def test_mobile_app_keeps_tag_page_per_tab_and_handles_android_back(tmp_path: Path) -> None:
+    """1.6: Tag-Seite in Todos bleibt nach Tabwechsel; Android-Zurück geht in Nav zurück, an der Wurzel ans System."""
+    import asyncio
+
+    from merkweiser.mobile.ui.app import MobileApp
+    root = tmp_path / "vault"
+    root.mkdir()
+    (root / "2026-01-15.md").write_bytes(b"Thema #h\n- [ ] a\n")
+    page = SimpleNamespace(update=lambda: None)
+    mobile = MobileApp(page, SimpleNamespace(data_dir=tmp_path / "app"), FakeAccess())
+    mobile.settings = Settings(vault=str(root))
+    asyncio.run(mobile.open_vault())
+    asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=1))))
+    mobile.open_tag("h")
+    assert _texts(mobile.body.controls)[0] == "#h"
+    asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=2))))
+    asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=1))))
+    assert _texts(mobile.body.controls)[0] == "#h" and mobile.nav.selected_index == 1
+    answers = []
+
+    async def confirm_pop(should_pop: bool) -> None:
+        answers.append(should_pop)
+
+    event = SimpleNamespace(control=SimpleNamespace(confirm_pop=confirm_pop))
+    for _ in range(3):
+        asyncio.run(mobile._on_confirm_pop(event))
+    assert answers == [False, False, True]  # Tag-Seite zu, Todos → Tag, Wurzel von Tag → System
+    assert mobile.tab == 0

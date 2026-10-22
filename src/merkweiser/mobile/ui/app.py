@@ -8,6 +8,16 @@ Ablauf: App-Datenverzeichnis auflösen → Einstellungen laden → ist ein
 lesbarer Notizordner eingestellt, wird ``NotesService.start()`` ausgeführt
 (Wiederherstellung, Scan, Auto-Merge) und die Hauptansicht gezeigt; sonst die
 Einrichtung (Zugriff erteilen, Ordner wählen).
+
+Navigation (PLAN-SPAETERE-SCHRITTE.md 1.6): ``self.pages`` (``app.nav.Nav``)
+ist die einzige Wahrheit über Tab und Unterseite; jeder Tab hat seinen eigenen
+Stapel. Es gibt nur **eine** Flet-View. Android-Zurück: Die Wurzel-View hat
+``can_pop=False`` und ``on_confirm_pop``; Flet 0.86.5 fragt dann bei jedem
+Zurück nach (``view.dart``: ``PopScope`` → ``confirm_pop``). Merkweiser geht in
+``Nav`` zurück und antwortet ``confirm_pop(False)``; nur an der Wurzel des Tabs
+„Tag“ antwortet es ``True`` (Flet ruft ``SystemNavigator.pop``). Offene Dialoge
+schließt Flutter selbst, bevor die View gefragt wird.
+BAUSTELLE(Zurück): Verhalten auf dem Gerät nach Phase 2 prüfen.
 """
 
 from __future__ import annotations
@@ -22,12 +32,13 @@ from pathlib import Path
 import flet as ft
 
 from ...app.diagnostics import build_report, write_report
+from ...app.nav import Nav, PageRef
 from ...app.notes_service import NotesService, StartReport
 from ...app.settings import Settings, load_settings, save_settings
 from ...core.clock import SystemClock
 from ...ports.storage_access import AppStorage, FolderAccess
 from ..platform.flet_access import FletFolderAccess, resolve_app_storage
-from . import conflict_view, tabs
+from . import conflict_view, pages, tabs
 
 TAB_NAMES = ("Tag", "Todos", "Suche", "Konflikte", "Einstellungen")
 TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.SYNC_PROBLEM, ft.Icons.SETTINGS)
@@ -47,7 +58,7 @@ class MobileApp:
         self.settings: Settings = load_settings(storage.data_dir)
         self.service: NotesService | None = None
         self.report: StartReport | None = None
-        self.tab = 0
+        self.pages = Nav(len(TAB_NAMES))
         self.day: date = date.today()  # beim Öffnen des Vaults auf „heute“ laut Service-Uhr gesetzt
         self.messages: deque[tuple[datetime, str]] = deque(maxlen=30)
         self.status = ft.Text("", size=12, color=ft.Colors.ERROR)
@@ -62,6 +73,9 @@ class MobileApp:
         self.page.on_app_lifecycle_state_change = self._on_lifecycle
         self.page.add(ft.SafeArea(content=ft.Column([self.status, self.body], expand=True), expand=True))
         self.page.navigation_bar = self.nav
+        root_view = self.page.views[0]
+        root_view.can_pop = False
+        root_view.on_confirm_pop = self._on_confirm_pop
         await self.open_vault()
         self.page.run_task(self._poll_loop)
 
@@ -86,16 +100,40 @@ class MobileApp:
         self.say(tabs.start_hint(self.report, self.service.write_guarantee))
         self.render()
 
+    @property
+    def tab(self) -> int:
+        """Index des aktuellen Tabs (aus ``self.pages``)."""
+        return self.pages.current
+
     def show_day(self, day: date) -> None:
-        """Wechselt in den Tab „Tag“ mit genau diesem Datum (z. B. aus der Suche).
+        """Wechselt in den Tab „Tag“ (Wurzel) mit genau diesem Datum (z. B. aus der Suche).
 
         Args:
             day: Anzuzeigender Tag.
         """
         self.day = day
-        self.tab = 0
-        self.nav.selected_index = 0
+        self.pages.show_root(0)
         self.render()
+
+    def open_tag(self, tag: str) -> None:
+        """Öffnet die Tag-Seite im aktuellen Tab (W2).
+
+        Args:
+            tag: Tag-Schlüssel ohne ``#``.
+        """
+        self.pages.push(PageRef("tag", tag))
+        self.render()
+
+    def go_back(self) -> bool:
+        """Eine Seite zurück im aktuellen Tab (Zurück-Knopf und Android-Zurück).
+
+        Returns:
+            ``False`` an der Wurzel des Tabs „Tag“ (nichts mehr zurück).
+        """
+        moved = self.pages.back()
+        if moved:
+            self.render()
+        return moved
 
     def show_setup(self) -> None:
         """Einrichtung: Zugriff erteilen und Notizordner wählen."""
@@ -194,15 +232,21 @@ class MobileApp:
         self.render()
 
     def render(self) -> None:
-        """Zeichnet den aktuellen Tab neu."""
+        """Zeichnet die oberste Seite des aktuellen Tabs (Unterseite oder Tab-Wurzel) neu."""
         builders = (tabs.day_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view, tabs.settings_view)
-        self.body.controls = builders[self.tab](self)
+        top = self.pages.top()
+        self.body.controls = pages.build_page(self, top) if top else builders[self.pages.current](self)
+        self.nav.selected_index = self.pages.current
         self.page.update()
 
     async def _on_tab(self, event) -> None:
-        """Tab-Wechsel über die Navigationsleiste."""
-        self.tab = int(event.control.selected_index)
+        """Tab gewählt: Stapel der anderen Tabs bleiben, der aktive springt zur Wurzel."""
+        self.pages.select(int(event.control.selected_index))
         self.render()
+
+    async def _on_confirm_pop(self, event) -> None:
+        """Android-Zurück an der Wurzel-View: erst in ``Nav`` zurück, sonst dem System überlassen."""
+        await event.control.confirm_pop(not self.go_back())
 
     async def _on_lifecycle(self, event) -> None:
         """Beim Zurückkehren in den Vordergrund sofort auf Änderungen prüfen."""
