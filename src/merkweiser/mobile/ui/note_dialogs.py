@@ -1,6 +1,9 @@
-"""Notiz bearbeiten und löschen (Mobile): Knopfleiste je Notiz und die zugehörigen Dialoge.
+"""Notiz anlegen, bearbeiten und löschen (Mobile): Knopfleiste je Notiz und die Dialoge.
 
-Beide Aktionen adressieren die Notiz über ``NoteRef`` (Inhaltszeilen beim
+``editor_dialog`` ist der **einzige** Notiz-Editor: „Neue Notiz“ öffnet ihn
+leer (``new_note_dialog`` → ``append_note``), „Bearbeiten“ mit dem Notiztext.
+
+Bearbeiten und Löschen adressieren die Notiz über ``NoteRef`` (Inhaltszeilen beim
 Öffnen, keine IDs) und laufen über ``NotesService``:
 
 * **Bearbeiten** ersetzt den Notiztext (``replace_note_text``). Hat sich die
@@ -13,7 +16,8 @@ Beide Aktionen adressieren die Notiz über ``NoteRef`` (Inhaltszeilen beim
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import date
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 import flet as ft
 
@@ -45,8 +49,46 @@ def note_actions(app: "MobileApp", ref: NoteRef) -> ft.Control:
                   alignment=ft.MainAxisAlignment.END)
 
 
+def editor_dialog(app: "MobileApp", text: str, on_save: Callable[[str], Awaitable[None]],
+                  empty_hint: str) -> ft.AlertDialog:
+    """Der eine Notiz-Editor (SSOT für „Bearbeiten“ und „Neue Notiz“).
+
+    Ohne Titel, damit mit offener Tastatur mehr Platz für das Feld bleibt;
+    höchstens 9 Zeilen (danach scrollt das Feld), der Dialog selbst ist
+    scrollbar, damit „Abbrechen“ und „Speichern“ erreichbar bleiben
+    (Nutzerbefunde 2026-10-22).
+
+    Args:
+        app: Die laufende App.
+        text: Anfangstext (leer für eine neue Notiz).
+        on_save: Wird mit dem nicht leeren Text aufgerufen, nachdem der Dialog geschlossen ist.
+        empty_hint: Meldung bei leerem Text (der Dialog bleibt dann offen).
+
+    Returns:
+        Der (noch nicht geöffnete) Dialog.
+    """
+    field = ft.TextField(value=text, multiline=True, min_lines=3, max_lines=9, autofocus=True)
+    hint = ft.Text("", size=12, color=ft.Colors.ERROR)
+
+    async def save(_e) -> None:
+        value = field.value or ""
+        if not value.strip():
+            hint.value = empty_hint
+            hint.update()
+            return
+        app.page.pop_dialog()
+        await on_save(value)
+
+    async def cancel(_e) -> None:
+        app.page.pop_dialog()
+
+    return ft.AlertDialog(modal=True, scrollable=True,
+                          content=ft.Column([editor_toolbar(field), field, hint], tight=True),
+                          actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
+
+
 def _edit_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:
-    """Dialog mit dem Rohtext der Notiz; „Speichern“ ersetzt den Notizinhalt.
+    """Editor mit dem Rohtext der Notiz; „Speichern“ ersetzt den Notizinhalt (nur bei Änderung).
 
     Args:
         app: Die laufende App.
@@ -55,27 +97,27 @@ def _edit_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:
     Returns:
         Der (noch nicht geöffnete) Dialog.
     """
-    # Höchstens 8 Zeilen (danach scrollt das Feld) und ein scrollbarer Dialog: Mit offener
-    # Tastatur überdeckte das Feld sonst „Abbrechen“ und „Speichern“ (Nutzerbefund 2026-10-22).
-    field = ft.TextField(value=ref.text, multiline=True, min_lines=3, max_lines=8, autofocus=True)
-    hint = ft.Text("", size=12, color=ft.Colors.ERROR)
-
-    async def save(_e) -> None:
-        text = field.value or ""
-        if not text.strip():
-            hint.value = "Der Text ist leer. Zum Entfernen bitte „Löschen“ verwenden."
-            hint.update()
-            return
-        app.page.pop_dialog()
+    async def replace(text: str) -> None:
         if text != ref.text:
             await app.act(lambda s: s.replace_note_text(ref.relpath, ref.planned_raw, ref.original, text))
 
-    async def cancel(_e) -> None:
-        app.page.pop_dialog()
+    return editor_dialog(app, ref.text, replace, "Der Text ist leer. Zum Entfernen bitte „Löschen“ verwenden.")
 
-    return ft.AlertDialog(modal=True, title="Notiz bearbeiten", scrollable=True,
-                          content=ft.Column([editor_toolbar(field), field, hint], tight=True),
-                          actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
+
+def new_note_dialog(app: "MobileApp", day: date) -> ft.AlertDialog:
+    """Leerer Editor; „Speichern“ hängt die Notiz an die Tagesdatei von ``day`` an (legt sie bei Bedarf an).
+
+    Args:
+        app: Die laufende App.
+        day: Tag der neuen Notiz.
+
+    Returns:
+        Der (noch nicht geöffnete) Dialog.
+    """
+    async def append(text: str) -> None:
+        await app.act(lambda s: s.append_note(text, day))
+
+    return editor_dialog(app, "", append, "Der Text ist leer.")
 
 
 def _delete_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:

@@ -9,6 +9,8 @@ bei einer Auswahl alle Zeilen, in denen mindestens ein Zeichen ausgewählt ist
 (endet die Auswahl genau am Zeilenanfang, zählt diese Zeile nicht). Leerzeilen
 dazwischen gehören zum Bereich, werden aber **nicht verändert**: Eine Leerzeile
 ist eine Notizgrenze (``docs/FORMAT.md``), und ``- [ ] `` würde sie aufheben.
+Ausnahme: Ist der Bereich genau **eine** leere Zeile (z. B. Caret in einer
+neuen Zeile oder im leeren Editor), setzt ``toggle_todo`` dort ``- [ ] `` ein.
 
 Die Auswahl wird so umgerechnet, dass sie danach dieselben Zeichen umfasst
 (Einfügungen an oder vor einer Position verschieben sie).
@@ -114,7 +116,8 @@ def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int
     nicht zurück). Sonst wird jede Zeile ohne Todo eines: ``x`` → ``- [ ] x``,
     ``- x``/``1. x`` → Checkbox hinter dem Marker. ``[-]`` und andere
     Statuszeichen bleiben unverändert (GRENZE laut FORMAT.md). Die Einrückung
-    bleibt immer erhalten.
+    bleibt immer erhalten. Eine einzelne leere Zeile (auch nur Leerraum) wird
+    zu ``- [ ] `` hinter ihrem Leerraum; der Caret steht danach am Zeilenende.
 
     Args:
         text: Editortext.
@@ -128,6 +131,12 @@ def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int
         return text, start, end
     spans = _lines(text)
     rows = [(spans[i][0], text[spans[i][0]:spans[i][1]]) for i in _affected(text, start, end)]
+    if len(rows) == 1 and not rows[0][1].strip():  # einzelne leere Zeile: neues Todo, Caret dahinter
+        offset, line = rows[0]
+        insert = "- " + _CHECKBOX
+        new_text, _s, _e = _apply(text, start, end, [(offset + len(line), 0, insert)])
+        caret = offset + len(line) + len(insert)
+        return new_text, caret, caret
     rows = [(offset, line) for offset, line in rows if line.strip()]
     items = [(offset, line, parse_list_item(line)) for offset, line in rows]
     edits: list[Edit] = []

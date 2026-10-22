@@ -16,7 +16,7 @@ import flet as ft
 from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 from .date_pick import open_date_picker
-from .note_editor import editor_toolbar
+from .note_dialogs import new_note_dialog
 from .note_view import note_card, todo_line
 
 if TYPE_CHECKING:
@@ -110,22 +110,18 @@ def day_header(app: "MobileApp") -> ft.Control:
 
 
 def day_view(app: "MobileApp") -> list[ft.Control]:
-    """Tab „Tag“: Datumswahl, neue Notiz für diesen Tag und seine Notizen.
+    """Tab „Tag“: Datumswahl, Knopf „Neue Notiz“ (öffnet den gemeinsamen Editor leer) und die Notizen des Tages.
 
     Angesehen wird nur gelesen; eine Tagesdatei entsteht erst, wenn eine Notiz
     gespeichert wird (``NotesService.append_note``).
     """
     service = app.service
     day = app.day
-    editor = ft.TextField(label="Neue Notiz", multiline=True, min_lines=2, max_lines=6)
 
-    async def save(_e) -> None:
-        text = editor.value or ""
-        if text.strip():
-            await app.act(lambda s: s.append_note(text, day))
+    async def new_note(_e) -> None:
+        app.page.show_dialog(new_note_dialog(app, day))
 
-    controls: list[ft.Control] = [day_header(app), editor_toolbar(editor), editor,
-                                  ft.Button("Notiz speichern", on_click=save)]
+    controls: list[ft.Control] = [day_header(app), ft.Button("Neue Notiz", icon=ft.Icons.ADD, on_click=new_note)]
     empty = len(controls)
     for day_file in service.day(day):
         if day_file.has_conflict:

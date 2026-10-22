@@ -316,16 +316,25 @@ def test_tag_dialog_offers_the_shared_project(tmp_path: Path) -> None:
 
 
 def test_editors_are_bounded_and_the_edit_dialog_scrolls(tmp_path: Path) -> None:
-    """Bearbeiten: höchstens 8 Zeilen, Dialog scrollbar (Knöpfe bleiben mit Tastatur erreichbar); Neue Notiz: höchstens 6."""
+    """Editor ohne Titel, höchstens 9 Zeilen, Dialog scrollbar (Knöpfe bleiben mit Tastatur erreichbar)."""
     from merkweiser.app.views import note_ref
     from merkweiser.mobile.ui import note_dialogs
     fake = _dialog_app(tmp_path)
     [day] = fake.service.day(fake.service.clock.today())
     dialog = note_dialogs._edit_dialog(fake, note_ref(day.relpath, day.document, day.document.notes[0]))
     field = dialog.content.controls[1]
-    assert dialog.scrollable and (field.min_lines, field.max_lines) == (3, 8)
-    editor = tabs.day_view(fake)[2]
-    assert (editor.min_lines, editor.max_lines) == (2, 6)
+    assert dialog.scrollable and dialog.title is None and (field.min_lines, field.max_lines) == (3, 9)
+
+
+def test_new_note_button_opens_the_shared_editor_empty(tmp_path: Path) -> None:
+    """Tab „Tag“ hat kein eigenes Schreibfeld mehr; „Neue Notiz“ öffnet denselben Editor leer."""
+    import asyncio
+    fake = _dialog_app(tmp_path)
+    controls = tabs.day_view(fake)
+    assert not any(isinstance(c, ft.TextField) for c in _walk_all(controls))
+    asyncio.run(controls[1].on_click(None))
+    [dialog] = fake.page.dialogs
+    assert dialog.title is None and dialog.content.controls[1].value == ""
 
 
 def _toolbar(text: str):
@@ -374,8 +383,10 @@ def test_day_view_navigates_and_saves_for_the_chosen_day(tmp_path: Path) -> None
     assert "Heute" in [c.content for c in controls[0].controls if isinstance(c, ft.TextButton)]
     assert "Noch keine Notizen am 14.01.2026." in _texts(controls)
     assert not (Path(fake.settings.vault) / "2026-01-14.md").exists()
-    controls[2].value = "Neu"
-    asyncio.run(controls[3].on_click(None))
+    asyncio.run(controls[1].on_click(None))  # „Neue Notiz“
+    [editor] = fake.page.dialogs
+    editor.content.controls[1].value = "Neu"
+    asyncio.run(editor.actions[1].on_click(None))
     assert (Path(fake.settings.vault) / "2026-01-14.md").read_bytes() == b"Neu\n"
 
 
@@ -444,3 +455,8 @@ def _walk(control) -> list:
     if isinstance(getattr(control, "content", None), ft.Control):
         found += _walk(control.content)
     return found
+
+
+def _walk_all(controls) -> list:
+    """Alle Controls einer Liste rekursiv."""
+    return [found for control in controls for found in _walk(control)]

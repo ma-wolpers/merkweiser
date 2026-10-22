@@ -33,6 +33,14 @@ def test_toggle_todo_mixed_selection_and_blank_lines() -> None:
     assert new == "- [ ] a\n\n- [ ] b\n- [-] c" and (start, end) == (0, len(new))
 
 
+def test_toggle_todo_on_a_single_empty_line_inserts_a_checkbox() -> None:
+    """Einzelne leere Zeile (leerer Editor, neue Zeile, nur Leerraum) → ``- [ ] ``, Caret dahinter."""
+    assert toggle_todo("", 0, 0) == ("- [ ] ", 6, 6)
+    assert toggle_todo("a\n", 2, 2) == ("a\n- [ ] ", 8, 8)
+    assert toggle_todo("a\n\nb", 2, 2) == ("a\n- [ ] \nb", 8, 8)
+    assert toggle_todo("a\n\t\nb", 2, 2) == ("a\n\t- [ ] \nb", 9, 9)  # Caret vor dem Leerraum → ans Ende
+
+
 def test_selection_ending_at_line_start_excludes_that_line() -> None:
     """Endet die Auswahl genau am Zeilenanfang, zählt diese Zeile nicht; die Auswahl umfasst danach dieselben
     Zeichen (``a\\n``), ein zweiter Tipp schaltet also dieselbe Zeile zurück."""

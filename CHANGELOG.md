@@ -14,7 +14,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
-- Beim Bearbeiten einer Notiz überdeckte das Textfeld mit offener Tastatur „Abbrechen“ und „Speichern“. Das Feld ist jetzt höchstens 8 Zeilen hoch (danach scrollt es), der Dialog lässt sich scrollen; das Feld für neue Notizen ist höchstens 6 Zeilen hoch.
+- Beim Bearbeiten einer Notiz überdeckte das Textfeld mit offener Tastatur „Abbrechen“ und „Speichern“. Der Dialog hat keine Überschrift mehr, das Feld ist höchstens 9 Zeilen hoch (danach scrollt es), und der Dialog lässt sich scrollen.
 
 - Wer in Obsidian kurz nach einer Änderung durch Merkweiser in derselben Notiz weiterschreibt, bekommt keine überflüssige Konfliktdatei mehr. Merkweiser prüft jetzt, ob seine Änderung in der Datei noch enthalten ist; Weitertippen in derselben Zeile zählt nicht als Verlust.
 - In der Notizansicht fehlten Erläuterungen unter dem Thema und Fortsetzungszeilen unter Todos und Listenpunkten. Jetzt: Thema fett, Erläuterung darunter in deutlich schwächerer Schrift, Listenpunkte mit „•“ auf derselben Textkante wie Todos, Fortsetzungen bündig darunter.
@@ -24,11 +24,11 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
-- **Einfüge-Knöpfe beim Schreiben und Bearbeiten von Notizen:** Checkbox (macht die Zeile zum Todo bzw. wieder zu Text), Einrücken, Ausrücken und `#` (vor das markierte Wort bzw. ans Zeilenende). Sie wirken auf die Zeile mit dem Cursor bzw. auf alle markierten Zeilen.
+- **Einfüge-Knöpfe beim Schreiben und Bearbeiten von Notizen:** Checkbox (macht die Zeile zum Todo bzw. wieder zu Text; in einer leeren Zeile beginnt sie ein neues Todo), Einrücken, Ausrücken und `#` (vor das markierte Wort bzw. ans Zeilenende). Sie wirken auf die Zeile mit dem Cursor bzw. auf alle markierten Zeilen.
 
 - **Android-App (erste Fassung):**
   - Einrichtung mit „Zugriff auf alle Dateien“ und Wahl des Notizordners (auch per eingetipptem Pfad).
-  - Tab **Tag** (vorher „Heute“): Mit ◀/▶ oder über das Datum (Kalender) lässt sich jeder Tag ansehen; beim Öffnen der App ist immer heute gewählt, „Heute“ springt zurück. Eine Datumsdatei entsteht erst, wenn du an diesem Tag eine Notiz speicherst. Neue Notiz schreiben; die Notizen des Tages mit abhakbaren Todos, Dringend-Stern und **Verschieben** (Schnellwahl morgen, übermorgen, nächster Montag, in einer Woche, oder ein Datum im Kalender); jede Notiz lässt sich **bearbeiten** und (nach Rückfrage) **löschen**.
+  - Tab **Tag** (vorher „Heute“): Mit ◀/▶ oder über das Datum (Kalender) lässt sich jeder Tag ansehen; beim Öffnen der App ist immer heute gewählt, „Heute“ springt zurück. Eine Datumsdatei entsteht erst, wenn du an diesem Tag eine Notiz speicherst. Der Knopf **Neue Notiz** öffnet denselben Editor wie „Bearbeiten“, nur leer; die Notizen des Tages mit abhakbaren Todos, Dringend-Stern und **Verschieben** (Schnellwahl morgen, übermorgen, nächster Montag, in einer Woche, oder ein Datum im Kalender); jede Notiz lässt sich **bearbeiten** und (nach Rückfrage) **löschen**.
   - Wurde eine Datei zwischendurch verändert und landet deine Änderung deshalb als Konfliktdatei, sagt die App das sofort.
   - Tab **Todos**: alle Todos mit Filter nach Status und Tags (UND/ODER).
   - Tab **Suche**: Teilstring oder regulärer Ausdruck. Treffer erscheinen als **ganze Notizen**, die sich wie im Tab „Tag“ bearbeiten, abhaken und verschieben lassen; ein Tipp auf das Datum öffnet den Tab „Tag“ mit genau diesem Datum.

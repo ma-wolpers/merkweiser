@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Ein Notiz-Editor für Neu und Bearbeiten
+
+- `note_dialogs.editor_dialog` als einziger Editor (ohne Titel, max. 9 Zeilen); `new_note_dialog` (leer → `append_note`) und `_edit_dialog` (→ `replace_note_text`) liefern nur noch das Speichern. Das Schreibfeld im Tab „Tag“ ist durch den Knopf „Neue Notiz“ ersetzt.
+- `text_tools.toggle_todo`: Eine einzelne leere Zeile bekommt `- [ ] ` (Caret dahinter); Leerzeilen innerhalb mehrzeiliger Auswahlen bleiben unverändert.
+
 ## 2026-10-22 – Suche mit ganzen Notizen (Teilschritt 7)
 
 - `NotesService.search_notes` → `NoteMatch` je Notiz; `note_view.note_card` aus `day_view` herausgezogen und von beiden Tabs genutzt; Datumsknopf → `MobileApp.show_day`.
