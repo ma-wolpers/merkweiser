@@ -25,10 +25,8 @@ from .document import parse_document
 from .move_plan import NEW, MovePlan, insert_moved, moved_chunks, plan_move, plan_target, remove_moved_source
 from .ops import Op, OpStore
 from .patch import BlockTarget, StaleTargetError, Target, resolve_block
-from .safe_write import ChangedBeforeWriteError, Writer
-
-MAX_REPLANS = 3
-DONE_LIKE = ("DONE", "QUARANTINE", "INSTALLED", "D_SAVED")
+from .safe_write import Writer
+from .step_ops import DONE_LIKE, child_state, run_step
 
 
 @dataclass(frozen=True)
@@ -118,7 +116,7 @@ def _continue(writer: Writer, store: OpStore, op: Op, prefix: str, force_source:
     m = op.manifest
     plan = _manifest_plan(m)
     same_file = m["src"] == m["dst"]
-    target_state = _child_state(store, op.id, m["dst"])
+    target_state = child_state(store, op.id, m["dst"])
     if target_state == "CONFLICTED":
         return _incomplete(op, "Zieldatei war gleichzeitig in Bearbeitung – verschobenes Todo steht in einer Konfliktdatei")
     if target_state not in DONE_LIKE:
@@ -131,7 +129,7 @@ def _continue(writer: Writer, store: OpStore, op: Op, prefix: str, force_source:
     elif same_file:
         return _done(op)
     op.set_state("ZIEL_GESCHRIEBEN")
-    if _child_state(store, op.id, m["src"]) in DONE_LIKE:
+    if child_state(store, op.id, m["src"]) in DONE_LIKE:
         return _done(op)
     if force_source and not _moved_once_in_target(writer, m, plan, prefix):
         return _incomplete(op, "Zielblock nicht eindeutig nachweisbar – Quelle bleibt unverändert")
@@ -177,32 +175,21 @@ def _insert(doc, plan: MovePlan, manifest: dict, same_file: bool) -> bytes:
 
 
 def _apply(writer: Writer, op: Op, relpath: str, prefix: str, role: str, build) -> None:
-    """Plant auf frischem Stand und schreibt; bei externer Änderung bis zu 3-mal neu planen.
+    """Plant auf frischem Stand und schreibt (``step_ops.run_step``, bis zu 3 Neuversuche).
+
+    Args:
+        writer: Writer.
+        op: Die Move-Op.
+        relpath: Ziel- bzw. Quelldatei.
+        prefix: Projekt-Präfix.
+        role: ``ziel`` oder ``quelle`` (Fortschrittsfeld ``<rolle>_geschrieben``).
+        build: ``dokument → neue Bytes``.
 
     Raises:
         StaleTargetError: nach 3 Versuchen oder wenn die Planung scheitert.
     """
-    path = writer.root / relpath
-    for _attempt in range(MAX_REPLANS):
-        before = path.read_bytes() if path.exists() else None
-        after = build(parse_document(before or b"", prefix))
-        try:
-            writer.write(relpath, before, after, parent=op.id)
-            op.set_state(op.state().get("zustand", "PREPARED"), **{f"{role}_geschrieben": True})
-            return
-        except ChangedBeforeWriteError:
-            continue
-    raise StaleTargetError(f"{relpath}: wiederholt extern geändert")
-
-
-def _child_state(store: OpStore, op_id: str, relpath: str) -> str | None:
-    """Zustand der jüngsten Unter-Op (``write``) dieser Move-Op für eine Datei."""
-    state = None
-    for child in store.all_ids():
-        manifest, child_state = store.read(child)
-        if manifest.get("eltern_op") == op_id and manifest.get("relpath") == relpath:
-            state = child_state.get("zustand")
-    return state
+    run_step(writer, op, relpath, prefix, lambda doc, _raw: build(doc))
+    op.set_state(op.state().get("zustand", "PREPARED"), **{f"{role}_geschrieben": True})
 
 
 def _moved_once_in_target(writer: Writer, manifest: dict, plan: MovePlan, prefix: str) -> bool:

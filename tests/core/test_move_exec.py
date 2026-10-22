@@ -170,6 +170,28 @@ def test_changed_source_is_incomplete_and_retries_never_duplicate(tmp_path: Path
     assert recover_moves(fresh.writer, fresh.store, "projekt") == []  # INCOMPLETE wartet auf Nutzer
 
 
+def test_retention_keeps_children_of_incomplete_move(tmp_path: Path) -> None:
+    """Regression (S6): Nach Ablauf der Aufbewahrung darf „Erneut versuchen“ das Ziel nicht doppelt anhängen."""
+    from merkweiser.core.retention import prune_ops
+
+    env = Env(tmp_path, crash=("write:before_prepared", 2))
+    (env.root / SRC).write_bytes(SOURCE)
+    with pytest.raises(SimulatedCrash):
+        move_todo(env.writer, env.store, SRC, TODO, DST, "projekt")
+    env.die()
+    (env.root / SRC).write_bytes(SOURCE.replace(b"Kapitel 1", b"Kapitel 1 bearbeitet"))
+    fresh = Env(tmp_path)
+    recover(fresh.writer)
+    [result] = recover_moves(fresh.writer, fresh.store, "projekt")
+    fresh.settle()
+    fresh.clock.advance(40 * 86400)
+    assert prune_ops(fresh.root, fresh.writer.data, fresh.store, fresh.clock, 30) == []
+    again = resume_move(fresh.writer, fresh.store, result.op_id, "projekt")
+    fresh.settle()
+    assert again.state == "INCOMPLETE"
+    assert fresh.text(DST).count("Lernen") == 1
+
+
 def test_find_pending_move_for_same_block(tmp_path: Path) -> None:
     """Gleicher Quellblock mit unvollständigem Move → „vorhandenen Vorgang fortsetzen“."""
     env = Env(tmp_path, crash=("write:before_prepared", 2))

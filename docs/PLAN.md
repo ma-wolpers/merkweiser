@@ -23,16 +23,23 @@
 | 8 – Mobile-UI und APK | **in Arbeit** (Fokus seit 2026-10-19). Läuft auf dem Gerät; dazu Schreibgarantie-Anzeige, Konfliktvergleich, Diagnosebericht. Notizen bearbeiten/löschen, Datumswahl beim Verschieben und Auto-Merge-Liste mit Rückgängig, abschnittsweise Konfliktauflösung und Schreibschutz-Modus erledigt → **Funktionsumfang laut Plan vollständig**; offen ist der Gerätetest dieser Funktionen. |
 | 9 – Abschluss | **zurückgestellt** wie Schritt 7. |
 
-## Spätere Schritte (eigene Planrunde im Planmodus, noch nicht ausgearbeitet)
+## Spätere Schritte W1–W6 (Planrunde 2026-10-21/22, freigegeben)
 
-Nutzerwünsche vom 2026-10-21. Sie werden erst in einer eigenen Planrunde festgelegt; hier steht nur, was gewünscht ist und wo es architektonisch hingehört.
+Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE-SCHRITTE.md) (Anforderungen, Sicherheitsmodelle S0–S7, Design, Verifikation, offene Punkte). Kurzfassung: W1 dringende Todos zuerst · W2 Tag-Seite · W3 doppelte Notizen · W4 Navigation mit Konflikten/Backups unter Einstellungen · W5 Morgen-Benachrichtigung (Android) · W6 Arbeitszeit-Tracker im YAML-Frontmatter.
 
-| Wunsch | Einordnung (vorläufig) |
-|---|---|
-| **Dringende Todos ganz oben:** Mit Stern (dringend) markierte Todos stehen in den Listen vor allen anderen. | Sortierung gehört in den Core bzw. die UI-neutralen Anzeigemodelle (`query.py` bzw. `app/views.py`), damit Desktop und Mobile gleich sortieren. Zu klären: welche Listen (Todos, Suche, Tagesansicht?), Reihenfolge innerhalb der Gruppen, Verhalten bei verschachtelten Todos (Teilbaum bleibt beim Elternteil?). Die Datei wird dabei **nicht** umsortiert, nur die Anzeige. |
-| **Konflikte und Backups unter Einstellungen:** Der Tab „Konflikte“ wandert in die Einstellungen. Daneben bzw. darunter kommt eine weitere Ansicht mit **allen Backups** (nicht nur Auto-Merges), jeweils mit „Rückgängig“. Ausgeblendete Auto-Merges sind dort weiter erreichbar. | Der Plan erwähnt einen „Backup-Browser“ nur nebenbei (Vault-ID-`GRENZE`, `meta.json`), ohne Ansicht oder Schritt. Grundlage sind die Op-Verzeichnisse (`write`, `remove`, `automerge`, `resolve`, `move`) mit ihren Blobs; „Rückgängig“ heißt Wiederherstellen eines früheren Stands per `safe_write`, abgesichert gegen inzwischen geänderte Dateien (wie `undo_automerge`). Zu klären: was „Rückgängig“ je Op-Art bedeutet (z. B. bei Move und Resolve), Gruppierung und Filter, Darstellung als Vergleich, Umgang mit späteren Änderungen derselben Datei, Garantie 4 bei rückgängig gemachten Konfliktentscheidungen, Navigation (Konflikt-Zähler bleibt sichtbar?). |
-| **Gleiche Notiz in zwei Dateien als Konflikt:** Eine byte-gleiche Notiz, die in zwei verschiedenen Tagesdateien vorkommt, erscheint als eine Art Konflikt. Entschieden wird nicht über den Inhalt, sondern ob die **neuere oder die ältere** Fassung (Datei) bleibt. | Erkennung über die Inhaltszeilen (`NoteRef.original`) über alle Tagesdateien, analog zur Konfliktliste in der App-Schicht; Löschen der anderen Fassung über `delete_note`. Zu klären: was „neuer/älter“ heißt (Datum der Tagesdatei oder Änderungszeit), Umgang mit mehr als zwei Vorkommen, ganz verschobene Notizen, Abgrenzung zu absichtlich wiederholten Notizen. |
-| **Tag anklicken → alle Notizen und Todos mit diesem Tag:** Ein Tippen auf einen Hashtag zeigt sofort alle Treffer. | Kein eigener Suchweg: Der Klick erzeugt einen `Filter(tags={tag})` und zeigt das Ergebnis von `NotesService.search` in der Suchansicht (gleiche Semantik inkl. effektiver bzw. geerbter Tags, für beide UIs). Zu klären: Treffer für Notizen ohne Todos, Projekt-Tags, Zurück-Navigation, Darstellung der Tags als anklickbare Elemente in Flet und bw-gui. |
+| Phase | Inhalt | Stand |
+|---|---|---|
+| 0 | Plan übernommen; Schrittprotokoll `core/step_ops.py`; Retention schützt Kinder offener Vorgänge (behebt Doppel-Anhängen bei sehr alten unvollständigen Moves) | erledigt |
+| 1 | W1 + W2, Navigation je Tab (`Nav`) | offen |
+| 2 | W4a Tabs Tag/Todos/Suche/Zeit/Einstellungen, Badge | offen |
+| 3 | W4b Backups mit Rückgängig | offen |
+| 4 | W3 Duplikate | offen |
+| 5 | W6a YAML-Kern | offen |
+| 6 | W6b YAML-Merge | offen |
+| 7 | W6c Tracker-Core | offen |
+| 8 | W6d Zeit-Tab | offen |
+| 9 | Spike S5 Benachrichtigungen | offen |
+| 10 | W5 Benachrichtigungen | offen |
 
 ## Context
 

@@ -14,6 +14,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Ein unvollständiges Verschieben, das länger als die Aufbewahrungszeit der Backups (Standard 30 Tage) offen blieb, konnte beim erneuten Versuch das Todo ein zweites Mal in den Zieltag schreiben.
 - Im Editor sprang der Cursor nach Checkbox, Listenpunkt, Einrücken und Ausrücken an eine andere Stelle; er bleibt jetzt beim selben Zeichen.
 - Wird ein eingerückter Listenpunkt oder ein eingerücktes Todo wieder zu normalem Text (per Knopf oder Enter), verliert die Zeile auch ihre Einrückung.
 

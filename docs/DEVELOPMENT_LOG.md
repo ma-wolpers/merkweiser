@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Spätere Schritte W1–W6: Plan, Phase 0 (Schrittprotokoll, Retention)
+
+- Planrunde W1–W6 abgeschlossen (Fragerunden 1–7, Review mit Befunden Y1–Y12); Plan in `docs/PLAN-SPAETERE-SCHRITTE.md`, an die Nutzer-Commits vom selben Tag angepasst (Tab „Tag“, Suche mit Notizkarten, kein „Verschoben aus“).
+- Neu `core/step_ops.py` (S0): aus `move_exec` herausgelöstes Schrittprotokoll (`child_state(s)`, `run_step`, `pending_ops`, `finish`, `incomplete`, `STEP_DONE`). `move_exec._apply` nutzt `run_step`; Verhalten unverändert (Move-Tests grün).
+- **Fehler behoben (S6):** `prune_ops` löschte abgeschlossene Kinder-Ops eines `INCOMPLETE`-Moves nach Ablauf der Aufbewahrung. `_continue` hielt den Zielschritt dann für offen und hängte beim erneuten Versuch noch einmal an. Jetzt sind Kinder und `ziel_op`/`basis_op`-Referenzen offener Ops geschützt (`_open_dependencies`, je Lauf neu berechnet). Regressionstest schlägt ohne die Behebung fehl.
+
 ## 2026-10-22 – Editor: Cursor springt nicht mehr, Ent-Listen ohne Einrückung
 
 - Vermutete Ursache des Springens (Gerätebefund): Ein neues `value` setzt in Flutter den Caret ans Ende, und das zugehörige `on_selection_change` überschrieb die gemerkte Position. Jetzt gehen `value` und `selection` in einem Update raus, nach dem Fokus noch einmal die Auswahl; Ereignisse ohne Nutzerursache (`cause` `None`/`UNKNOWN`) werden 1 s lang ignoriert. BAUSTELLE(Caret) bis zum Gerätetest.
