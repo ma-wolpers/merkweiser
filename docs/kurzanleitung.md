@@ -35,6 +35,8 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 - **Dringende Todos** (Stern) stehen in jeder Notiz und in den Listen oben.
 - **Konflikte** findest du unter *Einstellungen → Konflikte*. Eine Zahl am Einstellungen-Symbol zeigt, wie viele offen sind. Dort stehen auch **unterbrochene Vorgänge**, z. B. ein Verschieben, bei dem sich die Quelle inzwischen geändert hat; Merkweiser ändert dann bewusst nichts weiter und lässt dich wählen.
 
+- **Backups:** Unter *Einstellungen → Backups* stehen alle Änderungen, die Merkweiser gemacht hat, je Datei mit Vergleich vorher/nachher. „Rückgängig“ nimmt nur diese eine Änderung zurück; spätere bleiben. Lässt sich das nicht eindeutig machen, legt Merkweiser den früheren Stand als Konfliktdatei an, und du entscheidest unter *Konflikte*. Gehört eine Änderung zu einem Vorgang mit mehreren Dateien (z. B. Verschieben), steht dabei, was ein teilweises Rückgängig bedeutet.
+
 ## Diagnosebericht
 
 *Einstellungen → Diagnosebericht speichern* legt eine Datei `merkweiser-diagnose-<Datum>-<Uhrzeit>.txt` an. Den Zielordner tippst du ins Feld darüber, oder du lässt es leer und wählst ihn aus; Merkweiser merkt sich den Ordner.

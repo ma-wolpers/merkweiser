@@ -89,7 +89,7 @@ def _automerge_controls(app: "MobileApp") -> list[ft.Control]:
     for entry in entries:
         when = entry.created.astimezone().strftime("%d.%m. %H:%M")
         controls += [ft.Divider(), ft.Text(f"{entry.relpath} – {when}", weight=ft.FontWeight.BOLD),
-                     _diff_box(line_diff(entry.before, entry.after)), _entry_actions(app, entry)]
+                     diff_box(line_diff(entry.before, entry.after)), _entry_actions(app, entry)]
     return controls
 
 
@@ -137,7 +137,7 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     ]
     if case.main_bytes is None:
         controls.append(ft.Text("Die Hauptdatei fehlt; unten steht nur die Konfliktversion.", size=12))
-    controls.append(_diff_box(conflict_diff(case)))
+    controls.append(diff_box(conflict_diff(case)))
     if case.kind is not CaseKind.BUSY:
         controls += _choices(app, case, cases)
     if case.kind is CaseKind.MANUAL:
@@ -145,7 +145,7 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     return controls
 
 
-def _diff_box(rows: list[DiffRow]) -> ft.Control:
+def diff_box(rows: list[DiffRow]) -> ft.Control:
     """Zeilenvergleich als Kasten mit farbig hinterlegten Abweichungen.
 
     Args:

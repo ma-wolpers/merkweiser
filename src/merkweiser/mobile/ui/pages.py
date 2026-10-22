@@ -10,6 +10,8 @@ Seiten:
   bedienbare Karten, neueste zuerst, Karten mit offenem dringendem Todo vorn.
 * ``konflikte`` – unter Einstellungen (W4): unterbrochene Vorgänge, offene
   Sync-Konflikte und automatisch zusammengeführte Konflikte.
+* ``backups`` und ``backup_datei`` – unter Einstellungen (W4): Dateien mit
+  Änderungen bzw. die Änderungen einer Datei mit „Rückgängig“ (``backup_view``).
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import flet as ft
 from ...app.nav import PageRef
 from ...app.ordering import note_is_pressing, stable_first
 from ...core.query import Filter
-from . import conflict_view
+from . import backup_view, conflict_view
 from .interrupted_view import interrupted_controls
 from .note_view import note_card
 from .tabs import date_button
@@ -78,7 +80,17 @@ def conflicts_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
     return [page_header(app, "Konflikte"), *interrupted_controls(app), *conflict_view.conflicts_view(app)]
 
 
-BUILDERS = {"tag": tag_page, "konflikte": conflicts_page}
+def backups_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
+    """Backups: Dateiliste."""
+    return [page_header(app, "Backups"), *backup_view.backups_page(app, _arg)]
+
+
+def backup_file_page(app: "MobileApp", relpath: str) -> list[ft.Control]:
+    """Backups einer Datei."""
+    return [page_header(app, relpath), *backup_view.backup_file_page(app, relpath)]
+
+
+BUILDERS = {"tag": tag_page, "konflikte": conflicts_page, "backups": backups_page, "backup_datei": backup_file_page}
 
 
 def build_page(app: "MobileApp", page: PageRef) -> list[ft.Control]:

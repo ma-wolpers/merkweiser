@@ -228,13 +228,18 @@ def hub_entries(app: "MobileApp") -> list[ft.Control]:
     """
     count = open_issue_count(app.service)
 
-    async def conflicts(_e) -> None:
-        app.open_page(PageRef("konflikte"))
+    def opener(kind: str):
+        async def click(_e) -> None:
+            app.open_page(PageRef(kind))
+        return click
 
     title = f"Konflikte ({count})" if count else "Konflikte"
     return [ft.ListTile(leading=ft.Icon(ft.Icons.SYNC_PROBLEM, color=ft.Colors.ERROR if count else None),
                         title=ft.Text(title), subtitle=ft.Text("Sync-Konflikte, unterbrochene Vorgänge"),
-                        trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT), on_click=conflicts),
+                        trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT), on_click=opener("konflikte")),
+            ft.ListTile(leading=ft.Icon(ft.Icons.HISTORY), title=ft.Text("Backups"),
+                        subtitle=ft.Text("Alle Änderungen je Datei, einzeln rückgängig"),
+                        trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT), on_click=opener("backups")),
             ft.Divider()]
 
 

@@ -30,6 +30,7 @@ from ..core.edits import add_todo, set_done, set_project, set_urgent
 from ..core.fs_probe import GUARANTEE, VaultNotWritableError, probe_install_mode
 from ..core.fsops import FsOps
 from ..core.history import History
+from ..core.backups import recover_undos
 from ..core.move_exec import MoveResult, move_todo, recover_moves
 from ..core.move_plan import MoveContext, move_context, tag_for_move
 from ..core.tags import tag_from_input
@@ -99,6 +100,7 @@ class StartReport:
     recovery: RecoveryReport
     resolves: list[ResolveOutcome] = field(default_factory=list)
     moves: list[MoveResult] = field(default_factory=list)
+    undos: list[str] = field(default_factory=list)
     automerges: list[str] = field(default_factory=list)
     removed_empty: list[str] = field(default_factory=list)
 
@@ -187,6 +189,7 @@ class NotesService:
         self.busy = report.recovery.busy_paths
         report.resolves = recover_resolves(self.writer, self.store)
         report.moves = recover_moves(self.writer, self.store, self.settings.project_prefix)
+        report.undos = recover_undos(self.writer, self.store, self.settings.project_prefix)
         prune_sidecars(self.root, self.data)
         prune_ops(self.root, self.data, self.store, self.clock, self.settings.retention_days)
         self.rescan()

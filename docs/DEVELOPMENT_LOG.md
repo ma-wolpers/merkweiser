@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Phase 3: Backups mit Rückgängig einzelner Änderungen
+
+- Neu `core/backups.py`, `core/undo_merge.py`, `app/backup_views.py`, `mobile/ui/backup_view.py`; `conflict_view.diff_box` öffentlich; `NotesService.start` ruft `recover_undos` nach `recover_moves`; `StartReport.undos`.
+- `automerge_log.undone_manual_paths` liest `nur_manuell` jetzt auch aus `rueckgaengig`-Ops (wiederhergestellte Sync-Konfliktdatei bleibt manuell).
+- Gefunden beim Testen: Op-IDs derselben Sekunde sortieren nach Zufallsteil, ein Kind kann vor seiner Eltern-Op stehen → Art-Zuordnung in eigenem Durchlauf, Änderungen nach `erstellt` sortiert.
+- Benachbarte spätere Änderungen werden beim Rückgängig (wie beim Sync-Merge) zum Hunk → Konfliktdatei; als GRENZE dokumentiert und getestet.
+- Resolve-Marker: Das Entfernen betrifft `…MWENTSCHIEDEN.md`; Rückgängig legt die Datei unter dem ursprünglichen Konfliktnamen an (sonst hielte `recover_resolves` sie für eine offene Entscheidung).
+
 ## 2026-10-22 – Phase 2: Einstellungen als Hub, Konflikte als Unterseite, Badge
 
 - Tabs jetzt Tag, Todos, Suche, Einstellungen. Der Tab „Zeit“ kommt erst mit seinem Inhalt (Phase 8), damit kein leerer Tab entsteht; die Badge-Position folgt `SETTINGS_TAB`.

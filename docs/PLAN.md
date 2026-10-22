@@ -32,7 +32,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 0 | Plan übernommen; Schrittprotokoll `core/step_ops.py`; Retention schützt Kinder offener Vorgänge (behebt Doppel-Anhängen bei sehr alten unvollständigen Moves) | erledigt |
 | 1 | W1 + W2, Navigation je Tab (`Nav`) | erledigt (Gerätetest mit Phase 2) |
 | 2 | W4a Tabs Tag/Todos/Suche/Einstellungen (Zeit ab Phase 8), Konflikte als Unterseite, unterbrochene Vorgänge, Badge | erledigt (Gerätetest ausstehend) |
-| 3 | W4b Backups mit Rückgängig | offen |
+| 3 | W4b Backups mit Rückgängig | erledigt (Gerätetest mit Phase 4) |
 | 4 | W3 Duplikate | offen |
 | 5 | W6a YAML-Kern | offen |
 | 6 | W6b YAML-Merge | offen |

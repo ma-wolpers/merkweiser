@@ -605,7 +605,8 @@ def test_settings_hub_opens_conflicts_page_with_badge(tmp_path: Path) -> None:
     assert mobile.status_link.visible and "Einstellungen → Konflikte" in mobile.status.value
     assert mobile.nav.destinations[SETTINGS_TAB].icon.badge == "1"
     asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=SETTINGS_TAB))))
-    [hub] = [c for c in mobile.body.controls if isinstance(c, ft.ListTile)]
+    hub, backups = [c for c in mobile.body.controls if isinstance(c, ft.ListTile)]
+    assert backups.title.value == "Backups"
     assert hub.title.value == "Konflikte (1)"
     asyncio.run(hub.on_click(None))
     assert _texts(mobile.body.controls)[0] == "Konflikte"
@@ -614,3 +615,31 @@ def test_settings_hub_opens_conflicts_page_with_badge(tmp_path: Path) -> None:
     mobile.open_conflicts()
     assert mobile.tab == SETTINGS_TAB and _texts(mobile.body.controls)[0] == "Konflikte"
     assert not mobile.status_link.visible
+
+
+def test_backup_pages_list_files_and_undo_with_confirmation(tmp_path: Path) -> None:
+    """W4: Backups → Datei → Änderung; „Rückgängig“ fragt nach und nimmt nur diese Änderung zurück."""
+    import asyncio
+
+    from merkweiser.core.patch import Target
+    from merkweiser.mobile.ui import backup_view
+    fake = _dialog_app(tmp_path)
+    opened = []
+    fake.open_page = opened.append
+    said = []
+    fake.say = lambda message, link=False: said.append(message)
+    fake.service.set_done(Target("2026-01-15.md", 1, "- [ ] Aufgabe"), True)
+    fake.service.clock.advance(121)
+    fake.service.writer.finish_due()
+    [tile] = [c for c in backup_view.backups_page(fake, "") if isinstance(c, ft.ListTile)]
+    asyncio.run(tile.on_click(None))
+    assert opened[0].kind == "backup_datei" and opened[0].arg == "2026-01-15.md"
+    controls = backup_view.backup_file_page(fake, "2026-01-15.md")
+    [row] = [c for c in controls if isinstance(c, ft.Row)]
+    asyncio.run(row.controls[0].on_click(None))
+    dialog = fake.page.dialogs[-1]
+    asyncio.run(dialog.actions[1].on_click(None))
+    assert said == ["Änderung rückgängig gemacht."]
+    fake.service.clock.advance(121)
+    fake.service.writer.finish_due()
+    assert (Path(fake.settings.vault) / "2026-01-15.md").read_bytes().startswith(b"Heute #h\n- [ ] Aufgabe")

@@ -149,18 +149,21 @@ def hide_automerges(store: OpStore, op_ids: list[str]) -> list[str]:
 
 
 def undone_manual_paths(store: OpStore) -> set[str]:
-    """Konfliktdateien aus rückgängig gemachten Auto-Merges (nie wieder automatisch).
+    """Konfliktdateien, die nie wieder automatisch zusammengeführt werden.
+
+    Quellen: rückgängig gemachte Auto-Merges und Rückgängig im Backup-Browser,
+    das eine Sync-Konfliktdatei wieder angelegt hat (``core.backups``).
 
     Args:
         store: Op-Store.
 
     Returns:
-        Relative Pfade aus ``nur_manuell`` aller Automerge-Ops.
+        Relative Pfade aus ``nur_manuell`` aller Automerge- und Rückgängig-Ops.
     """
     paths: set[str] = set()
     for op_id in store.all_ids():
         manifest, state = store.read(op_id)
-        if manifest.get("art") == "automerge":
+        if manifest.get("art") in ("automerge", "rueckgaengig"):
             paths.update(state.get("nur_manuell") or ())
     return paths
 
