@@ -256,6 +256,21 @@ def tag_check(raw: str, project: bool, prefix: str, context: MoveContext,
 WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 
 
+def day_label(day: date, today: date) -> str:
+    """Beschriftung eines Tages für Tab „Tag“ und Suche.
+
+    Args:
+        day: Anzuzeigender Tag.
+        today: Heute (aus der Clock des Service).
+
+    Returns:
+        ``Heute · Do, 22.10.2026``, ``Gestern · …``, ``Morgen · …`` bzw. ``Di, 20.10.2026``.
+    """
+    plain = f"{WEEKDAYS[day.weekday()]}, {day:%d.%m.%Y}"
+    relative = {0: "Heute", -1: "Gestern", 1: "Morgen"}.get((day - today).days)
+    return f"{relative} · {plain}" if relative else plain
+
+
 def move_choices(today: date) -> list[tuple[str, date]]:
     """Schnellwahl der Zieldaten beim Verschieben eines Todos.
 

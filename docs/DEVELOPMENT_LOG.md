@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Tab „Tag“ mit Datumswahl (Teilschritt 6)
+
+- `MobileApp.day` (beim Öffnen des Vaults heute laut Service-Uhr), `show_day`; `tabs.today_view` → `day_view` mit `day_header`.
+- `mobile/ui/date_pick.py` aus `move_dialog` herausgezogen (`picked_date`, `open_date_picker`), von beiden genutzt.
+- `views.day_label`; `NotesService.append_note(text, day=None)`.
+
 ## 2026-10-22 – Einfüge-Leiste in den Editoren (Teilschritt 5)
 
 - `app/text_tools.py` (UI-neutral) mit Funktionsvertrag laut Plan: Bereich, Leerzeilen unverändert, unbekannte Position → nichts, Auswahl mitgerechnet, UTF-16-Umrechnung.

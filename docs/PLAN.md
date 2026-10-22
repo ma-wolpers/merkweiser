@@ -654,7 +654,7 @@ Sie ersetzt die einzelne Schattenkopie (Begründung siehe erstes Audit). Die Gru
 
 ### Mobile (`merkweiser/mobile/`, Flet 0.86.5 gepinnt, solange der Android-Ansatz aus S1 gilt)
 
-- **Ansichten:** Heute, Todos, Suche (mit demselben Modus-Schalter Teilstring/Regex wie am Desktop), Konflikte, Einstellungen. `ft.SafeArea`, Scrollen auf `ft.View`, Zurück-Taste über `_on_view_pop`.
+- **Ansichten:** Tag (wählbares Datum, beim Öffnen heute; bis 2026-10-22 „Heute“), Todos, Suche (mit demselben Modus-Schalter Teilstring/Regex wie am Desktop), Konflikte, Einstellungen. `ft.SafeArea`, Scrollen auf `ft.View`, Zurück-Taste über `_on_view_pop`.
 - **`platform/`:** `android_storage.py` (aus namenfit-mobile; nie `Path.home()`) und `folder_access.py` (Ordnerwahl, Berechtigung).
 - **Polling:** bei Lifecycle-Wechseln und per Timer.
 

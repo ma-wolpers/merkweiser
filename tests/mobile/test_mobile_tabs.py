@@ -40,10 +40,10 @@ def app(tmp_path: Path) -> SimpleNamespace:
     service = NotesService(root, tmp_path / "app", settings, FakeClock())
     service.start()
     return SimpleNamespace(service=service, settings=settings, access=FakeAccess(), say=lambda _m: None,
-                           render=lambda: None, show_setup=lambda: None)
+                           render=lambda: None, show_setup=lambda: None, day=service.clock.today())
 
 
-@pytest.mark.parametrize("builder", [tabs.today_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view,
+@pytest.mark.parametrize("builder", [tabs.day_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view,
                                      tabs.settings_view, tabs.setup_view])
 def test_every_tab_builds_controls(tmp_path: Path, builder) -> None:
     """Alle Tabs liefern eine nicht leere Control-Liste."""
@@ -53,7 +53,7 @@ def test_every_tab_builds_controls(tmp_path: Path, builder) -> None:
 
 def test_today_shows_todo_as_checkbox(tmp_path: Path) -> None:
     """Heute: das Todo hat eine Checkbox, sein Text steht ohne Marker daneben; der Punkt hat ein „•“."""
-    controls = tabs.today_view(app(tmp_path))
+    controls = tabs.day_view(app(tmp_path))
     found = []
 
     def walk(control):
@@ -175,7 +175,7 @@ def test_picked_date_handles_naive_aware_and_missing_values() -> None:
     """DatePicker-Werte: naiv → Datum direkt; UTC-behaftet → erst in lokale Zeit; None → None."""
     from datetime import date, datetime, timezone
 
-    from merkweiser.mobile.ui.move_dialog import picked_date
+    from merkweiser.mobile.ui.date_pick import picked_date
     assert picked_date(datetime(2026, 10, 23)) == date(2026, 10, 23)
     aware = datetime(2026, 10, 23, 12, 0, tzinfo=timezone.utc)
     assert picked_date(aware) == aware.astimezone().date()
@@ -324,7 +324,7 @@ def test_editors_are_bounded_and_the_edit_dialog_scrolls(tmp_path: Path) -> None
     dialog = note_dialogs._edit_dialog(fake, note_ref(day.relpath, day.document, day.document.notes[0]))
     field = dialog.content.controls[1]
     assert dialog.scrollable and (field.min_lines, field.max_lines) == (3, 8)
-    editor = tabs.today_view(fake)[1]
+    editor = tabs.day_view(fake)[2]
     assert (editor.min_lines, editor.max_lines) == (2, 6)
 
 
@@ -359,3 +359,39 @@ def test_toolbar_does_nothing_without_known_position(tmp_path: Path) -> None:
     for button in bar.controls:
         asyncio.run(button.on_click(None))
     assert field.value == "a\nb" and field.selection is None
+
+
+def test_day_view_navigates_and_saves_for_the_chosen_day(tmp_path: Path) -> None:
+    """◀ wechselt den Tag, „Heute“ erscheint nur an anderen Tagen, Speichern legt die Datei dieses Tages an."""
+    import asyncio
+    from datetime import date
+    fake = _dialog_app(tmp_path)
+    header = tabs.day_view(fake)[0]
+    assert [c.content for c in header.controls if isinstance(c, ft.TextButton)] == ["Heute · Do, 15.01.2026"]
+    asyncio.run(header.controls[0].on_click(None))
+    assert fake.day == date(2026, 1, 14)
+    controls = tabs.day_view(fake)
+    assert "Heute" in [c.content for c in controls[0].controls if isinstance(c, ft.TextButton)]
+    assert "Noch keine Notizen am 14.01.2026." in _texts(controls)
+    assert not (Path(fake.settings.vault) / "2026-01-14.md").exists()
+    controls[2].value = "Neu"
+    asyncio.run(controls[3].on_click(None))
+    assert (Path(fake.settings.vault) / "2026-01-14.md").read_bytes() == b"Neu\n"
+
+
+def test_opening_the_vault_always_selects_today(tmp_path: Path) -> None:
+    """``open_vault`` setzt den gewählten Tag auf heute (laut Service-Uhr), auch wenn vorher ein anderer gewählt war."""
+    import asyncio
+    from datetime import date
+
+    from merkweiser.mobile.ui.app import MobileApp
+    root = tmp_path / "vault"
+    root.mkdir()
+    page = SimpleNamespace(update=lambda: None)
+    mobile = MobileApp(page, SimpleNamespace(data_dir=tmp_path / "app"), FakeAccess())
+    mobile.settings = Settings(vault=str(root))
+    mobile.day = date(2000, 1, 1)
+    asyncio.run(mobile.open_vault())
+    assert mobile.day == mobile.service.clock.today() == date.today()
+    mobile.show_day(date(2026, 1, 3))
+    assert (mobile.day, mobile.tab, mobile.nav.selected_index) == (date(2026, 1, 3), 0, 0)

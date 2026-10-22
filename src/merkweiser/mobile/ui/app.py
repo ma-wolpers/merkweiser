@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import os
 from collections import deque
-from datetime import datetime
+from datetime import date, datetime
 from dataclasses import replace
 from pathlib import Path
 
@@ -29,7 +29,7 @@ from ...ports.storage_access import AppStorage, FolderAccess
 from ..platform.flet_access import FletFolderAccess, resolve_app_storage
 from . import conflict_view, tabs
 
-TAB_NAMES = ("Heute", "Todos", "Suche", "Konflikte", "Einstellungen")
+TAB_NAMES = ("Tag", "Todos", "Suche", "Konflikte", "Einstellungen")
 TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.SYNC_PROBLEM, ft.Icons.SETTINGS)
 
 
@@ -48,6 +48,7 @@ class MobileApp:
         self.service: NotesService | None = None
         self.report: StartReport | None = None
         self.tab = 0
+        self.day: date = date.today()  # beim Öffnen des Vaults auf „heute“ laut Service-Uhr gesetzt
         self.messages: deque[tuple[datetime, str]] = deque(maxlen=30)
         self.status = ft.Text("", size=12, color=ft.Colors.ERROR)
         self.body = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
@@ -81,7 +82,19 @@ class MobileApp:
             self.show_setup()
             return
         self.nav.visible = True
+        self.day = self.service.clock.today()  # beim Öffnen der App ist immer „heute“ gewählt
         self.say(tabs.start_hint(self.report, self.service.write_guarantee))
+        self.render()
+
+    def show_day(self, day: date) -> None:
+        """Wechselt in den Tab „Tag“ mit genau diesem Datum (z. B. aus der Suche).
+
+        Args:
+            day: Anzuzeigender Tag.
+        """
+        self.day = day
+        self.tab = 0
+        self.nav.selected_index = 0
         self.render()
 
     def show_setup(self) -> None:
@@ -182,7 +195,7 @@ class MobileApp:
 
     def render(self) -> None:
         """Zeichnet den aktuellen Tab neu."""
-        builders = (tabs.today_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view, tabs.settings_view)
+        builders = (tabs.day_view, tabs.todos_view, tabs.search_view, conflict_view.conflicts_view, tabs.settings_view)
         self.body.controls = builders[self.tab](self)
         self.page.update()
 

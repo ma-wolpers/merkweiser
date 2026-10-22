@@ -235,3 +235,13 @@ def test_failed_move_after_tag_reports_it(tmp_path: Path, monkeypatch) -> None:
     assert result.state == "INCOMPLETE" and result.hint.startswith("Tag gesetzt")
     settle(svc)
     assert path.read_text(encoding="utf-8") == "T #x\n- [ ] eins #x\n- [ ] zwei\n"
+
+
+def test_append_note_for_another_day_and_viewing_creates_no_file(tmp_path: Path) -> None:
+    """Ansehen eines Tages ohne Datei legt nichts an; erst Speichern erzeugt die Tagesdatei dieses Tages."""
+    svc = service(tmp_path)
+    svc.start()
+    assert svc.day(date(2026, 3, 4)) == []
+    assert list(svc.root.iterdir()) == []
+    svc.append_note("Termin\n- [ ] vorbereiten", date(2026, 3, 4))
+    assert (svc.root / "2026-03-04.md").read_text(encoding="utf-8") == "Termin\n- [ ] vorbereiten\n"

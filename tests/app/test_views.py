@@ -159,3 +159,13 @@ def test_tag_check_validates_warns_and_blocks_project_conflicts() -> None:
     blocked = tag_check("neu", True, "projekt", context, count)
     assert not blocked.ok and "nicht überschrieben" in blocked.message
     assert tag_check("alt", True, "projekt", context, count).ok
+
+
+def test_day_label_relative_and_weekdays() -> None:
+    """Heute/Gestern/Morgen mit Wochentag; sonst nur Wochentag und Datum (22.10.2026 ist ein Donnerstag)."""
+    from merkweiser.app.views import day_label
+    today = date(2026, 10, 22)
+    assert day_label(today, today) == "Heute · Do, 22.10.2026"
+    assert day_label(date(2026, 10, 21), today) == "Gestern · Mi, 21.10.2026"
+    assert day_label(date(2026, 10, 23), today) == "Morgen · Fr, 23.10.2026"
+    assert day_label(date(2026, 10, 20), today) == "Di, 20.10.2026"

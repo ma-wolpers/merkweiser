@@ -1,4 +1,4 @@
-"""Ansichten der Mobile-App: Einrichtung, Heute, Todos, Suche, Konflikte, Einstellungen.
+"""Ansichten der Mobile-App: Einrichtung, Tag, Todos, Suche, Konflikte, Einstellungen.
 
 Jede Funktion baut die Controls eines Tabs aus den UI-neutralen
 Anzeigemodellen (``merkweiser.app.views``). Aktionen laufen über
@@ -8,13 +8,14 @@ Anzeigemodellen (``merkweiser.app.views``). Aktionen laufen über
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import HitRow, hit_rows, note_ref, note_rows
+from ...app.views import HitRow, day_label, hit_rows, note_ref, note_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
+from .date_pick import open_date_picker
 from .note_dialogs import note_actions
 from .note_editor import editor_toolbar
 from .note_view import note_row, todo_line
@@ -74,19 +75,60 @@ def setup_view(app: "MobileApp") -> list[ft.Control]:
     ]
 
 
-def today_view(app: "MobileApp") -> list[ft.Control]:
-    """Heute: neue Notiz und die Notizen des heutigen Tages."""
+def day_header(app: "MobileApp") -> ft.Control:
+    """Kopfzeile des Tabs „Tag“: ◀, Datum (öffnet den Kalender), ▶ und „Heute“ (nur an anderen Tagen).
+
+    Args:
+        app: Die laufende App (``app.day`` ist der gewählte Tag).
+
+    Returns:
+        Eine Zeile mit den Navigationsknöpfen.
+    """
+    today = app.service.clock.today()
+
+    async def go(day: date) -> None:
+        app.day = day
+        app.render()
+
+    def step(icon, delta: int, tooltip: str) -> ft.IconButton:
+        async def click(_e) -> None:
+            await go(app.day + timedelta(days=delta))
+        return ft.IconButton(icon=icon, tooltip=tooltip, on_click=click)
+
+    async def calendar(_e) -> None:
+        open_date_picker(app, app.day, "Tag anzeigen", go)
+
+    async def back_to_today(_e) -> None:
+        await go(today)
+
+    controls: list[ft.Control] = [step(ft.Icons.CHEVRON_LEFT, -1, "Vortag"),
+                                  ft.TextButton(day_label(app.day, today), icon=ft.Icons.CALENDAR_MONTH,
+                                                on_click=calendar),
+                                  step(ft.Icons.CHEVRON_RIGHT, 1, "Folgetag")]
+    if app.day != today:
+        controls.append(ft.TextButton("Heute", on_click=back_to_today))
+    return ft.Row(controls, spacing=0, wrap=True)
+
+
+def day_view(app: "MobileApp") -> list[ft.Control]:
+    """Tab „Tag“: Datumswahl, neue Notiz für diesen Tag und seine Notizen.
+
+    Angesehen wird nur gelesen; eine Tagesdatei entsteht erst, wenn eine Notiz
+    gespeichert wird (``NotesService.append_note``).
+    """
     service = app.service
+    day = app.day
     editor = ft.TextField(label="Neue Notiz", multiline=True, min_lines=2, max_lines=6)
 
     async def save(_e) -> None:
         text = editor.value or ""
         if text.strip():
-            await app.act(lambda s: s.append_note(text))
+            await app.act(lambda s: s.append_note(text, day))
 
-    controls: list[ft.Control] = [editor_toolbar(editor), editor, ft.Button("Notiz speichern", on_click=save)]
-    today = service.clock.today()
-    for day_file in service.day(today):
+    controls: list[ft.Control] = [day_header(app), editor_toolbar(editor), editor,
+                                  ft.Button("Notiz speichern", on_click=save)]
+    empty = len(controls)
+    for day_file in service.day(day):
         if day_file.has_conflict:
             controls.append(ft.Text("Diese Datei hat einen ungelösten Konflikt.", color=ft.Colors.ERROR))
         for note in day_file.document.notes:
@@ -96,8 +138,8 @@ def today_view(app: "MobileApp") -> list[ft.Control]:
                 column = [note_row(app, r) for r in rows] + [note_actions(app, ref)]
                 controls.append(ft.Container(content=ft.Column(column), padding=8, border_radius=8,
                                              bgcolor=ft.Colors.SURFACE_CONTAINER))
-    if len(controls) == 3:  # Leiste, Editor, Speichern
-        controls.append(ft.Text(f"Noch keine Notizen am {today.isoformat()}."))
+    if len(controls) == empty:
+        controls.append(ft.Text(f"Noch keine Notizen am {day:%d.%m.%Y}."))
     return controls
 
 

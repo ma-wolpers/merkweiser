@@ -313,9 +313,17 @@ class NotesService:
         return self._edit(relpath, lambda doc: add_todo(doc, note_index, text, parent))
 
     @_writes
-    def append_note(self, text: str) -> WriteResult:
-        """Neue Notiz in der Tagesdatei von heute (Datei wird bei Bedarf angelegt)."""
-        relpath = write_target(self.index, self.pattern, self.clock.today())
+    def append_note(self, text: str, day: date | None = None) -> WriteResult:
+        """Neue Notiz in der Tagesdatei eines Tages; die Datei entsteht erst hier (Create-only).
+
+        Args:
+            text: Notiztext.
+            day: Tag der Notiz; ``None`` heißt heute (laut Clock).
+
+        Returns:
+            Ergebnis des Schreibvorgangs.
+        """
+        relpath = write_target(self.index, self.pattern, day or self.clock.today())
         result = self._edit(relpath, lambda doc: append_note(doc, text), allow_missing=True)
         self.rescan()
         return result
