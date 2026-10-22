@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Tag-Dialog vor dem Herauslösen (Teilschritt 3)
+
+- Core: `tags.tag_from_input`; `edits.with_tags` (aus `move_plan` verlegt), `tagged_line`, `add_tag`, `insert_topic`; `move_plan.move_context`/`MoveContext.project_conflict` und `tag_for_move` (ein Patch, neu aufgelöstes Target).
+- `NotesService.move_info` und `move_todo(..., tag)`: Prüfungen vor jedem Schreiben, dann Tag, dann Neu-Auflösen, dann Move; Fehler nach dem Tag → Hinweis „Tag gesetzt, …“.
+- `views.tag_check` (UI-neutral), `mobile/ui/tag_dialog.py` (schreibt nichts, reicht den Tag an die Datumswahl weiter). `move_dialog` blendet das Datum der Quelldatei aus statt „heute“.
+- Offene Produktentscheidung: Projektkonflikt sperrt den Projektmodus (Alternative: zusätzliche Projekte).
+
 ## 2026-10-22 – Verschieben ohne Tracking (Teilschritt 2)
 
 - `MOVED_HEADER` und die Wiederverwendung über die Kopfzeile entfernt; PLAN.md und FORMAT.md korrigiert (dort stand die Kopfzeile versehentlich als Entscheidung).

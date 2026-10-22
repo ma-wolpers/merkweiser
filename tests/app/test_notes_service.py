@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from merkweiser.app.notes_service import NotesService, SameDayMoveError
+from merkweiser.app.notes_service import MoveTag, NotesService, ProjectConflictError, SameDayMoveError
 from merkweiser.app.settings import Settings, load_settings, save_settings
 from merkweiser.core.patch import Target
 from merkweiser.core.query import Filter, StatusFilter, TextQuery
@@ -153,3 +153,85 @@ def test_unwritable_vault_opens_read_only(tmp_path: Path, monkeypatch) -> None:
         svc.auto_merge_all()
     svc.poll()
     assert (root / "2026-01-15.md").read_bytes() == raw and len(list(root.iterdir())) == 2
+
+
+def test_move_with_tag_inserts_topic_and_resolves_the_target_again(tmp_path: Path) -> None:
+    """Oberste Ebene, Notiz ohne Thema: Tag-Thema eingefügt, Ziel neu aufgelöst, Verschieben erfolgreich."""
+    svc = service(tmp_path)
+    path = svc.root / "2026-01-02.md"
+    path.write_bytes(b"A\n\n- [ ] eins\n- [ ] zwei\n")
+    svc.start()
+    result = svc.move_todo(Target("2026-01-02.md", 2, "- [ ] eins"), date(2026, 1, 20), MoveTag("#x"))
+    settle(svc)
+    assert result.state == "DONE"
+    assert path.read_text(encoding="utf-8") == "A\n\n#x\n- [ ] zwei\n"
+    assert (svc.root / "2026-01-20.md").read_text(encoding="utf-8") == "- [ ] eins #x\n"
+
+
+def test_move_subtodo_with_project_tags_todo_and_parent(tmp_path: Path) -> None:
+    """Teiltodo mit Projekttag: Projekt an Todo und Überpunkt, das Thema wandert mit."""
+    svc = service(tmp_path)
+    path = svc.root / "2026-01-02.md"
+    path.write_bytes(b"T\n- P\n  - [ ] teil\n  - [ ] anderes\n")
+    svc.start()
+    result = svc.move_todo(Target("2026-01-02.md", 2, "  - [ ] teil"), date(2026, 1, 20), MoveTag("umzug", True))
+    settle(svc)
+    assert result.state == "DONE"
+    assert path.read_text(encoding="utf-8") == "T\n- P #projekt/umzug\n  - [ ] anderes\n"
+    assert (svc.root / "2026-01-20.md").read_text(encoding="utf-8") == "T\n- [ ] teil #projekt/umzug\n"
+
+
+@pytest.mark.parametrize("tag, day, error", [
+    (MoveTag("neu", True), date(2026, 1, 20), ProjectConflictError),
+    (MoveTag("zwei worte"), date(2026, 1, 20), ValueError),
+    (MoveTag("x"), date(2026, 1, 2), SameDayMoveError),
+])
+def test_rejected_tag_moves_change_nothing(tmp_path: Path, tag: MoveTag, day: date, error: type) -> None:
+    """Projektkonflikt, ungültiger Tag und gleiches Datum werden vor jedem Schreiben abgelehnt."""
+    svc = service(tmp_path)
+    path = svc.root / "2026-01-02.md"
+    original = b"T\n- [ ] eins #projekt/alt\n- [ ] zwei\n"
+    path.write_bytes(original)
+    svc.start()
+    ops_before = svc.store.all_ids()
+    with pytest.raises(error):
+        svc.move_todo(Target("2026-01-02.md", 1, "- [ ] eins #projekt/alt"), day, tag)
+    assert path.read_bytes() == original and svc.store.all_ids() == ops_before
+    assert sorted(p.name for p in svc.root.iterdir()) == ["2026-01-02.md"]
+
+
+def test_crash_after_tag_write_leaves_only_extra_tags(tmp_path: Path, monkeypatch) -> None:
+    """Absturz zwischen Tag-Schreiben und Move: nur zusätzliche Tags, kein Inhalt verloren."""
+    import merkweiser.app.notes_service as module
+
+    def crash(*_args, **_kwargs):
+        raise RuntimeError("simulierter Absturz")
+
+    svc = service(tmp_path)
+    path = svc.root / "2026-01-02.md"
+    path.write_bytes(b"T\n- [ ] eins\n- [ ] zwei\n")
+    svc.start()
+    monkeypatch.setattr(module, "move_todo", crash)
+    with pytest.raises(RuntimeError):
+        svc.move_todo(Target("2026-01-02.md", 1, "- [ ] eins"), date(2026, 1, 20), MoveTag("x"))
+    settle(svc)
+    assert path.read_text(encoding="utf-8") == "T #x\n- [ ] eins #x\n- [ ] zwei\n"
+
+
+def test_failed_move_after_tag_reports_it(tmp_path: Path, monkeypatch) -> None:
+    """Regulärer Fehler nach dem Tag-Schreiben → INCOMPLETE mit „Tag gesetzt …“, Daten konsistent."""
+    import merkweiser.app.notes_service as module
+    from merkweiser.core.patch import StaleTargetError
+
+    def stale(*_args, **_kwargs):
+        raise StaleTargetError("Todo nicht mehr eindeutig")
+
+    svc = service(tmp_path)
+    path = svc.root / "2026-01-02.md"
+    path.write_bytes(b"T\n- [ ] eins\n- [ ] zwei\n")
+    svc.start()
+    monkeypatch.setattr(module, "move_todo", stale)
+    result = svc.move_todo(Target("2026-01-02.md", 1, "- [ ] eins"), date(2026, 1, 20), MoveTag("x"))
+    assert result.state == "INCOMPLETE" and result.hint.startswith("Tag gesetzt")
+    settle(svc)
+    assert path.read_text(encoding="utf-8") == "T #x\n- [ ] eins #x\n- [ ] zwei\n"

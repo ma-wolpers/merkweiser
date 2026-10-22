@@ -31,6 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .document import Document, ParsedNote, parse_document
+from .edits import tagged_line, with_tags
 from .inline import find_tags
 from .note_ops import append_note, delete_note
 from .outline import Node, NodeKind, Outline
@@ -91,7 +92,7 @@ def plan_move(doc: Document, target: Target) -> MovePlan:
     written = topic if topic is not None and not is_empty_topic(topic) else None
     present = {tag.key for tag in find_tags(written)} if written else set()
     names = [name for name in _inherited_tag_names(note, node.index) if name.casefold() not in present]
-    dedented[0] = _with_tags(dedented[0], names)
+    dedented[0] = with_tags(dedented[0], names)
     return MovePlan(BlockTarget(target.relpath, line_no, lines), tuple(dedented), "todo", written, key)
 
 
@@ -278,17 +279,101 @@ def _inherited_tag_names(note: ParsedNote, node_index: int) -> list[str]:
     return names
 
 
-def _with_tags(line: str, names: list[str]) -> str:
-    """Hängt Tags vor abschließendem Leerraum an eine Zeile an.
+@dataclass(frozen=True)
+class MoveContext:
+    """Was die Oberfläche vor dem Verschieben eines Todos wissen muss.
+
+    Attributes:
+        sole_todo: Das Todo ist das alleinige seiner Notiz (dann wandert sie ganz, ohne Tag-Dialog).
+        parent: Zeile des Überpunkts (Eltern-Punkt bzw. Themenzeile) oder ``None``
+            (Todo auf oberster Ebene einer Notiz ohne Thema).
+        t_projects: Effektive Projekte des Todos.
+        p_projects: Effektive Projekte des Überpunkts.
+        shared_projects: Projekte, die beide haben (ohne Groß-/Kleinschreibung).
+    """
+
+    sole_todo: bool
+    parent: Target | None
+    t_projects: tuple[str, ...]
+    p_projects: tuple[str, ...]
+    shared_projects: tuple[str, ...]
+
+    def project_conflict(self, name: str) -> str | None:
+        """Prüft, ob ein neues Projekt ``name`` eine bestehende Zuordnung überschreiben würde.
+
+        Projekte werden nie ersetzt: Haben Todo oder Überpunkt schon ein anderes
+        (effektives) Projekt, wird abgelehnt.
+
+        Args:
+            name: Projektname ohne Präfix.
+
+        Returns:
+            Erklärung für die Oberfläche oder ``None``, wenn kein Konflikt besteht.
+        """
+        other = [p for p in (*self.t_projects, *self.p_projects) if p.casefold() != name.casefold()]
+        if not other:
+            return None
+        parts = [f"Todo: {', '.join(self.t_projects) or 'kein Projekt'}"]
+        if self.parent is not None:
+            parts.append(f"Überpunkt: {', '.join(self.p_projects) or 'kein Projekt'}")
+        return f"Projekte werden nicht überschrieben ({'; '.join(parts)})."
+
+
+def move_context(doc: Document, target: Target) -> MoveContext:
+    """Analysiert ein Todo vor dem Verschieben (für den Tag-Dialog).
 
     Args:
-        line: Zeile.
-        names: Tag-Namen ohne ``#``.
+        doc: Aktuelles Dokument der Quelldatei.
+        target: Zeile des Todos.
 
     Returns:
-        Zeile mit angehängten Tags.
+        Der Kontext.
+
+    Raises:
+        StaleTargetError: Todo nicht eindeutig auffindbar.
     """
-    if not names:
-        return line
-    body = line.rstrip()
-    return body + "".join(f" #{name}" for name in names) + line[len(body):]
+    note, node = doc.item_at(resolve_line(doc.source, target))
+    parent = note.outline.nodes[node.parent] if node.parent is not None else None
+    parent_target = None
+    if parent is not None and not parent.implicit and parent.lines:
+        parent_target = Target(target.relpath, parent.lines[0], doc.line_text(parent.lines[0]))
+    own = note.tags[node.index].effective_projects
+    theirs = note.tags[parent.index].effective_projects if parent_target else ()
+    shared = tuple(p for p in own if p.casefold() in {q.casefold() for q in theirs})
+    return MoveContext(is_sole_todo(note, node), parent_target, own, theirs, shared)
+
+
+def tag_for_move(doc: Document, target: Target, tag: str) -> tuple[bytes, Target]:
+    """Schreibt ``#tag`` an das Todo und seinen Überpunkt (ein Patch), vor dem Verschieben.
+
+    Ohne Überpunkt (oberste Ebene, Notiz ohne Thema) wird ``#tag`` als neue
+    Themenzeile eingefügt (Tag-Thema). Vorhandene echte Tags werden nicht
+    doppelt geschrieben, nichts wird ersetzt.
+
+    Args:
+        doc: Aktuelles Dokument der Quelldatei.
+        target: Zeile des Todos.
+        tag: Tag-Name ohne ``#`` (bei Projekten mit Präfix).
+
+    Returns:
+        ``(neue Bytes, neu aufgelöstes Target des Todos)``. Das Target gilt für
+        die neuen Bytes (Zeilennummer nach eingefügter Themenzeile, neuer Text).
+
+    Raises:
+        StaleTargetError: Todo nicht eindeutig auffindbar.
+    """
+    line_no = resolve_line(doc.source, target)
+    note, _node = doc.item_at(line_no)
+    context = move_context(doc, Target(target.relpath, line_no, doc.line_text(line_no)))
+    new_text = tagged_line(doc.line_text(line_no), tag)
+    edits = [LineEdit(line_no, line_no + 1, (new_text,))]
+    shift = 0
+    if context.parent is not None:
+        p_no = context.parent.line_no
+        edits.append(LineEdit(p_no, p_no + 1, (tagged_line(doc.line_text(p_no), tag),)))
+    else:
+        start = note.note.content.start  # type: ignore[union-attr]
+        edits.append(LineEdit(start, start, (f"#{tag}",)))
+        shift = 1
+    edits.sort(key=lambda edit: edit.start)
+    return apply_edits(doc.source, edits), Target(target.relpath, line_no + shift, new_text)

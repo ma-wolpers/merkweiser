@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .inline import project_name
+from .inline import find_tags, project_name
 from .outline import Outline
 
 DEFAULT_PROJECT_PREFIX = "projekt"
@@ -65,6 +65,40 @@ def compute_tags(outline: Outline, project_prefix: str = DEFAULT_PROJECT_PREFIX)
             effective_projects = _unique((*projects, *parent.effective_projects))
         result.append(NodeTags(explicit, effective, projects, effective_projects))
     return tuple(result)
+
+
+def tag_from_input(raw: str, project: bool, prefix: str = DEFAULT_PROJECT_PREFIX) -> str:
+    """Wandelt eine Tag-Eingabe aus der Oberfläche in einen gültigen Tag-Namen (ohne ``#``).
+
+    Ein führendes ``#`` wird entfernt; im Projektmodus auch ein mitgetipptes
+    Präfix, damit kein ``#projekt/projekt/x`` entsteht.
+
+    Args:
+        raw: Eingabe, z. B. ``schule``, ``#schule``, ``umzug`` oder ``projekt/umzug``.
+        project: ``True`` für einen Projekttag.
+        prefix: Projekt-Präfix.
+
+    Returns:
+        Der Tag-Name, z. B. ``schule`` oder ``projekt/umzug``.
+
+    Raises:
+        ValueError: leer, mit Leerraum, rein numerisch oder kein gültiger Tag
+            laut ``docs/FORMAT.md`` (mit verständlicher Begründung).
+    """
+    name = raw.strip()
+    name = name[1:] if name.startswith("#") else name
+    if not name:
+        raise ValueError("Bitte einen Tag-Namen eingeben.")
+    if any(char.isspace() for char in name):
+        raise ValueError("Tags dürfen keine Leerzeichen enthalten.")
+    if project:
+        head = prefix + "/"
+        name = name[len(head):] if name.casefold().startswith(head.casefold()) else name
+        name = f"{prefix}/{name}" if name else ""
+    found = find_tags(f"#{name}")
+    if not name or len(found) != 1 or found[0].name != name:
+        raise ValueError("Das ist kein gültiger Tag (nur Buchstaben, Ziffern, _, -, /; nicht nur Ziffern).")
+    return name
 
 
 def _unique(names) -> tuple[str, ...]:

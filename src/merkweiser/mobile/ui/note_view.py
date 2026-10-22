@@ -8,7 +8,8 @@ Layout (Nutzerwunsch vom 2026-10-21):
   bzw. „•“), damit ihre Texte auf derselben Kante stehen.
 * **Fortsetzungen** stehen auf dieser Textkante unter ihrem Punkt.
 
-Ein Tipp auf den Todo-Text hakt ab wie ein Tipp auf die Checkbox.
+Ein Tipp auf den Todo-Text hakt ab wie ein Tipp auf die Checkbox. „verschieben …“
+startet ``tag_dialog.show_move_flow`` (Tag-Dialog nur bei weiteren Todos der Notiz).
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from ...app.views import Row
-from .move_dialog import show_move_dialog
+from .tag_dialog import show_move_flow
 from .style import EXPLANATION
 
 if TYPE_CHECKING:
@@ -82,7 +83,7 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgent: bool, targ
         await app.act(lambda s: s.set_urgent(target, not urgent))
 
     async def move(_e) -> None:
-        show_move_dialog(app, target)
+        await show_move_flow(app, target)
 
     label = text.strip("=") if urgent else text
     checkbox = ft.Checkbox(value=bool(done), on_change=toggle, visual_density=ft.VisualDensity.COMPACT)

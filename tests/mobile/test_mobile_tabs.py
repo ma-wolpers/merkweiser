@@ -267,3 +267,49 @@ def test_hunk_controls_apply_one_choice_per_hunk() -> None:
     button = next(c for c in controls if isinstance(c, ft.Button))
     asyncio.run(button.on_click(None))
     assert calls == [(b"T\na A\na B\nm1\nm2\nm3\nz neu\nE\n", "Abschnitt 1: Beide, 2: Bearbeitet")]
+
+
+def _flow(tmp_path: Path, text: bytes, line_no: int):
+    """Hilfsfunktion: Datei mit mehreren Todos anlegen und den Verschieben-Ablauf starten."""
+    import asyncio
+
+    from merkweiser.core.patch import Target
+    from merkweiser.mobile.ui import tag_dialog
+    fake = _dialog_app(tmp_path)
+    (Path(fake.settings.vault) / "2026-01-14.md").write_bytes(text)
+    fake.service.rescan()
+    target = Target("2026-01-14.md", line_no, text.decode().splitlines()[line_no])
+    asyncio.run(tag_dialog.show_move_flow(fake, target))
+    return fake, target
+
+
+def test_move_flow_skips_tag_dialog_for_a_sole_todo(tmp_path: Path) -> None:
+    """Alleiniges Todo → direkt die Datumswahl (ganze Notiz wandert)."""
+    fake, _target = _flow(tmp_path, b"T\n- [ ] allein\n", 1)
+    [dialog] = fake.page.dialogs
+    assert dialog.title == "Todo verschieben auf …"
+
+
+def test_move_flow_shows_tag_dialog_and_passes_the_tag_on(tmp_path: Path) -> None:
+    """Weitere Todos → Tag-Dialog; er schreibt nichts, „Mit Tag verschieben“ öffnet die Datumswahl mit Tag."""
+    import asyncio
+
+    fake, _target = _flow(tmp_path, b"T\n- [ ] eins\n- [ ] zwei\n", 1)
+    [dialog] = fake.page.dialogs
+    cancel, plain, with_tag = dialog.actions
+    assert dialog.title == "Todo herauslösen?" and plain.content == "Einfach so verschieben" and with_tag.disabled
+    field = dialog.content.controls[1]
+    field.value = "#neu"
+    asyncio.run(with_tag.on_click(None))
+    [move] = fake.page.dialogs
+    assert move.title == "Todo verschieben auf …"
+    assert (Path(fake.settings.vault) / "2026-01-14.md").read_bytes() == b"T\n- [ ] eins\n- [ ] zwei\n"
+    asyncio.run(move.content.controls[1].on_click(None))  # „Übermorgen“ (heute = 15.01.)
+    assert (Path(fake.settings.vault) / "2026-01-17.md").read_bytes() == b"T #neu\n- [ ] eins #neu\n"
+
+
+def test_tag_dialog_offers_the_shared_project(tmp_path: Path) -> None:
+    """Gemeinsames Projekt von Todo und Überpunkt → „Mit bestehendem Tag verschieben“."""
+    fake, _target = _flow(tmp_path, b"T #projekt/umzug\n- [ ] eins\n- [ ] zwei\n", 1)
+    [dialog] = fake.page.dialogs
+    assert dialog.actions[1].content == "Mit bestehendem Tag verschieben (#projekt/umzug)"

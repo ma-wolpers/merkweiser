@@ -129,6 +129,85 @@ def set_project(doc: Document, target: Target, name: str | None, prefix: str) ->
     return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (text,))])
 
 
+def with_tags(line: str, names: list[str]) -> str:
+    """Hängt Tags vor abschließendem Leerraum an eine Zeile an (ohne zu prüfen, ob sie schon da sind).
+
+    Args:
+        line: Zeile.
+        names: Tag-Namen ohne ``#``.
+
+    Returns:
+        Zeile mit angehängten Tags.
+    """
+    if not names:
+        return line
+    body = line.rstrip()
+    return body + "".join(f" #{name}" for name in names) + line[len(body):]
+
+
+def tagged_line(line: str, tag: str) -> str:
+    """Zeile mit ``#tag``, falls dort noch kein **echter** gleicher Tag steht.
+
+    Ein ``#tag`` in Inline-Code oder einem Link zählt nicht (``inline.find_tags``);
+    verglichen wird ohne Groß-/Kleinschreibung.
+
+    Args:
+        line: Zeile.
+        tag: Tag-Name ohne ``#`` (z. B. ``schule`` oder ``projekt/umzug``).
+
+    Returns:
+        Die Zeile, ggf. mit angehängtem Tag vor abschließendem Leerraum.
+    """
+    if any(found.key == tag.casefold() for found in find_tags(line)):
+        return line
+    return with_tags(line, [tag])
+
+
+def add_tag(doc: Document, target: Target, tag: str) -> bytes:
+    """Hängt einen Tag an eine beliebige Zeile (Thema, Punkt, Todo), sofern er dort noch fehlt.
+
+    Ersetzt nie etwas, auch keine Projekt-Tags (anders als ``set_project``).
+
+    Args:
+        doc: Aktuelles Dokument.
+        target: Zeile.
+        tag: Tag-Name ohne ``#``.
+
+    Returns:
+        Neue Bytes (unverändert, wenn der Tag schon da ist).
+
+    Raises:
+        StaleTargetError: Ziel nicht eindeutig auffindbar.
+    """
+    line_no = resolve_line(doc.source, target)
+    text = tagged_line(doc.line_text(line_no), tag)
+    if text == doc.line_text(line_no):
+        return doc.source.to_bytes()
+    return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (text,))])
+
+
+def insert_topic(doc: Document, note_index: int, line: str) -> bytes:
+    """Fügt eine Themenzeile am Anfang einer Notiz **ohne** Thema ein.
+
+    Args:
+        doc: Aktuelles Dokument.
+        note_index: Index der Notiz in ``doc.notes``.
+        line: Neue Themenzeile (z. B. ``#schule``).
+
+    Returns:
+        Neue Bytes.
+
+    Raises:
+        ValueError: Die Notiz hat schon ein Thema (oder keinen Inhalt).
+    """
+    note = doc.notes[note_index]
+    roots = note.outline.roots
+    if note.note.content is None or not roots or not roots[0].implicit:
+        raise ValueError("Die Notiz hat schon ein Thema")
+    start = note.note.content.start
+    return apply_edits(doc.source, [LineEdit(start, start, (line,))])
+
+
 def add_todo(doc: Document, note_index: int, text: str, parent: Target | None = None) -> bytes:
     """Fügt ein neues offenes Todo in eine Notiz ein.
 

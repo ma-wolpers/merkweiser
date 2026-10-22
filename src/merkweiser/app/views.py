@@ -9,12 +9,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Callable
 
 from ..core.document import Document, ParsedNote
 from ..core.inline import TodoStatus, find_tags
 from ..core.outline import Node, NodeKind
 from ..core.patch import Target
-from ..core.query import Hit
+from ..core.move_plan import MoveContext
+from ..core.query import Filter, Hit
+from ..core.tags import tag_from_input
 from ..core.topics import is_empty_topic
 
 
@@ -203,6 +206,51 @@ def note_ref(relpath: str, doc: Document, note: ParsedNote) -> NoteRef | None:
         return None
     original = tuple(line.text for line in doc.source.lines[content.start:content.end])
     return NoteRef(relpath, doc.source.raw, original, "\n".join(original))
+
+
+@dataclass(frozen=True)
+class TagCheck:
+    """Ergebnis der Prüfung einer Tag-Eingabe im Tag-Dialog.
+
+    Attributes:
+        name: Gültiger Tag-Name ohne ``#`` oder ``None``.
+        message: Begründung (ungültig, Projektkonflikt) bzw. Warnung (Tag existiert schon) oder leer.
+        ok: ``True``, wenn mit diesem Tag verschoben werden darf.
+    """
+
+    name: str | None
+    message: str
+    ok: bool
+
+
+def tag_check(raw: str, project: bool, prefix: str, context: MoveContext,
+              count: Callable[[Filter], int]) -> TagCheck:
+    """Prüft eine Tag-Eingabe vor dem Verschieben (UI-neutral, für Desktop und Mobile).
+
+    Vorhandene Tags werden nur gemeldet (Warnung, keine Sperre); ungültige
+    Namen und Projektkonflikte sperren „Mit Tag verschieben“.
+
+    Args:
+        raw: Eingabe.
+        project: Schalter „als Projekt“.
+        prefix: Projekt-Präfix.
+        context: ``NotesService.move_info`` des Todos.
+        count: Anzahl Treffer für einen Filter (``len(NotesService.search(…))``).
+
+    Returns:
+        Das Prüfergebnis; leere Eingabe ergibt ``ok == False`` ohne Meldung.
+    """
+    if not raw.strip():
+        return TagCheck(None, "", False)
+    try:
+        name = tag_from_input(raw, project, prefix)
+    except ValueError as exc:
+        return TagCheck(None, str(exc), False)
+    project_name = name.split("/", 1)[1] if project else None
+    if project_name is not None and (conflict := context.project_conflict(project_name)):
+        return TagCheck(None, conflict, False)
+    hits = count(Filter(projekt=project_name) if project_name is not None else Filter(tags=(name,)))
+    return TagCheck(name, f"#{name} gibt es schon ({hits} Einträge)." if hits else "", True)
 
 
 WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")

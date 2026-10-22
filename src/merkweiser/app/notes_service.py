@@ -31,6 +31,8 @@ from ..core.fs_probe import GUARANTEE, VaultNotWritableError, probe_install_mode
 from ..core.fsops import FsOps
 from ..core.history import History
 from ..core.move_exec import MoveResult, move_todo, recover_moves
+from ..core.move_plan import MoveContext, move_context, tag_for_move
+from ..core.tags import tag_from_input
 from ..core.note_ops import NoteNotFoundError, append_note, delete_note, replace_note_text
 from ..core.ops import OpStore
 from ..core.patch import StaleTargetError, Target
@@ -54,6 +56,23 @@ class ReadOnlyVaultError(PermissionError):
 
 class SameDayMoveError(ValueError):
     """Verschieben abgelehnt: Das Zieldatum ist das Datum der Quelldatei (nichts geändert)."""
+
+
+class ProjectConflictError(ValueError):
+    """Verschieben abgelehnt: Ein neuer Projekttag würde ein bestehendes Projekt überschreiben (nichts geändert)."""
+
+
+@dataclass(frozen=True)
+class MoveTag:
+    """Tag, den das Verschieben vorher an Todo und Überpunkt schreibt (Tag-Dialog).
+
+    Attributes:
+        name: Eingabe aus dem Dialog (mit oder ohne ``#``; bei Projekten mit oder ohne Präfix).
+        project: ``True`` für einen Projekttag.
+    """
+
+    name: str
+    project: bool = False
 
 
 def _writes(method):
@@ -330,30 +349,87 @@ class NotesService:
             self.rescan()
             return WriteResult(base.id, "CONFLICTED", [rel])
 
+    def move_info(self, target: Target) -> MoveContext:
+        """Kontext eines Todos vor dem Verschieben (alleiniges Todo, Überpunkt, Projekte), frisch gelesen.
+
+        Args:
+            target: Zeile des Todos.
+
+        Returns:
+            Der Kontext für den Tag-Dialog.
+
+        Raises:
+            StaleTargetError: Todo nicht eindeutig auffindbar.
+        """
+        return move_context(self._parse((self.root / target.relpath).read_bytes()), target)
+
     @_writes
-    def move_todo(self, target: Target, day: date) -> MoveResult:
+    def move_todo(self, target: Target, day: date, tag: MoveTag | None = None) -> MoveResult:
         """Todo samt Teilbaum (bzw. die ganze Notiz, wenn es ihr alleiniges Todo ist) verschieben.
+
+        Ablauf: (1) alle Prüfungen **vor** jedem Schreiben (gleiches Datum,
+        Tag-Name, Projektkonflikt); (2) mit ``tag`` den Tag an Todo und
+        Überpunkt schreiben (ein normaler, neu planbarer Edit); (3) das Todo im
+        neuen Stand neu auflösen (nie ein veraltetes Target weiterverwenden);
+        (4) Move-Protokoll. Ein Absturz zwischen (2) und (4) hinterlässt nur
+        zusätzliche Tags; die Vorfassung liegt als Backup in der Write-Op.
 
         Args:
             target: Zeile des Todos.
             day: Zieldatum.
+            tag: Optionaler Tag aus dem Tag-Dialog.
 
         Returns:
-            Ergebnis des Move-Protokolls.
+            Ergebnis des Move-Protokolls. Scheitert (3) oder (4) nach
+            geschriebenem Tag, nennt der Hinweis das („Tag gesetzt, …“).
 
         Raises:
-            SameDayMoveError: ``day`` ist das Datum der Quelldatei; geprüft vor
-                jedem Lesen und Schreiben, es bleibt nichts verändert.
-            StaleTargetError: Todo nicht eindeutig auffindbar.
+            SameDayMoveError: ``day`` ist das Datum der Quelldatei; nichts geändert.
+            ValueError: ungültiger Tag-Name; nichts geändert.
+            ProjectConflictError: Projekttag würde ein Projekt überschreiben; nichts geändert.
+            StaleTargetError: Todo nicht eindeutig auffindbar (vor dem Tag-Schreiben).
         """
         if self.day_of(target.relpath) == day:
             raise SameDayMoveError(f"Das Todo steht schon am {day:%d.%m.%Y}.")
+        prefix = self.settings.project_prefix
         dst = write_target(self.index, self.pattern, day)
-        result = move_todo(self.writer, self.store, target.relpath, target, dst, self.settings.project_prefix)
+        if tag is not None:
+            name = tag_from_input(tag.name, tag.project, prefix)
+            if tag.project and (conflict := self.move_info(target).project_conflict(name.split("/", 1)[1])):
+                raise ProjectConflictError(conflict)
+            target = self._tag_for_move(target, name)
+        try:
+            result = move_todo(self.writer, self.store, target.relpath, target, dst, prefix)
+        except StaleTargetError as exc:
+            if tag is None:
+                raise
+            result = MoveResult("", "INCOMPLETE", f"Tag gesetzt, Verschieben fehlgeschlagen: {exc}")
         for path in (target.relpath, dst):
             self.cache.forget(path)
         self.rescan()
+        if tag is not None and result.state != "DONE" and not result.hint.startswith("Tag gesetzt"):
+            result = MoveResult(result.op_id, result.state, f"Tag gesetzt, Verschieben fehlgeschlagen: {result.hint}")
         return result
+
+    def _tag_for_move(self, target: Target, name: str) -> Target:
+        """Schreibt den Tag vor dem Verschieben und liefert das neu aufgelöste Target des Todos.
+
+        Args:
+            target: Zeile des Todos (Stand vor dem Tag).
+            name: Gültiger Tag-Name ohne ``#``.
+
+        Returns:
+            Target des Todos im neu geschriebenen Stand.
+        """
+        moved: list[Target] = []
+
+        def build(doc: Document) -> bytes:
+            raw, new_target = tag_for_move(doc, target, name)
+            moved[:] = [new_target]
+            return raw
+
+        self._edit(target.relpath, build)
+        return moved[-1]
 
     # --- intern -----------------------------------------------------------------------
 

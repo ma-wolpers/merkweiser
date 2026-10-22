@@ -138,3 +138,24 @@ def test_empty_topic_shows_kein_thema_with_tags() -> None:
     assert (second[0].text, second[0].empty_topic) == ("kein Thema · #schule #b", True)
     assert second[1].tags == ("b", "schule")
     assert (third[0].text, third[0].empty_topic) == ("Normal", False)
+
+
+def test_tag_check_validates_warns_and_blocks_project_conflicts() -> None:
+    """Ungültig und Projektkonflikt sperren; ein vorhandener Tag ist nur eine Warnung."""
+    from merkweiser.app.views import tag_check
+    from merkweiser.core.move_plan import move_context
+    from merkweiser.core.patch import Target
+    doc = parse_document(b"T #projekt/alt\n- [ ] eins\n- [ ] zwei\n")
+    context = move_context(doc, Target("a.md", 1, "- [ ] eins"))
+    def count(criteria) -> int:
+        return 3 if criteria.tags == ("schule",) else 0
+
+    assert tag_check("", False, "projekt", context, count).ok is False
+    assert tag_check("zwei worte", False, "projekt", context, count).message.startswith("Tags dürfen")
+    warned = tag_check("#schule", False, "projekt", context, count)
+    assert warned.ok and warned.message == "#schule gibt es schon (3 Einträge)."
+    fresh = tag_check("neu", False, "projekt", context, count)
+    assert (fresh.name, fresh.message, fresh.ok) == ("neu", "", True)
+    blocked = tag_check("neu", True, "projekt", context, count)
+    assert not blocked.ok and "nicht überschrieben" in blocked.message
+    assert tag_check("alt", True, "projekt", context, count).ok
