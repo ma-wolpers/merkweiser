@@ -62,24 +62,76 @@ class Env:
 
 
 def test_move_to_new_day_file(tmp_path: Path) -> None:
-    """Todo samt Kind wandert in die neue Zieldatei, Quelle verliert genau diesen Block."""
+    """Todo samt Kind wandert mit seinem Thema in die neue Zieldatei, Quelle verliert genau diesen Block."""
     env = Env(tmp_path)
     (env.root / SRC).write_bytes(SOURCE)
     result = move_todo(env.writer, env.store, SRC, TODO, DST, "projekt")
     env.settle()
     assert result.state == "DONE"
     assert env.text(SRC) == "Thema #uni\n- [ ] bleibt\n"
-    assert env.text(DST) == "Verschoben aus [[2026-01-01]]\n- [ ] Lernen #uni\n  - [ ] Kapitel 1\n"
+    assert env.text(DST) == "Thema #uni\n- [ ] Lernen\n  - [ ] Kapitel 1\n"
 
 
-def test_move_within_same_file_is_one_patch(tmp_path: Path) -> None:
-    """Gleiche Datei: Block entfernt und als „Verschoben aus“-Notiz angehängt."""
+def test_legacy_op_without_mode_finishes_without_header(tmp_path: Path) -> None:
+    """Alt-Op (vor 2026-10-22, ohne ``mode``, gleiche Datei) läuft zu Ende: B' als eigene Notiz, keine Kopfzeile."""
     env = Env(tmp_path)
     (env.root / SRC).write_bytes(SOURCE)
-    assert move_todo(env.writer, env.store, SRC, TODO, SRC, "projekt").state == "DONE"
+    op = env.store.create("move", {"src": SRC, "dst": SRC, "block": ["- [ ] Lernen", "  - [ ] Kapitel 1"],
+                                   "block_first": 1, "moved": ["- [ ] Lernen #uni", "  - [ ] Kapitel 1"],
+                                   "source_stem": "2026-01-01"}, {})
+    op.release()
+    assert resume_move(env.writer, env.store, op.id, "projekt").state == "DONE"
     env.settle()
-    text = env.text(SRC)
-    assert text.count("Lernen") == 1 and "Verschoben aus [[2026-01-01]]" in text
+    assert env.text(SRC) == "Thema #uni\n- [ ] bleibt\n\n- [ ] Lernen #uni\n  - [ ] Kapitel 1\n"
+
+
+def test_whole_note_is_merged_into_target_and_removed_from_source(tmp_path: Path) -> None:
+    """Alleiniges Todo: ganze Notiz wandert, Zusammenführen mit gleichem Thema, Quelle samt Lücke weg."""
+    env = Env(tmp_path)
+    (env.root / SRC).write_bytes(b"A\n- x\n\nThema #uni\nInfo\n- [ ] Lernen\n\nB\n")
+    (env.root / DST).write_bytes(b"Thema #uni\n- [ ] alt\n")
+    result = move_todo(env.writer, env.store, SRC, Target(SRC, 5, "- [ ] Lernen"), DST, "projekt")
+    env.settle()
+    assert result.state == "DONE"
+    assert env.text(SRC) == "A\n- x\n\nB\n"
+    assert env.text(DST) == "Thema #uni\nInfo\n- [ ] alt\n- [ ] Lernen\n"
+
+
+def crashed_move(tmp_path: Path, target_bytes: bytes) -> None:
+    """Hilfsfunktion: Move mit Absturz vor dem Ziel-Write (Zielwahl ist da schon gespeichert)."""
+    env = Env(tmp_path, crash=("write:before_prepared", 1))
+    (env.root / SRC).write_bytes(SOURCE)
+    (env.root / DST).write_bytes(target_bytes)
+    with pytest.raises(SimulatedCrash):
+        move_todo(env.writer, env.store, SRC, TODO, DST, "projekt")
+    env.die()
+
+
+def resumed(tmp_path: Path):
+    """Hilfsfunktion: neue Instanz, Wiederherstellung, Move-Fortsetzung."""
+    fresh = Env(tmp_path)
+    recover(fresh.writer)
+    [result] = recover_moves(fresh.writer, fresh.store, "projekt")
+    fresh.settle()
+    return fresh, result
+
+
+def test_stored_target_choice_survives_a_new_duplicate_topic(tmp_path: Path) -> None:
+    """Eine nach dem Absturz neu entstandene zweite Notiz mit gleichem Thema ändert die gespeicherte Wahl nicht."""
+    crashed_move(tmp_path, b"Thema #uni\n- [ ] alt\n")
+    (tmp_path / "vault" / DST).write_bytes(b"Thema #uni\n- [ ] alt\n\nThema #uni\n- [ ] zweite\n")
+    fresh, result = resumed(tmp_path)
+    assert result.state == "DONE"
+    assert fresh.text(DST) == "Thema #uni\n- [ ] alt\n- [ ] Lernen\n  - [ ] Kapitel 1\n\nThema #uni\n- [ ] zweite\n"
+
+
+def test_changed_target_note_is_incomplete_without_touching_the_source(tmp_path: Path) -> None:
+    """Gespeicherte Zielnotiz verändert → INCOMPLETE, keine neue Suche, Quelle unverändert."""
+    crashed_move(tmp_path, b"Thema #uni\n- [ ] alt\n")
+    (tmp_path / "vault" / DST).write_bytes(b"Thema #uni\n- [ ] alt geaendert\n")
+    fresh, result = resumed(tmp_path)
+    assert result.state == "INCOMPLETE" and "Zielnotiz" in result.hint
+    assert fresh.text(SRC) == SOURCE.decode() and fresh.text(DST) == "Thema #uni\n- [ ] alt geaendert\n"
 
 
 def test_crash_after_target_written_never_appends_twice(tmp_path: Path) -> None:
@@ -128,3 +180,42 @@ def test_find_pending_move_for_same_block(tmp_path: Path) -> None:
     pending = find_pending_move(env.store, SRC, ("- [ ] Lernen", "  - [ ] Kapitel 1"))
     assert pending is not None
     assert find_pending_move(env.store, SRC, ("- [ ] anderes",)) is None
+
+
+CRASH_POINTS = [("move:prepared", 1), ("write:before_prepared", 1), ("write:tmp_ready", 1), ("write:displaced", 1),
+                ("write:installed", 1), ("write:before_prepared", 2), ("write:displaced", 2), ("write:installed", 2)]
+
+
+@pytest.mark.parametrize("whole", [False, True], ids=["todo", "notiz"])
+@pytest.mark.parametrize("crash", CRASH_POINTS, ids=[f"{p}#{n}" for p, n in CRASH_POINTS])
+def test_no_content_lost_at_any_crash_point(tmp_path: Path, crash: tuple[str, int], whole: bool) -> None:
+    """Datenverlust-Invariante: Absturz an jeder Grenze → nie Verlust; nach der Wiederaufnahme ist jedes
+    Inhaltselement genau einmal da; eine zweite Wiederaufnahme dupliziert nichts.
+
+    Abgedeckt sind u. a. „Ziel geschrieben, Quelle noch vorhanden“ (``write:*#1`` danach) und „ganze Notiz
+    entfernt“ (``write:installed#2`` im Fall ``notiz``).
+    """
+    source = b"Thema #uni\nInfo\n- [ ] Lernen\n  - [ ] Kapitel 1\n" + (b"" if whole else b"- [ ] bleibt\n")
+    elements = ("Lernen", "Kapitel 1", "alt", "Info") if whole else ("Lernen", "Kapitel 1", "alt", "bleibt")
+    env = Env(tmp_path, crash=crash)
+    (env.root / SRC).write_bytes(source)
+    (env.root / DST).write_bytes(b"Thema #uni\n- [ ] alt\n")
+    with pytest.raises(SimulatedCrash):
+        move_todo(env.writer, env.store, SRC, Target(SRC, 2, "- [ ] Lernen"), DST, "projekt")
+    env.die()
+    fresh = Env(tmp_path)
+    recover(fresh.writer)
+    on_disk = fresh.text(SRC) + fresh.text(DST)
+    assert all(element in on_disk for element in elements)  # vorübergehende Duplikate erlaubt, Verlust nie
+    results = recover_moves(fresh.writer, fresh.store, "projekt")
+    fresh.settle()
+    assert all(r.state == "DONE" for r in results)
+    on_disk = fresh.text(SRC) + fresh.text(DST)
+    assert all(on_disk.count(element) == 1 for element in elements), on_disk
+    if results:  # Op war angelegt → abgeschlossen, Todo steht im Ziel
+        assert "Lernen" in fresh.text(DST) and "Lernen" not in fresh.text(SRC)
+    again = Env(tmp_path)
+    recover(again.writer)
+    assert recover_moves(again.writer, again.store, "projekt") == []
+    again.settle()
+    assert (again.text(SRC) + again.text(DST)).count("Lernen") == 1

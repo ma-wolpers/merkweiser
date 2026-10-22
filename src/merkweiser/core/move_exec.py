@@ -7,15 +7,22 @@ Quelle**; die Quelle wird nur bei exaktem, eindeutigem Blocknachweis verändert.
 Idempotenz ohne Todo-IDs: Ob ein Schritt erledigt ist, entscheidet allein der
 Zustand der zugehörigen Unter-Op (``eltern_op`` = Move-Op), nie ein
 Textvergleich. Eine Wiederholung hängt das Ziel deshalb nie ein zweites Mal an.
+
+Determinismus: Die Zielnotiz (``ziel``, siehe ``move_plan.plan_target``) wird
+**einmal** beim Anlegen der Op gewählt und im Manifest gespeichert. Neuplanen
+und Wiederaufnahme finden sie nur exakt wieder und suchen nie neu; ist sie
+verändert, bleibt der Move ``INCOMPLETE`` und die Quelle unberührt.
+
+Alt-Ops (vor dem 2026-10-22, ohne ``mode``) laufen ohne Kopfzeile zu Ende:
+``B'`` wird als eigene Notiz angehängt.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from .document import parse_document
-from .move_plan import MovePlan, insert_moved, plan_move, remove_moved_source
+from .move_plan import NEW, MovePlan, insert_moved, moved_chunks, plan_move, plan_target, remove_moved_source
 from .ops import Op, OpStore
 from .patch import BlockTarget, StaleTargetError, Target, resolve_block
 from .safe_write import ChangedBeforeWriteError, Writer
@@ -59,9 +66,11 @@ def move_todo(writer: Writer, store: OpStore, src_rel: str, target: Target, dst_
     """
     source = parse_document((writer.root / src_rel).read_bytes(), prefix)
     plan = plan_move(source, target)
+    dst_path = writer.root / dst_rel
+    ziel = plan_target(parse_document(dst_path.read_bytes() if dst_path.exists() else b"", prefix), plan)
     op = store.create("move", {"src": src_rel, "dst": dst_rel, "block": list(plan.source_block.expected_lines),
                                "block_first": plan.source_block.first_line, "moved": list(plan.moved_lines),
-                               "source_stem": Path(src_rel).stem}, {})
+                               "mode": plan.mode, "topic": plan.topic, "key": plan.key, "ziel": ziel}, {})
     return _continue(writer, store, op, prefix, force_source=False)
 
 
@@ -107,7 +116,7 @@ def find_pending_move(store: OpStore, src_rel: str, block: tuple[str, ...]) -> s
 def _continue(writer: Writer, store: OpStore, op: Op, prefix: str, force_source: bool) -> MoveResult:
     """Führt die noch offenen Schritte einer Move-Op aus."""
     m = op.manifest
-    plan = MovePlan(BlockTarget(m["src"], m["block_first"], tuple(m["block"])), tuple(m["moved"]))
+    plan = _manifest_plan(m)
     same_file = m["src"] == m["dst"]
     target_state = _child_state(store, op.id, m["dst"])
     if target_state == "CONFLICTED":
@@ -133,11 +142,38 @@ def _continue(writer: Writer, store: OpStore, op: Op, prefix: str, force_source:
     return _done(op)
 
 
+def _manifest_plan(manifest: dict) -> MovePlan:
+    """Plan aus dem Manifest; Alt-Ops ohne ``mode`` gelten als „Todo, ohne Thema“.
+
+    Args:
+        manifest: Manifest der Move-Op.
+
+    Returns:
+        Der gespeicherte Plan.
+    """
+    block = BlockTarget(manifest["src"], manifest["block_first"], tuple(manifest["block"]))
+    return MovePlan(block, tuple(manifest["moved"]), manifest.get("mode", "todo"), manifest.get("topic"),
+                    manifest.get("key"))
+
+
 def _insert(doc, plan: MovePlan, manifest: dict, same_file: bool) -> bytes:
-    """Ziel-Bytes: bei gleicher Datei erst entfernen, dann einfügen (ein einziger Patch)."""
+    """Ziel-Bytes mit der gespeicherten Zielwahl; gleiche Datei (nur Alt-Ops): ein Patch.
+
+    Args:
+        doc: Frisch gelesenes Zieldokument.
+        plan: Gespeicherter Plan.
+        manifest: Manifest (``ziel`` fehlt bei Alt-Ops → neue Notiz).
+        same_file: Quelle und Ziel sind dieselbe Datei.
+
+    Returns:
+        Neue Bytes der Zieldatei.
+
+    Raises:
+        StaleTargetError: Zielnotiz oder Quellblock nicht mehr exakt vorhanden.
+    """
     if same_file:
         doc = parse_document(remove_moved_source(doc, plan), "")
-    return insert_moved(doc, plan, manifest["source_stem"])
+    return insert_moved(doc, plan, manifest.get("ziel", NEW))
 
 
 def _apply(writer: Writer, op: Op, relpath: str, prefix: str, role: str, build) -> None:
@@ -170,13 +206,14 @@ def _child_state(store: OpStore, op_id: str, relpath: str) -> str | None:
 
 
 def _moved_once_in_target(writer: Writer, manifest: dict, plan: MovePlan, prefix: str) -> bool:
-    """Zielnachweis für „Quelle trotzdem entfernen“: ``B'`` genau einmal exakt im Ziel."""
+    """Zielnachweis für „Quelle trotzdem entfernen“: jedes eingefügte Teilstück genau einmal exakt im Ziel."""
     path = writer.root / manifest["dst"]
     if not path.exists():
         return False
     doc = parse_document(path.read_bytes(), prefix)
     try:
-        resolve_block(doc.source, BlockTarget(manifest["dst"], 0, plan.moved_lines), unique=True)
+        for chunk in moved_chunks(plan, manifest.get("ziel", NEW)):
+            resolve_block(doc.source, BlockTarget(manifest["dst"], 0, chunk), unique=True)
         return True
     except StaleTargetError:
         return False

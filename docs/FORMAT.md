@@ -103,7 +103,12 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
 - **Neue Notiz:** Sie wird an die Tagesdatei von heute angehängt, mit einer Leerzeile davor (kein `---`). Es entsteht kein Metadatenblock. Enthält dein Text Leerzeilen, entstehen daraus mehrere Notizen.
 - **Notiz löschen:** Die Notiz verschwindet samt einer angrenzenden Lücke (Leerzeilen, alte Trenner), sodass keine doppelten Leerzeilen zurückbleiben.
 - **Leere Tagesdateien** (nur Leerzeichen, Tabs, Zeilenumbrüche und `---`) entfernt Merkweiser beim Start über das sichere Löschprotokoll, mit Backup. Nicht entfernt werden Dateien mit BOM, mit Frontmatter oder mit offenem Konflikt.
-- **Todo verschieben:** Das Todo wandert samt Unterpunkten in die Zieldatei, unter die Notiz mit dem Thema `Verschoben aus [[YYYY-MM-DD]]`. Gibt es diese Notiz schon, wird sie wiederverwendet. Geerbte Tags werden dabei ausdrücklich an das Todo geschrieben, damit Filter weiter greifen.
+- **Todo verschieben:** Merkweiser schreibt **keinen** Herkunftsvermerk. Zusammenhänge behältst du über Tags bzw. Projekttags.
+  - **Ganze Notiz:** Ist das Todo das einzige der Notiz (alle Todos, auch erledigte, stehen in seinem Teilbaum), wandert die ganze Notiz und verschwindet am alten Tag.
+  - **Einzelnes Todo:** Sonst wandert das Todo samt Unterpunkten, mit der Themenzeile der Notiz darüber. Bei leerem Thema (`...`, `#schule`) wird keine Themenzeile kopiert. Geerbte Tags werden ausdrücklich an das Todo geschrieben, außer denen, die die mitgeschriebene Themenzeile schon trägt.
+  - **Zusammenführen:** Gibt es am Zieltag **genau eine** Notiz mit gleichem Thema (normales Thema oder Tag-Thema), kommt das Todo unten an diese Notiz. Eine ganze Notiz wird so eingefügt: ihre Erläuterung unter die Erläuterung der Zielnotiz, vor deren ersten Listenpunkt (hat sie keinen: ans Ende), der übrige Inhalt unten an die Zielnotiz. Ohne Thema, mit reinem `...` oder bei mehreren passenden Notizen entsteht eine neue Notiz.
+  - Verschieben auf denselben Tag wird abgelehnt.
+  - Ältere Notizen `Verschoben aus [[…]]` sind gewöhnliche Notizen mit diesem Thema.
 - **Konfliktdateien:** Syncthing legt bei gleichzeitigen Änderungen `NAME.sync-conflict-YYYYMMDD-HHMMSS-GERÄT.md` an.
   - Kann Merkweiser eine eigene Änderung nicht sicher schreiben, legt es eine Konfliktdatei derselben Form an, mit der Gerätekennung `MERKWEISER…`.
   - Hast du über einen Konflikt entschieden, die Auflösung ist aber noch nicht abgeschlossen, endet die Kennung auf `…MWENTSCHIEDEN`.

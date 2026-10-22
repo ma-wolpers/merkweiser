@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Verschieben von Todos:** Es entsteht keine Notiz „Verschoben aus …“ mehr. Ist das Todo das einzige seiner Notiz, wandert die ganze Notiz mit, und am alten Tag bleibt nichts zurück. Sonst wandert das Todo mit dem Thema seiner Notiz. Gibt es am Zieltag schon genau eine Notiz mit demselben Thema, landet es dort unten. Verschieben auf denselben Tag wird abgelehnt.
 - **Leeres Thema:** Eine Themenzeile aus nur `...` oder nur Tags (z. B. `#schule`) wird als „kein Thema“ angezeigt, mit ihren Tags. Die Tags gelten weiter für die Todos darunter.
 - **Notizformat:** Jede Leerzeile beendet jetzt eine Notiz; `---` ist nicht mehr nötig (vorhandene `---` trennen weiter). Jede Notiz hat höchstens ein Thema. Text direkt unter einem Listenpunkt gehört zu diesem Punkt, auch ohne Einrückung. Überschriften (`#`, `##` …) sind normaler Text; Tags darin gelten weiter. Neue Notizen werden mit einer Leerzeile statt mit `---` angehängt. Bestehende Dateien bleiben unverändert, werden aber nach diesen Regeln gelesen (Details in `docs/FORMAT.md`).
 - **Leere Datumsdateien** (nur Leerraum und `---`) werden beim Start automatisch entfernt, mit Backup.

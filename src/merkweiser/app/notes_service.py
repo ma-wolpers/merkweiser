@@ -52,6 +52,10 @@ class ReadOnlyVaultError(PermissionError):
     """Aktion abgelehnt: Der Notizordner ist schreibgeschützt geöffnet."""
 
 
+class SameDayMoveError(ValueError):
+    """Verschieben abgelehnt: Das Zieldatum ist das Datum der Quelldatei (nichts geändert)."""
+
+
 def _writes(method):
     """Markiert eine schreibende Service-Methode; im Schreibschutz wird sie abgelehnt.
 
@@ -182,6 +186,17 @@ class NotesService:
         paths = self.index.day_files.get(day, ())
         open_conflicts = {c.main_relpath for c in self.index.conflicts}
         return [DayFile(p, self.cache.get(p), len(paths) > 1, p in open_conflicts) for p in paths]
+
+    def day_of(self, relpath: str) -> date | None:
+        """Datum einer Tagesdatei laut Index.
+
+        Args:
+            relpath: Datei relativ zum Vault.
+
+        Returns:
+            Das Datum oder ``None``, wenn die Datei keine bekannte Tagesdatei ist.
+        """
+        return next((d for d, paths in self.index.day_files.items() if relpath in paths), None)
 
     def search(self, criteria: Filter) -> list[Hit]:
         """Suche über alle Tagesdateien (Semantik im Core, für alle UIs gleich)."""
@@ -317,7 +332,22 @@ class NotesService:
 
     @_writes
     def move_todo(self, target: Target, day: date) -> MoveResult:
-        """Todo samt Teilbaum auf ein anderes Datum verschieben."""
+        """Todo samt Teilbaum (bzw. die ganze Notiz, wenn es ihr alleiniges Todo ist) verschieben.
+
+        Args:
+            target: Zeile des Todos.
+            day: Zieldatum.
+
+        Returns:
+            Ergebnis des Move-Protokolls.
+
+        Raises:
+            SameDayMoveError: ``day`` ist das Datum der Quelldatei; geprüft vor
+                jedem Lesen und Schreiben, es bleibt nichts verändert.
+            StaleTargetError: Todo nicht eindeutig auffindbar.
+        """
+        if self.day_of(target.relpath) == day:
+            raise SameDayMoveError(f"Das Todo steht schon am {day:%d.%m.%Y}.")
         dst = write_target(self.index, self.pattern, day)
         result = move_todo(self.writer, self.store, target.relpath, target, dst, self.settings.project_prefix)
         for path in (target.relpath, dst):

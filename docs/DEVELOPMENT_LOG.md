@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Verschieben ohne Tracking (Teilschritt 2)
+
+- `MOVED_HEADER` und die Wiederverwendung über die Kopfzeile entfernt; PLAN.md und FORMAT.md korrigiert (dort stand die Kopfzeile versehentlich als Entscheidung).
+- `move_plan`: Fälle `notiz`/`todo`, Themenkopie mit gefilterter Tag-Materialisierung, Zusammenführen nur mit genau einer Notiz gleichen Themas (`topics.find_topic_note`).
+- Deterministische Wiederaufnahme: Die Zielwahl wird beim Anlegen der Op gespeichert (`ziel`) und beim Neuplanen nur exakt wiedergefunden; verändert → `INCOMPLETE`, Quelle unberührt. Alt-Ops ohne `mode` laufen ohne Kopfzeile zu Ende.
+- `NotesService.move_todo` lehnt gleiches Datum vor jedem Schreiben ab (`SameDayMoveError`, `day_of`).
+- Tests: Datenverlust-Invariante an 8 Absturzgrenzen × beide Fälle; gespeicherte Zielwahl gegen neue Dublette und gegen veränderte Zielnotiz.
+
 ## 2026-10-22 – Leeres Thema (Wunschliste, Teilschritt 1)
 
 - Planrunde zu fünf Wünschen (Verschieben ohne Tracking, Tab „Tag“, Editor-Buttons, kleinere Textfelder, Suche mit ganzen Notizen); Plan in sieben Teilschritten.

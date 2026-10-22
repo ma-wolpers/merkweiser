@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from merkweiser.app.notes_service import NotesService
+from merkweiser.app.notes_service import NotesService, SameDayMoveError
 from merkweiser.app.settings import Settings, load_settings, save_settings
 from merkweiser.core.patch import Target
 from merkweiser.core.query import Filter, StatusFilter, TextQuery
@@ -93,14 +93,28 @@ def test_replace_note_text_changed_note_becomes_own_conflict(tmp_path: Path) -> 
 
 
 def test_move_todo_via_service(tmp_path: Path) -> None:
-    """Verschieben über die Fassade nutzt die Schreibziel-Regel."""
+    """Verschieben über die Fassade nutzt die Schreibziel-Regel; das Thema wandert mit (ohne Verschiebe-Kopfzeile)."""
     svc = service(tmp_path)
     (svc.root / "2026-01-02.md").write_bytes(b"T #t\n- [ ] weg\n- [ ] bleibt\n")
     svc.start()
     result = svc.move_todo(Target("2026-01-02.md", 1, "- [ ] weg"), date(2026, 1, 20))
     settle(svc)
     assert result.state == "DONE"
-    assert (svc.root / "2026-01-20.md").read_text(encoding="utf-8") == "Verschoben aus [[2026-01-02]]\n- [ ] weg #t\n"
+    assert (svc.root / "2026-01-20.md").read_text(encoding="utf-8") == "T #t\n- [ ] weg\n"
+
+
+def test_move_to_the_same_day_is_rejected_before_any_write(tmp_path: Path) -> None:
+    """Gleiches Quell- und Zieldatum → SameDayMoveError; Dateien und App-Daten (Ops) bleiben unverändert."""
+    svc = service(tmp_path)
+    path = svc.root / "2026-01-02.md"
+    path.write_bytes(b"T #t\n- [ ] weg\n- [ ] bleibt\n")
+    svc.start()
+    ops_before = svc.store.all_ids()
+    with pytest.raises(SameDayMoveError):
+        svc.move_todo(Target("2026-01-02.md", 1, "- [ ] weg"), date(2026, 1, 2))
+    assert path.read_bytes() == b"T #t\n- [ ] weg\n- [ ] bleibt\n"
+    assert svc.store.all_ids() == ops_before
+    assert sorted(p.name for p in svc.root.iterdir()) == ["2026-01-02.md"]
 
 
 def test_settings_roundtrip_and_validation(tmp_path: Path) -> None:
