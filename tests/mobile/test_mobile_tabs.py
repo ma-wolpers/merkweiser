@@ -395,3 +395,52 @@ def test_opening_the_vault_always_selects_today(tmp_path: Path) -> None:
     assert mobile.day == mobile.service.clock.today() == date.today()
     mobile.show_day(date(2026, 1, 3))
     assert (mobile.day, mobile.tab, mobile.nav.selected_index) == (date(2026, 1, 3), 0, 0)
+
+
+def _search(fake, text: str) -> list:
+    """Hilfsfunktion: Suche mit gesetztem Suchtext rendern."""
+    fake._search = {"text": text, "regex": False}
+    return tabs.search_view(fake)
+
+
+def test_search_shows_whole_note_cards_and_jumps_to_the_day(tmp_path: Path) -> None:
+    """Treffer → ganze Notiz mit Aktionsleiste; der Datumsknopf öffnet den Tab „Tag“ mit diesem Datum."""
+    import asyncio
+    from datetime import date
+    fake = _dialog_app(tmp_path)
+    shown = []
+    fake.show_day = shown.append
+    controls = _search(fake, "detail")
+    [card] = [c for c in controls if isinstance(c, ft.Container)]
+    texts = _texts([card])
+    assert "Heute #h" in texts and "Aufgabe" in texts and "Detail" in texts  # ganze Notiz, nicht nur der Treffer
+    head = card.content.controls[0]
+    assert head.content == "Heute · Do, 15.01.2026"
+    asyncio.run(head.on_click(None))
+    assert shown == [date(2026, 1, 15)]
+
+
+def test_search_refreshes_after_actions(tmp_path: Path) -> None:
+    """Nach einer Änderung wird neu gesucht: Abhaken trifft die richtige Zeile; nicht mehr passende Karten verschwinden."""
+    import asyncio
+    fake = _dialog_app(tmp_path)
+    vault = Path(fake.settings.vault)
+    (vault / "2026-01-15.md").write_bytes(b"Neu oben\n\nHeute #h\n- [ ] Aufgabe\n  - Detail\n")
+    fake.service.rescan()
+    [card] = [c for c in _search(fake, "aufgabe") if isinstance(c, ft.Container)]
+    checkbox = next(c for c in _walk(card) if isinstance(c, ft.Checkbox))
+    asyncio.run(checkbox.on_change(SimpleNamespace(control=SimpleNamespace(value=True))))
+    assert b"- [x] Aufgabe" in (vault / "2026-01-15.md").read_bytes()
+    (vault / "2026-01-15.md").write_bytes(b"Heute #h\n- [x] Erledigt\n")
+    fake.service.cache.forget("2026-01-15.md")
+    assert "Nichts gefunden." in _texts(_search(fake, "aufgabe"))
+
+
+def _walk(control) -> list:
+    """Alle Controls rekursiv (über content/controls)."""
+    found = [control]
+    for child in getattr(control, "controls", None) or []:
+        found += _walk(child)
+    if isinstance(getattr(control, "content", None), ft.Control):
+        found += _walk(control.content)
+    return found

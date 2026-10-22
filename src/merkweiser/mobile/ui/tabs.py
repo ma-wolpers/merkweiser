@@ -13,12 +13,11 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import HitRow, day_label, hit_rows, note_ref, note_rows
+from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 from .date_pick import open_date_picker
-from .note_dialogs import note_actions
 from .note_editor import editor_toolbar
-from .note_view import note_row, todo_line
+from .note_view import note_card, todo_line
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -131,13 +130,8 @@ def day_view(app: "MobileApp") -> list[ft.Control]:
     for day_file in service.day(day):
         if day_file.has_conflict:
             controls.append(ft.Text("Diese Datei hat einen ungelösten Konflikt.", color=ft.Colors.ERROR))
-        for note in day_file.document.notes:
-            rows = note_rows(day_file.relpath, day_file.document, note)
-            ref = note_ref(day_file.relpath, day_file.document, note)
-            if rows and ref is not None:
-                column = [note_row(app, r) for r in rows] + [note_actions(app, ref)]
-                controls.append(ft.Container(content=ft.Column(column), padding=8, border_radius=8,
-                                             bgcolor=ft.Colors.SURFACE_CONTAINER))
+        cards = (note_card(app, day_file.relpath, day_file.document, note) for note in day_file.document.notes)
+        controls += [card for card in cards if card is not None]
     if len(controls) == empty:
         controls.append(ft.Text(f"Noch keine Notizen am {day:%d.%m.%Y}."))
     return controls
@@ -173,7 +167,12 @@ def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
 
 
 def search_view(app: "MobileApp") -> list[ft.Control]:
-    """Freitextsuche (Teilstring oder Regex, identisch zum Desktop)."""
+    """Freitextsuche (Teilstring oder Regex, identisch zum Desktop) mit ganzen Notizen als Ergebnis.
+
+    Jede Notiz mit Treffer erscheint einmal als Karte (bearbeitbar, abhakbar,
+    verschiebbar wie im Tab „Tag“), neuestes Datum zuerst. Nach jeder Aktion
+    zeichnet ``render`` neu und rechnet die Treffer frisch über ``NotesService``.
+    """
     state = app.__dict__.setdefault("_search", {"text": "", "regex": False})
     text = ft.TextField(label="Suchen", value=state["text"])
     regex = ft.Switch(label="Regulärer Ausdruck", value=state["regex"])
@@ -188,10 +187,29 @@ def search_view(app: "MobileApp") -> list[ft.Control]:
     if state["text"]:
         query = TextQuery(state["text"], TextMode.REGEX if state["regex"] else TextMode.TEILSTRING)
         try:
-            controls += [_hit(app, r) for r in reversed(hit_rows(app.service.search(Filter(text=query))))]
+            matches = app.service.search_notes(Filter(text=query))
         except ValueError as exc:
             controls.append(ft.Text(f"Ungültiger Ausdruck: {exc}", color=ft.Colors.ERROR))
+            return controls
+        cards = (note_card(app, m.relpath, m.document, m.note, _date_button(app, m.day)) for m in reversed(matches))
+        controls += [card for card in cards if card is not None] or [ft.Text("Nichts gefunden.")]
     return controls
+
+
+def _date_button(app: "MobileApp", day: date) -> ft.Control:
+    """Kopf einer Suchkarte: das Datum; ein Tipp öffnet den Tab „Tag“ mit genau diesem Datum.
+
+    Args:
+        app: Die laufende App.
+        day: Datum der Tagesdatei.
+
+    Returns:
+        Ein TextButton mit ``day_label``.
+    """
+    async def open_day(_e) -> None:
+        app.show_day(day)
+
+    return ft.TextButton(day_label(day, app.service.clock.today()), icon=ft.Icons.TODAY, on_click=open_day)
 
 
 def settings_view(app: "MobileApp") -> list[ft.Control]:

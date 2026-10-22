@@ -25,7 +25,7 @@ from ..core.automerge_log import AutoMergeEntry, automerge_log, hide_automerges,
 from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
 from ..core.doc_cache import DocumentCache
-from ..core.document import Document, parse_document
+from ..core.document import Document, ParsedNote, parse_document
 from ..core.edits import add_todo, set_done, set_project, set_urgent
 from ..core.fs_probe import GUARANTEE, VaultNotWritableError, probe_install_mode
 from ..core.fsops import FsOps
@@ -112,6 +112,23 @@ class DayFile:
     document: Document
     duplicate: bool
     has_conflict: bool
+
+
+@dataclass(frozen=True)
+class NoteMatch:
+    """Eine ganze Notiz mit mindestens einem Suchtreffer (Suche zeigt ganze Notizen).
+
+    Attributes:
+        relpath: Tagesdatei.
+        day: Datum der Tagesdatei.
+        document: Gelesenes Dokument (zum Bauen der Notizkarte).
+        note: Die Notiz in ``document``.
+    """
+
+    relpath: str
+    day: date
+    document: Document
+    note: ParsedNote
 
 
 class NotesService:
@@ -221,6 +238,27 @@ class NotesService:
         """Suche über alle Tagesdateien (Semantik im Core, für alle UIs gleich)."""
         docs = [(p, d, self.cache.get(p)) for d, paths in self.index.day_files.items() for p in paths]
         return search(docs, criteria)
+
+    def search_notes(self, criteria: Filter) -> list[NoteMatch]:
+        """Suche, gruppiert zu ganzen Notizen (je Datei und Notiz einmal, Reihenfolge wie ``search``).
+
+        Args:
+            criteria: Suchkriterien.
+
+        Returns:
+            Eine ``NoteMatch`` je Notiz mit mindestens einem Treffer.
+
+        Raises:
+            InvalidQuery: bei ungültigem regulärem Ausdruck.
+        """
+        matches, seen = [], set()
+        for hit in self.search(criteria):
+            if (hit.relpath, hit.note_index) in seen:
+                continue
+            seen.add((hit.relpath, hit.note_index))
+            document = self.cache.get(hit.relpath)
+            matches.append(NoteMatch(hit.relpath, hit.day, document, document.notes[hit.note_index]))
+        return matches
 
     def conflicts(self) -> list[ConflictCase]:
         """Aktuelle Konfliktfälle."""

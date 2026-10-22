@@ -18,7 +18,9 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.views import Row
+from ...app.views import Row, note_ref, note_rows
+from ...core.document import Document, ParsedNote
+from .note_dialogs import note_actions
 from .tag_dialog import show_move_flow
 from .style import EXPLANATION
 
@@ -27,6 +29,31 @@ if TYPE_CHECKING:
 
 INDENT = 18
 MARKER_WIDTH = 40
+
+
+def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
+              header: ft.Control | None = None) -> ft.Control | None:
+    """Eine ganze Notiz als Karte: Zeilen, Aktionsleiste (bearbeiten, löschen), optional ein Kopf.
+
+    Genutzt vom Tab „Tag“ und von der Suche; die Targets stammen immer aus dem
+    übergebenen, frisch gelesenen Dokument.
+
+    Args:
+        app: Die laufende App.
+        relpath: Tagesdatei.
+        doc: Dokument der Datei.
+        note: Die Notiz.
+        header: Optionaler Kopf über der Notiz (z. B. das Datum in der Suche).
+
+    Returns:
+        Die Karte oder ``None`` bei einer Notiz ohne anzeigbare Zeilen.
+    """
+    rows = note_rows(relpath, doc, note)
+    ref = note_ref(relpath, doc, note)
+    if not rows or ref is None:
+        return None
+    column = ([header] if header is not None else []) + [note_row(app, r) for r in rows] + [note_actions(app, ref)]
+    return ft.Container(content=ft.Column(column), padding=8, border_radius=8, bgcolor=ft.Colors.SURFACE_CONTAINER)
 
 
 def note_row(app: "MobileApp", row: Row) -> ft.Control:

@@ -245,3 +245,19 @@ def test_append_note_for_another_day_and_viewing_creates_no_file(tmp_path: Path)
     assert list(svc.root.iterdir()) == []
     svc.append_note("Termin\n- [ ] vorbereiten", date(2026, 3, 4))
     assert (svc.root / "2026-03-04.md").read_text(encoding="utf-8") == "Termin\n- [ ] vorbereiten\n"
+
+
+def test_search_notes_groups_hits_per_note_and_keeps_duplicates_apart(tmp_path: Path) -> None:
+    """Zwei Treffer in einer Notiz → eine Notiz; Dubletten-Dateien desselben Tages getrennt; Regex-Fehler → InvalidQuery."""
+    from merkweiser.core.query import InvalidQuery, TextMode
+    svc = service(tmp_path)
+    (svc.root / "2026-01-02.md").write_bytes(b"Kiste A\n- [ ] Kiste packen\n\nAnderes\n- x\n")
+    (svc.root / "sub").mkdir()
+    (svc.root / "sub" / "2026-01-02.md").write_bytes(b"Kiste B\n")
+    svc.start()
+    matches = svc.search_notes(Filter(text=TextQuery("kiste")))
+    assert [(m.relpath, m.document.line_text(m.note.note.content.start)) for m in matches] == [
+        ("2026-01-02.md", "Kiste A"), ("sub/2026-01-02.md", "Kiste B")]
+    assert all(m.day == date(2026, 1, 2) for m in matches)
+    with pytest.raises(InvalidQuery):
+        svc.search_notes(Filter(text=TextQuery("(", TextMode.REGEX)))

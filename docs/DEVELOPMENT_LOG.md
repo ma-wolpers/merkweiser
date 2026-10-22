@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Suche mit ganzen Notizen (Teilschritt 7)
+
+- `NotesService.search_notes` → `NoteMatch` je Notiz; `note_view.note_card` aus `day_view` herausgezogen und von beiden Tabs genutzt; Datumsknopf → `MobileApp.show_day`.
+- Tests: Gruppierung, Dubletten getrennt, `InvalidQuery`, ganze Karten, Datumssprung, Neuberechnung nach Aktionen.
+
 ## 2026-10-22 – Tab „Tag“ mit Datumswahl (Teilschritt 6)
 
 - `MobileApp.day` (beim Öffnen des Vaults heute laut Service-Uhr), `show_day`; `tabs.today_view` → `day_view` mit `day_header`.
