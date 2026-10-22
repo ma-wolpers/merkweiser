@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Notizformat – Frontmatter:** Merkweiser darf im Frontmatter künftig seine eigenen Zeiterfassungs-Schlüssel (`zeit_*`, `messung_*`) schreiben; alle anderen Eigenschaften bleiben unverändert. Ist der Kopfbereich nicht sicher lesbar, trägt Merkweiser nichts ein (Details in `docs/FORMAT.md`).
 - **Konflikte unter Einstellungen:** Der Tab „Konflikte“ ist jetzt eine Seite unter *Einstellungen → Konflikte*. Eine Zahl am Einstellungen-Symbol zeigt offene Konflikte und unterbrochene Vorgänge. Start- und Konfliktmeldungen haben einen Knopf „Konflikte ansehen“.
 - **Verschieben von Todos:** Es entsteht keine Notiz „Verschoben aus …“ mehr. Ist das Todo das einzige seiner Notiz, wandert die ganze Notiz mit, und am alten Tag bleibt nichts zurück. Sonst wandert das Todo mit dem Thema seiner Notiz. Gibt es am Zieltag schon genau eine Notiz mit demselben Thema, landet es dort unten. Verschieben auf denselben Tag wird abgelehnt.
 - **Gemeinsamer Tag beim Verschieben:** Hat die Notiz weitere Todos, fragt Merkweiser vorher nach und bietet an, Todo und Überpunkt einen gemeinsamen Tag oder Projekttag zu geben, damit du sie wiederfindest. Gibt es den Tag schon, erscheint ein Hinweis. Haben beide schon ein gemeinsames Projekt, heißt der Knopf „Mit bestehendem Tag verschieben“. Ein vorhandenes anderes Projekt wird nie überschrieben.

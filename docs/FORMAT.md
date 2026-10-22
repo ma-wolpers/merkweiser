@@ -31,7 +31,7 @@ Grundsatz: **Merkweiser liest deine Markdown-Dateien, schreibt sie aber nie neu.
 - Einzige Ausnahme: Leerzeilen **in einem Codeblock** beenden die Notiz nicht.
 - Eine Zeile, die nur `---` enthält, ist ein **Trenner**: Sie beendet die Notiz und wird nicht angezeigt, auch direkt unter Text. Merkweiser schreibt selbst keine Trenner mehr; vorhandene bleiben stehen.
 - Leere Notizen gibt es nicht. Leerzeilen und Trenner am Stück erzeugen keine Notiz.
-- **Frontmatter:** Beginnt die Datei mit `---`, ist alles bis zur nächsten `---`- oder `...`-Zeile Frontmatter. Das ist keine Notiz und wird nie verändert.
+- **Frontmatter:** Beginnt die Datei mit `---`, ist alles bis zur nächsten `---`- oder `...`-Zeile Frontmatter. Das ist keine Notiz. Merkweiser verändert darin **nur seine eigenen Schlüssel** `zeit_*`, `messung_start` und `messung_taetigkeit` (Zeiterfassung, siehe unten); alles andere bleibt Zeichen für Zeichen erhalten.
 - Merkweiser schreibt eine neue Notiz mit genau einer Leerzeile davor.
 - **Folge für ältere Dateien:** Die Dateien bleiben unverändert, werden aber neu gelesen. Steht zwischen einem Thema und seinen Todos eine Leerzeile, sind das jetzt getrennte Notizen, und die Todos erben die Tags des Themas nicht mehr. Dasselbe gilt für „lockere“ Listen mit Leerzeilen zwischen den Punkten: Jeder Punkt ist eine eigene Notiz, Verschachtelung über Leerzeilen hinweg gibt es nicht.
 
@@ -101,6 +101,7 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
 ## Was Merkweiser selbst schreibt
 
 - **Neue Notiz:** Sie wird an die Tagesdatei von heute angehängt, mit einer Leerzeile davor (kein `---`). Es entsteht kein Metadatenblock. Enthält dein Text Leerzeilen, entstehen daraus mehrere Notizen.
+- **Zeiterfassung:** nur die eigenen Schlüssel im Frontmatter (siehe „Zeiterfassung im Frontmatter“).
 - **Notiz löschen:** Die Notiz verschwindet samt einer angrenzenden Lücke (Leerzeilen, alte Trenner), sodass keine doppelten Leerzeilen zurückbleiben.
 - **Leere Tagesdateien** (nur Leerzeichen, Tabs, Zeilenumbrüche und `---`) entfernt Merkweiser beim Start über das sichere Löschprotokoll, mit Backup. Nicht entfernt werden Dateien mit BOM, mit Frontmatter oder mit offenem Konflikt.
 - **Todo verschieben:** Merkweiser schreibt **keinen** Herkunftsvermerk. Zusammenhänge behältst du über Tags bzw. Projekttags.
@@ -115,6 +116,25 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
   - Hast du über einen Konflikt entschieden, die Auflösung ist aber noch nicht abgeschlossen, endet die Kennung auf `…MWENTSCHIEDEN`.
   - Merkweiser schreibt **nie** Konfliktmarker in deine Notizen.
 - Hilfsdateien `.NAME.mw-*.tmp`/`.old`/`.partial` existieren nur während eines Schreibvorgangs. Trag `.*.mw-*` in die `.stignore` von Syncthing ein.
+
+## Zeiterfassung im Frontmatter
+
+Der Zeit-Tracker speichert Arbeitszeit in der Tagesdatei, flach und in ganzen Minuten:
+
+```yaml
+---
+zeit_Orga: 90
+zeit_Unterricht Mathe: 45
+messung_start: 2026-10-22T08:15:00+02:00
+messung_taetigkeit: Orga
+---
+```
+
+- `zeit_<Tätigkeit>: <Minuten>` ist die Summe dieser Tätigkeit an diesem Tag.
+- `messung_start` (Zeitpunkt mit Zeitzonen-Offset) und `messung_taetigkeit` bilden zusammen den Stempel einer laufenden Messung. Er steht in der Tagesdatei des Tages, an dem die Messung begann. Nur einer der beiden Schlüssel, doppelte Schlüssel oder ungültige Werte gelten als beschädigt; Merkweiser zeigt das an und verbucht nichts.
+- Fehlen Tagesdatei oder Frontmatter, legt Merkweiser sie an. Wird das Frontmatter durch Merkweiser leer, entfernt er es wieder.
+- **Tätigkeitsnamen** bestehen aus Buchstaben (auch Umlaute, Akzente, ß), Ziffern, `-`, `_` und einzelnen Leerzeichen, 1–40 Zeichen. Andere Zeichen (z. B. `:`, `#`, Anführungszeichen, Zeilenumbrüche) sind nicht erlaubt, damit das YAML gültig bleibt. Von Hand eingetragene Namen außerhalb dieser Regel zeigt Merkweiser nur an; du kannst sie in einen gültigen Namen umbenennen.
+- **Sicher lesbar** muss das Frontmatter sein, bevor Merkweiser etwas einträgt: Jede Zeile ohne Einrückung ist `schlüssel: wert`, Listen (`- …`), eingerückte Blöcke und Mehrzeiler (`|`, `>`) sind erlaubt. Kommentare (`#`), Schlüssel in Anführungszeichen, doppelte Schlüssel, Tabulatoren am Zeilenanfang oder ein fehlendes schließendes `---` machen den Kopf „nicht sicher lesbar“: Dann trägt Merkweiser keine Zeit ein und meldet das, statt etwas umzuschreiben.
 
 ## Doppelte Notizen
 

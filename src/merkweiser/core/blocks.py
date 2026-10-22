@@ -109,7 +109,7 @@ def analyze(lines: tuple[Line, ...]) -> FileLayout:
     Returns:
         Das Layout der Datei.
     """
-    frontmatter = _find_frontmatter(lines)
+    frontmatter = find_frontmatter(lines)
     body_start = frontmatter.end if frontmatter else 0
     fences = _find_fences(lines, body_start)
     code_lines = {no for fence in fences for no in range(fence.start, fence.end)}
@@ -120,7 +120,7 @@ def analyze(lines: tuple[Line, ...]) -> FileLayout:
     return FileLayout(frontmatter, tuple(fences), separators, notes)
 
 
-def _find_frontmatter(lines: tuple[Line, ...]) -> Span | None:
+def find_frontmatter(lines: tuple[Line, ...]) -> Span | None:
     """Sucht einen geschlossenen Frontmatter-Block ab Zeile 0.
 
     Args:

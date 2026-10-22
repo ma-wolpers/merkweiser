@@ -34,7 +34,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 2 | W4a Tabs Tag/Todos/Suche/Einstellungen (Zeit ab Phase 8), Konflikte als Unterseite, unterbrochene Vorgänge, Badge | erledigt (Gerätetest ausstehend) |
 | 3 | W4b Backups mit Rückgängig | erledigt (Gerätetest mit Phase 4) |
 | 4 | W3 Duplikate | erledigt (APK für Gerätetest Phasen 1–4 gebaut) |
-| 5 | W6a YAML-Kern | offen |
+| 5 | W6a YAML-Kern | erledigt |
 | 6 | W6b YAML-Merge | offen |
 | 7 | W6c Tracker-Core | offen |
 | 8 | W6d Zeit-Tab | offen |
@@ -234,7 +234,7 @@ merkweiser/
 
 ### Grammatik (verbindlich in `docs/FORMAT.md`)
 
-- **Datei:** optionales Frontmatter, also nur eine `---`-Zeile *als erste Zeile* bis zur nächsten `---`/`...`-Zeile. Danach folgen ≥1 Notizen, getrennt durch Trenner.
+- **Datei:** optionales Frontmatter, also nur eine `---`-Zeile *als erste Zeile* bis zur nächsten `---`/`...`-Zeile. (Seit W6: Merkweiser schreibt darin nur `zeit_*`/`messung_*`, siehe FORMAT.md.) Danach folgen ≥1 Notizen, getrennt durch Trenner.
 - **Codeblock:**
   - Öffnender Fence: ≥3 Backticks oder ≥3 Tilden (bei Backtick-Fences darf die Info-Zeichenkette keine Backticks enthalten), beliebig eingerückt.
   - **Schließender Fence:** dasselbe Zeichen, **Länge ≥ öffnende Länge**, danach nur Leerraum. Deshalb schließt ```` ``` ```` keinen ```` ```` ````-Block.

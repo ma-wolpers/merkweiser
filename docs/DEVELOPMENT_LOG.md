@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Phase 5: YAML-Kern und Tätigkeitsnamen
+
+- Neu `core/frontmatter.py` (eigener, bewusst begrenzter Parser; Schreiben über `patch.apply_edits`, daher unveränderte Zeilen byte-genau) und `core/activities.py` (Allowlist statt Verbotsliste, NFC).
+- `blocks._find_frontmatter` → `find_frontmatter` (öffentlich).
+- Entfernen eines `zeit_*`-Schlüssels prüft den Namen nicht (Umbenennen von Altnamen außerhalb der Regel muss möglich sein); Setzen prüft immer.
+- FORMAT: Regel „Frontmatter wird nie verändert“ ersetzt; neuer Abschnitt „Zeiterfassung im Frontmatter“. Noch schreibt keine Funktion Zeit (Tracker ab Phase 7).
+
 ## 2026-10-22 – Phase 4: doppelte Notizen
 
 - Neu `core/duplicates.py`, `app/duplicate_service.py`, `mobile/ui/duplicate_view.py`; `NotesService.start` ruft `recover_duplicates`; `interrupted` kennt `duplikat` (Erneut prüfen); Badge zählt Duplikatgruppen.
