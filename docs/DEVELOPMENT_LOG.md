@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22 – Leeres Thema (Wunschliste, Teilschritt 1)
+
+- Planrunde zu fünf Wünschen (Verschieben ohne Tracking, Tab „Tag“, Editor-Buttons, kleinere Textfelder, Suche mit ganzen Notizen); Plan in sieben Teilschritten.
+- Neu `core/topics.py` (Themenschlüssel, leeres Thema, Tag-Thema, eindeutige Themensuche) als Grundlage für das neue Verschieben.
+- `views.note_rows` setzt `Row.empty_topic`; die Mobile-Ansicht zeigt „kein Thema“ kursiv. Parser, Vererbung und Suche unverändert.
+- Testumgebung: `tests/test_package.py` braucht `PYTHONPATH=src` (Unterprozess), wenn das Paket nicht installiert ist.
+
 ## 2026-10-21 – S4 Teil E: Obsidian behält den Tab; Abschlussprüfung prüft die Änderung statt ganz N
 
 - Teil E mit echtem `Writer`: Obsidian schließt den Tab nicht und führt Merkweisers Änderungen selbst in den offenen Text ein. S4 abgeschlossen.

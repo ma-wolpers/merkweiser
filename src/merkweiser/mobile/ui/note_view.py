@@ -40,7 +40,9 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
     """
     pad = ft.Padding.only(left=row.depth * INDENT)
     if row.kind == "topic":
-        lines = [ft.Text(row.text, weight=ft.FontWeight.BOLD)]
+        head = ft.Text(row.text, italic=True, color=EXPLANATION) if row.empty_topic \
+            else ft.Text(row.text, weight=ft.FontWeight.BOLD)
+        lines = [head]
         lines += [ft.Text(line, color=EXPLANATION) for line in row.more]
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":

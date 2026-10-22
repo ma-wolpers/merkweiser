@@ -128,3 +128,13 @@ def test_note_rows_carry_explanation_and_continuation_lines() -> None:
     assert [(r.kind, r.text, r.more) for r in rows] == [
         ("topic", "Elternabend #s", ("Vorher klären",)), ("todo", "Beamer", ("noch dazu",)),
         ("item", "Liste", ("eingerückt",))]
+
+
+def test_empty_topic_shows_kein_thema_with_tags() -> None:
+    """Leeres Thema → „kein Thema“ (plus Tags); Tags vererben sich trotzdem."""
+    doc = parse_document(b"...\n- [ ] a\n\n#schule #b\n- [ ] b\n\nNormal\n- [ ] c\n")
+    first, second, third = (note_rows("a.md", doc, n) for n in doc.notes)
+    assert (first[0].text, first[0].empty_topic) == ("kein Thema", True)
+    assert (second[0].text, second[0].empty_topic) == ("kein Thema · #schule #b", True)
+    assert second[1].tags == ("b", "schule")
+    assert (third[0].text, third[0].empty_topic) == ("Normal", False)

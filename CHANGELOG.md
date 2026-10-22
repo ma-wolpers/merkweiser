@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Leeres Thema:** Eine Themenzeile aus nur `...` oder nur Tags (z. B. `#schule`) wird als „kein Thema“ angezeigt, mit ihren Tags. Die Tags gelten weiter für die Todos darunter.
 - **Notizformat:** Jede Leerzeile beendet jetzt eine Notiz; `---` ist nicht mehr nötig (vorhandene `---` trennen weiter). Jede Notiz hat höchstens ein Thema. Text direkt unter einem Listenpunkt gehört zu diesem Punkt, auch ohne Einrückung. Überschriften (`#`, `##` …) sind normaler Text; Tags darin gelten weiter. Neue Notizen werden mit einer Leerzeile statt mit `---` angehängt. Bestehende Dateien bleiben unverändert, werden aber nach diesen Regeln gelesen (Details in `docs/FORMAT.md`).
 - **Leere Datumsdateien** (nur Leerraum und `---`) werden beim Start automatisch entfernt, mit Backup.
 

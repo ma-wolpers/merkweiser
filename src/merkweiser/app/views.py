@@ -11,10 +11,11 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from ..core.document import Document, ParsedNote
-from ..core.inline import TodoStatus
+from ..core.inline import TodoStatus, find_tags
 from ..core.outline import Node, NodeKind
 from ..core.patch import Target
 from ..core.query import Hit
+from ..core.topics import is_empty_topic
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,8 @@ class Row:
             Punkten und Todos die Fortsetzungszeilen (ohne Einrückung, damit
             sie bündig unter dem Text stehen), bei „Sonstigem“ der Rest
             (Einrückung bleibt, z. B. in Codeblöcken).
+        empty_topic: ``True`` für ein leeres Thema (``...`` bzw. nur Tags);
+            ``text`` ist dann „kein Thema“ plus die Tags der Themenzeile.
     """
 
     kind: str
@@ -43,6 +46,10 @@ class Row:
     tags: tuple[str, ...]
     target: Target | None
     more: tuple[str, ...] = ()
+    empty_topic: bool = False
+
+
+EMPTY_TOPIC_LABEL = "kein Thema"
 
 
 def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
@@ -63,11 +70,27 @@ def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
         line = doc.line_text(node.lines[0])
         item = node.item
         is_todo = bool(item and item.is_todo)
-        rows.append(Row(kind="todo" if is_todo else node.kind.value, text=display_text(line, node),
+        empty = node.kind is NodeKind.TOPIC and is_empty_topic(line)
+        rows.append(Row(kind="todo" if is_todo else node.kind.value,
+                        text=empty_topic_text(line) if empty else display_text(line, node),
                         depth=_depth(note, node), done=(item.status is TodoStatus.DONE) if is_todo else None,
                         urgent=bool(item and item.urgent), tags=tuple(sorted(note.tags[node.index].effective)),
-                        target=Target(relpath, node.lines[0], line), more=_more_lines(doc, node)))
+                        target=Target(relpath, node.lines[0], line), more=_more_lines(doc, node),
+                        empty_topic=empty))
     return rows
+
+
+def empty_topic_text(line: str) -> str:
+    """Anzeigetext eines leeren Themas: „kein Thema“ plus die Tags der Zeile.
+
+    Args:
+        line: Themenzeile (``...``, ``#schule``, ``... #a #b`` …).
+
+    Returns:
+        „kein Thema“ bzw. „kein Thema · #a #b“ (Originalschreibweise).
+    """
+    tags = " ".join(f"#{tag.name}" for tag in find_tags(line))
+    return f"{EMPTY_TOPIC_LABEL} · {tags}" if tags else EMPTY_TOPIC_LABEL
 
 
 def _more_lines(doc: Document, node: Node) -> tuple[str, ...]:

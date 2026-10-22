@@ -70,6 +70,9 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
 
 - Nach dem ersten Listenpunkt beginnt nie ein Thema. Text, der nicht direkt unter einem Punkt steht (etwa nach einem Zitat), bleibt als „Sonstiges“ in der Notiz.
 - Beginnt eine Notiz mit einem Listenpunkt, hat sie **kein Thema**. Das ist z. B. bei einem einzelnen Todo zwischen Leerzeilen der Fall.
+- **Leeres Thema:** Eine Themenzeile, die außer Tags und Leerraum nichts enthält oder nur `...` (bzw. `…`), ist ein leeres Thema, z. B. `...`, `#schule` oder `... #schule`. Die Notiz *hat* damit ein Thema: Erläuterungszeilen darunter sind möglich, und die Tags gelten und vererben sich wie bei jedem Thema. Angezeigt wird „kein Thema“ samt den Tags. Ein `#` in Code oder Links ist kein Tag; ``#a `code` `` ist also kein leeres Thema.
+- **Tag-Thema:** ein leeres Thema mit mindestens einem Tag (z. B. `#schule`).
+- Themen werden über ihre getrimmte Zeile verglichen (`…` zählt als `...`), ohne weitere Normalisierung.
 
 ### Einrückung
 
