@@ -6,6 +6,8 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Signatur der Android-App:** Ab jetzt signieren alle Rechner mit demselben Schlüssel, Updates lassen sich also von jedem Rechner aus installieren. **Einmalig** muss die bisherige App dafür deinstalliert werden. Die Notizen bleiben erhalten; Einstellungen und Backups der App gehen dabei verloren.
+
 - **Notizformat – Frontmatter:** Merkweiser darf im Frontmatter künftig seine eigenen Zeiterfassungs-Schlüssel (`zeit_*`, `messung_*`) schreiben; alle anderen Eigenschaften bleiben unverändert. Ist der Kopfbereich nicht sicher lesbar, trägt Merkweiser nichts ein (Details in `docs/FORMAT.md`).
 - **Konflikte unter Einstellungen:** Der Tab „Konflikte“ ist jetzt eine Seite unter *Einstellungen → Konflikte*. Eine Zahl am Einstellungen-Symbol zeigt offene Konflikte und unterbrochene Vorgänge. Start- und Konfliktmeldungen haben einen Knopf „Konflikte ansehen“.
 - **Verschieben von Todos:** Es entsteht keine Notiz „Verschoben aus …“ mehr. Ist das Todo das einzige seiner Notiz, wandert die ganze Notiz mit, und am alten Tag bleibt nichts zurück. Sonst wandert das Todo mit dem Thema seiner Notiz. Gibt es am Zieltag schon genau eine Notiz mit demselben Thema, landet es dort unten. Verschieben auf denselben Tag wird abgelehnt.

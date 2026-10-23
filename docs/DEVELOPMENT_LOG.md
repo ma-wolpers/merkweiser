@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-23 – Gemeinsamer Keystore für die Android-App
+
+- Befund: Eine auf diesem Rechner gebaute APK ließ sich nicht über die vom Standrechner installieren („package conflicts with an existing package“), weil `flet build` ohne Signatur den Debug-Schlüssel des jeweiligen Rechners nimmt.
+- Neuer Keystore (PKCS12, Alias `merkweiser`) im Syncthing-Ordner 7thCloud unter `tools/merkweiser-signing/` samt Passwortdatei; `SyncSpike` wird nicht mit dem Standrechner geteilt, 7thCloud schon.
+- `tools/build_apk.py`: setzt `FLET_ANDROID_SIGNING_KEY_STORE`, `…_PASSWORD`, `…_KEY_ALIAS` (gegen flet-cli 0.86.5 geprüft, `build_base.py`) und kopiert das APK nach `SyncSpike/`. Kurzanleitung angepasst.
+
 ## 2026-10-23 – Phase 10: Benachrichtigungen in der App (bis auf die Aktivierung)
 
 - Neu `app/notify_plan.py`, `app/notify_content.py`, `mobile/platform/notifications.py`, `mobile/ui/notify_view.py`; `Settings` um die Benachrichtigungsfelder erweitert; Hub-Eintrag und Unterseite „Benachrichtigungen“.

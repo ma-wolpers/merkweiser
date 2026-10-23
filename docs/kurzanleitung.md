@@ -5,9 +5,12 @@
 Voraussetzungen: Android-SDK (`ANDROID_HOME` bzw. `ANDROID_SDK_ROOT` gesetzt) und `flet-cli 0.86.5` (`pip install -e ".[build]"`).
 
 ```bash
-PYTHONIOENCODING=utf-8 flet build apk --no-rich-output
+python tools/build_apk.py
 ```
 
+- Das Skript signiert mit dem **gemeinsamen Keystore** und kopiert das APK nach `SyncSpike/`. Ohne eigene Signatur nimmt `flet build` den Debug-Schlüssel des jeweiligen Rechners, und Android lehnt ein Update von einem anderen Rechner ab („package conflicts with an existing package“).
+- Der Keystore (`merkweiser.jks`, `passwort.txt`) liegt im Syncthing-Ordner 7thCloud unter `tools/merkweiser-signing/`. Das Skript findet ihn relativ zum Repo (`../../7thCloud/tools/merkweiser-signing`); liegt er woanders, `MERKWEISER_SIGNING_DIR` setzen. Pfad und Passwort gehen nur über Umgebungsvariablen an flet-cli, nie ins Repo. **Den Keystore nie neu anlegen:** Ein neuer Schlüssel erzwingt wieder eine Neuinstallation samt Verlust der App-Daten.
+- Unsigniert (nur zum Ausprobieren auf einem Gerät ohne installierte Merkweiser-App): `PYTHONIOENCODING=utf-8 flet build apk --no-rich-output`.
 - Das APK liegt danach in `build/apk/`. Ohne `--no-rich-output` bricht der Build unter Windows ab, sobald die Ausgabe umgeleitet wird (Emoji in der Konsole).
 - Während eines Builds kein `flet run` starten: beide laufen als `flet.exe`.
 - Die Android-Abhängigkeiten stehen in `[tool.flet.android] dependencies` und müssen `flet` **mit** aufführen. Fehlt es, stürzt die App beim Start mit „No module named certifi“ ab.
