@@ -16,6 +16,7 @@ import flet as ft
 
 from ...app.conflict_views import CASE_KIND_LABELS, Choice, DiffRow, conflict_diff, conflict_origin, conflict_result, line_diff
 from ...core.conflicts import CaseKind
+from .frontmatter_choices import fm_decisions, frontmatter_controls
 from .hunk_view import hunk_controls
 from .style import DIFF_ADDED, DIFF_REMOVED
 
@@ -138,6 +139,8 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     if case.main_bytes is None:
         controls.append(ft.Text("Die Hauptdatei fehlt; unten steht nur die Konfliktversion.", size=12))
     controls.append(diff_box(conflict_diff(case)))
+    if case.kind is CaseKind.MANUAL:
+        controls += frontmatter_controls(app, case)
     if case.kind is not CaseKind.BUSY:
         controls += _choices(app, case, cases)
     if case.kind is CaseKind.MANUAL:
@@ -183,9 +186,9 @@ def _choices(app: "MobileApp", case, cases) -> list[ft.Control]:
 
     def button(label: str, choice: Choice) -> ft.Control:
         async def decide(_e) -> None:
-            result = conflict_result(case, choice)
             manual = others if case.kind is CaseKind.MAIN_DELETED else ()
-            await app.act(lambda s: s.resolve(case, result, label, manual))
+            decisions = dict(fm_decisions(app, case))
+            await app.act(lambda s: s.resolve(case, conflict_result(case, choice, decisions), label, manual))
         return ft.Button(label, on_click=decide)
 
     if case.kind is CaseKind.MAIN_DELETED:

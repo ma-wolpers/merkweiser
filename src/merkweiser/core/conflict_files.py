@@ -115,8 +115,12 @@ def sidecar_key(conflict_relpath: str) -> str:
     return hashlib.sha1(conflict_relpath.replace(DECIDED_SUFFIX, "").encode("utf-8")).hexdigest()
 
 
+UNDO_ORIGIN = "rueckgaengig"
+"""Herkunft im Sidecar einer Konfliktdatei aus nicht eindeutigem Rückgängig (``core.backups``)."""
+
+
 def write_sidecar(data: VaultData, conflict_relpath: str, conflict_sha1: str, main_relpath: str,
-                  base_op: str | None, base_sha1: str | None) -> None:
+                  base_op: str | None, base_sha1: str | None, origin: str | None = None) -> None:
     """Schreibt das Sidecar einer eigenen Konfliktdatei.
 
     Args:
@@ -126,9 +130,13 @@ def write_sidecar(data: VaultData, conflict_relpath: str, conflict_sha1: str, ma
         main_relpath: Hauptdatei.
         base_op: Op, deren Verzeichnis die Basis-Bytes enthält.
         base_sha1: Hash der Basis (``None``, wenn keine verlässliche Basis bekannt ist).
+        origin: Herkunft, z. B. ``rueckgaengig`` (Konfliktdatei aus nicht eindeutigem
+            Rückgängig: nie automatisch zusammenführen, Kopf ohne Maximum-Regel).
     """
     payload = {"konflikt_relpath": conflict_relpath, "konflikt_sha1": conflict_sha1,
                "haupt_relpath": main_relpath, "base_op": base_op, "base_sha1": base_sha1}
+    if origin:
+        payload["herkunft"] = origin
     write_json_atomic(data.conflicts_dir / f"{sidecar_key(conflict_relpath)}.json", payload)
 
 

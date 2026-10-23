@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from ...app.conflict_views import HUNK_PICK_LABELS, hunk_result
+from .frontmatter_choices import fm_decisions
 from ...core.conflicts import HunkPick
 from ...core.merge.model import Hunk, OutLine
 from .style import DIFF_ADDED, DIFF_REMOVED
@@ -51,8 +52,8 @@ def hunk_controls(app: "MobileApp", case) -> list[ft.Control]:
         controls += _hunk_block(number, before, segment, state)
 
     async def apply(_e) -> None:
-        result, decision = hunk_result(case, [(pick, text) for pick, text in picks])
-        await app.act(lambda s: s.resolve(case, result, decision))
+        chosen, decisions = [(pick, text) for pick, text in picks], dict(fm_decisions(app, case))
+        await app.act(lambda s: s.resolve(case, *hunk_result(case, chosen, decisions)))
 
     controls.append(ft.Button("Auswahl übernehmen", on_click=apply))
     return controls

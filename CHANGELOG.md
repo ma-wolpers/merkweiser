@@ -16,6 +16,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Bei einem Sync-Konflikt zweier Fassungen mit YAML-Kopf (Frontmatter) wurden unterschiedliche Eigenschaften bisher beide übernommen, sodass doppelte Schlüssel und damit ungültiges YAML entstanden – auch über „Zusammenführen“. Jetzt wird der Kopf je Eigenschaft zusammengeführt: Gleiches einmal, Einseitiges übernommen, Widersprüchliches als Frage im Konfliktdialog (Abschnitt „Kopfbereich“). Zeiterfassungs-Minuten nehmen automatisch den größeren Wert; zwei laufende Messungen oder eine nur auf einem Gerät laufende Messung werden immer nachgefragt.
 - Ein unvollständiges Verschieben, das länger als die Aufbewahrungszeit der Backups (Standard 30 Tage) offen blieb, konnte beim erneuten Versuch das Todo ein zweites Mal in den Zieltag schreiben.
 - Im Editor sprang der Cursor nach Checkbox, Listenpunkt, Einrücken und Ausrücken an eine andere Stelle; er bleibt jetzt beim selben Zeichen.
 - Wird ein eingerückter Listenpunkt oder ein eingerücktes Todo wieder zu normalem Text (per Knopf oder Enter), verliert die Zeile auch ihre Einrückung.

@@ -272,7 +272,7 @@ def _as_conflict(writer: Writer, store: OpStore, op, content: bytes, base: bytes
         basis = store.create("konfliktbasis", {"relpath": rel}, {"vorher": base})
         basis.set_state("DONE")
         basis.release()
-        cf.write_sidecar(writer.data, conflict_rel, cf.sha1(content), rel, basis.id, cf.sha1(base))
+        cf.write_sidecar(writer.data, conflict_rel, cf.sha1(content), rel, basis.id, cf.sha1(base), cf.UNDO_ORIGIN)
     finish(op, ergebnis="konflikt", konflikte=[conflict_rel])
     return UndoPlan("konflikt")
 

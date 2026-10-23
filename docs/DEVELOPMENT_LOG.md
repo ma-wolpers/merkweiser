@@ -2,6 +2,15 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-22/23 – Phase 6: YAML-Merge
+
+- Neu `core/merge/frontmatter.py`, `mobile/ui/frontmatter_choices.py`; `conflicts._evaluate` trennt Kopf und Rumpf, sobald eine Seite einen Kopf hat (sonst Altverhalten, damit bestehende Vaults ohne Frontmatter unverändert gemergt werden).
+- `conflict_result(BEIDE)` vereinigt nur noch den Rumpf (der zweite Weg zu doppeltem YAML); offener Kopf → Fehler statt Union.
+- `merge_is_safe` liegt jetzt in `conflicts` und wird von `undo_merge` genutzt (eine Regel). `_sidecar_base` liefert Bytes und Herkunft.
+- Befund beim Testen: Eine Konfliktdatei aus nicht eindeutigem Rückgängig (z. B. 30 statt 60 Minuten, inzwischen 75) wäre beim nächsten Start per Maximum-Regel automatisch weggemergt worden – der Rückgängig-Wunsch wäre still verloren. Behoben: Sidecar-Herkunft `rueckgaengig` (`cf.UNDO_ORIGIN`) → Kopf mit Undo-Regel (diff3 ohne Maximum) und Fall immer `MANUAL`.
+- Undo (Y7) nutzt jetzt `merge_frontmatter(reverse=True)`; Regressionstests mit `zeit_*`, `messung_*` und fremden Schlüsseln.
+- Konfliktdialog berechnet Ergebnisse jetzt innerhalb von `app.act` (Fehler wie „Entscheidung fehlt“ werden angezeigt statt im Handler zu verpuffen).
+
 ## 2026-10-22 – Phase 5: YAML-Kern und Tätigkeitsnamen
 
 - Neu `core/frontmatter.py` (eigener, bewusst begrenzter Parser; Schreiben über `patch.apply_edits`, daher unveränderte Zeilen byte-genau) und `core/activities.py` (Allowlist statt Verbotsliste, NFC).

@@ -15,6 +15,13 @@ Fallarten:
 
 Auto-Merges laufen als Op ``automerge`` (Backup von Haupt- und Konfliktdatei
 sowie Ergebnis); Liste und „Rückgängig“ stehen in ``automerge_log``.
+
+YAML-Kopf (W6, PLAN-SPAETERE-SCHRITTE.md S5): Hat mindestens eine Seite ein
+Frontmatter, werden Kopf (``merge.frontmatter``) und Rumpf getrennt
+zusammengeführt; ``ConflictCase.merge`` betrifft dann nur den Rumpf,
+``ConflictCase.frontmatter`` den Kopf. ``AUTO`` nur, wenn beides sauber ist.
+Ohne Kopf auf beiden Seiten ist alles wie zuvor. Ein Kopf ohne schließendes
+``---`` macht den Fall ``MANUAL`` (nur ganze Fassungen wählbar).
 """
 
 from __future__ import annotations
@@ -25,6 +32,7 @@ from pathlib import Path
 
 from . import conflict_files as cf
 from .merge.diff3 import merge3
+from .merge.frontmatter import FmMerge, OPEN, merge_frontmatter, split
 from .merge.model import MergeResult, OutLine
 from .merge.union import merge2
 from .merge.verify import verify
@@ -52,8 +60,10 @@ class ConflictCase:
         conflict: Die Konfliktdatei.
         main_bytes: Inhalt der Hauptdatei oder ``None`` (fehlt).
         conflict_bytes: Inhalt der Konfliktdatei.
-        merge: Merge-Ergebnis (bei ``AUTO`` konfliktfrei) oder ``None``.
+        merge: Merge-Ergebnis (bei ``AUTO`` konfliktfrei) oder ``None``; bei
+            ``frontmatter`` nur für den Rumpf.
         reason: Kurzbegründung für manuelle Fälle.
+        frontmatter: Kopf-Merge, falls eine Seite ein Frontmatter hat.
     """
 
     kind: CaseKind
@@ -62,10 +72,11 @@ class ConflictCase:
     conflict_bytes: bytes
     merge: MergeResult | None
     reason: str = ""
+    frontmatter: FmMerge | None = None
 
 
 def classify(root: Path, writer: Writer, index: VaultIndex, busy: set[str],
-             manual: set[str] = frozenset()) -> list[ConflictCase]:
+             manual: set[str] = frozenset(), renames: tuple[tuple[str, str], ...] = ()) -> list[ConflictCase]:
     """Bewertet je Hauptdatei die älteste Konfliktdatei.
 
     Args:
@@ -75,6 +86,7 @@ def classify(root: Path, writer: Writer, index: VaultIndex, busy: set[str],
         busy: Pfade, an denen eine andere Instanz arbeitet.
         manual: Konfliktdateien, die nie automatisch gemerged werden
             (``resolve.manual_only_paths``).
+        renames: Bekannte Tätigkeits-Umbenennungen ``(alt, neu)`` für den Kopf-Merge.
 
     Returns:
         Ein Fall je Hauptdatei mit Konflikten; ``MAIN_DELETED`` ggf. mehrfach
@@ -90,12 +102,12 @@ def classify(root: Path, writer: Writer, index: VaultIndex, busy: set[str],
         if not main.exists():
             cases.extend(_case(CaseKind.MAIN_DELETED, c, None, root, "Hauptdatei fehlt") for c in conflicts)
             continue
-        cases.append(_evaluate(root, writer, conflicts[0], main.read_bytes(), busy, manual))
+        cases.append(_evaluate(root, writer, conflicts[0], main.read_bytes(), busy, manual, renames))
     return cases
 
 
 def _evaluate(root: Path, writer: Writer, conflict: ConflictFile, main_bytes: bytes, busy: set[str],
-              manual: set[str]) -> ConflictCase:
+              manual: set[str], renames: tuple[tuple[str, str], ...] = ()) -> ConflictCase:
     """Bewertet eine Konfliktdatei gegen die vorhandene Hauptdatei."""
     if conflict.relpath in busy or conflict.main_relpath in busy:
         return _case(CaseKind.BUSY, conflict, main_bytes, root, "in Bearbeitung durch andere Instanz")
@@ -109,12 +121,55 @@ def _evaluate(root: Path, writer: Writer, conflict: ConflictFile, main_bytes: by
     main_src, conf_src = SourceText.from_bytes(main_bytes), SourceText.from_bytes(conflict_bytes)
     if not (main_src.writable and conf_src.writable):
         return ConflictCase(CaseKind.MANUAL, conflict, main_bytes, conflict_bytes, None, "Encoding nicht unterstützt")
-    a, b = [l.text for l in main_src.lines], [l.text for l in conf_src.lines]
-    base = _sidecar_base(writer, conflict, conflict_bytes)
+    base_raw, origin = _sidecar_base(writer, conflict, conflict_bytes)
+    undo = origin == cf.UNDO_ORIGIN
+    (head_a, a), (head_b, b) = split(main_bytes), split(conflict_bytes)
+    head_base, base = split(base_raw) if base_raw is not None else (None, None)
+    fm = None
+    if OPEN in (head_a.state, head_b.state):
+        return ConflictCase(CaseKind.MANUAL, conflict, main_bytes, conflict_bytes, None,
+                            "Kopfbereich ohne schließendes --- – bitte eine ganze Fassung wählen")
+    if head_a.lines or head_b.lines:
+        fm = merge_frontmatter(head_a, head_b, head_base, () if undo else renames, reverse=undo)
+    else:  # kein Kopf auf beiden Seiten: ganze Dateien wie bisher
+        a, b = list(head_a.texts), list(head_b.texts)
+        base = list(head_base.texts) if head_base is not None else None
     result = merge3(base, a, b) if base is not None else merge2(a, b)
-    if not result.clean or verify(result, a, b, base):
-        return ConflictCase(CaseKind.MANUAL, conflict, main_bytes, conflict_bytes, result, "widersprüchliche Änderungen")
-    return ConflictCase(CaseKind.AUTO, conflict, main_bytes, conflict_bytes, result)
+    if not merge_is_safe(result, a, b, base):
+        return ConflictCase(CaseKind.MANUAL, conflict, main_bytes, conflict_bytes, result,
+                            "widersprüchliche Änderungen", fm)
+    if fm is not None and fm.conflicts:
+        return ConflictCase(CaseKind.MANUAL, conflict, main_bytes, conflict_bytes, result, fm.reason(), fm)
+    if undo:  # Rückgängig war nicht eindeutig: immer eine Entscheidung
+        return ConflictCase(CaseKind.MANUAL, conflict, main_bytes, conflict_bytes, result,
+                            "Rückgängig nicht eindeutig – bitte entscheiden", fm)
+    return ConflictCase(CaseKind.AUTO, conflict, main_bytes, conflict_bytes, result, "", fm)
+
+
+def merge_is_safe(result: MergeResult, a: list[str], b: list[str], base: list[str] | None) -> bool:
+    """Eindeutige Sicherheitsentscheidung (Y9): sauber **und** ``verify`` meldet keine Verstöße.
+
+    ``verify`` liefert die Liste der Verstöße; eine leere Liste heißt bestanden.
+    """
+    return result.clean and verify(result, a, b, base) == []
+
+
+def merged_lines(case: ConflictCase, decisions: dict[int, str] | None = None,
+                 body: tuple[str, ...] | None = None) -> tuple[str, ...]:
+    """Ergebniszeilen eines Falls: Kopf (mit Entscheidungen) + Rumpf.
+
+    Args:
+        case: Fall mit Merge.
+        decisions: Entscheidungen je Kopf-Konflikt (``FmMerge.resolve``).
+        body: Rumpfzeilen (Standard: ``case.merge.lines()``).
+
+    Returns:
+        Zeilen ohne Zeilenende.
+    """
+    body = case.merge.lines() if body is None else body
+    fm = getattr(case, "frontmatter", None)
+    head = fm.resolve(decisions) if fm is not None else ()
+    return tuple(head) + tuple(body)
 
 
 def _case(kind: CaseKind, conflict: ConflictFile, main_bytes: bytes | None, root: Path, reason: str) -> ConflictCase:
@@ -122,15 +177,22 @@ def _case(kind: CaseKind, conflict: ConflictFile, main_bytes: bytes | None, root
     return ConflictCase(kind, conflict, main_bytes, (root / conflict.relpath).read_bytes(), None, reason)
 
 
-def _sidecar_base(writer: Writer, conflict: ConflictFile, conflict_bytes: bytes) -> list[str] | None:
-    """Verlässliche Basis aus einem gültigen Sidecar (nur eigene Konflikte)."""
+def _sidecar_base(writer: Writer, conflict: ConflictFile, conflict_bytes: bytes) -> tuple[bytes | None, str]:
+    """Verlässliche Basis (Bytes) und Herkunft aus einem gültigen Sidecar (nur eigene Konflikte).
+
+    Returns:
+        ``(basis_oder_None, herkunft)``; Herkunft leer, wenn nicht angegeben.
+    """
     if not conflict.own:
-        return None
+        return None, ""
     sidecar = cf.read_sidecar(writer.data, conflict.relpath, cf.sha1(conflict_bytes))
-    if not sidecar or not sidecar.get("base_sha1") or not sidecar.get("base_op"):
-        return None
+    if not sidecar:
+        return None, ""
+    origin = sidecar.get("herkunft", "")
+    if not sidecar.get("base_sha1") or not sidecar.get("base_op"):
+        return None, origin
     blob = writer.data.ops_dir / sidecar["base_op"] / f"vorher-{sidecar['base_sha1']}"
-    return [l.text for l in SourceText.from_bytes(blob.read_bytes()).lines] if blob.exists() else None
+    return (blob.read_bytes() if blob.exists() else None), origin
 
 
 def render(lines: tuple[str, ...], like: bytes) -> bytes:
@@ -167,7 +229,7 @@ def auto_merge(writer: Writer, store: OpStore, case: ConflictCase) -> str | None
         hat sich zwischenzeitlich geändert; nächster Scan bewertet neu).
     """
     assert case.kind is CaseKind.AUTO and case.merge and case.main_bytes is not None
-    result = render(case.merge.lines(), case.main_bytes)
+    result = render(merged_lines(case), case.main_bytes)
     op = store.create("automerge", {"relpath": case.conflict.main_relpath, "konflikt": case.conflict.relpath},
                       {"haupt": case.main_bytes, "konflikt": case.conflict_bytes, "ergebnis": result})
     try:

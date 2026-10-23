@@ -6,16 +6,21 @@
   ``exists(aktuell) == exists(after)``, sonst ``exists(aktuell)``.
 * ``merge_is_safe``: direkt schreiben nur bei sauberem Ergebnis **und** leerer
   Verstoßliste von ``verify``.
+* YAML-Kopf (Y7): Hat eine Fassung ein Frontmatter, werden Kopf und Rumpf
+  getrennt zurückgerechnet; der Kopf per ``merge_frontmatter(reverse=True)``
+  (diff3 je Schlüssel bzw. Stempel-Datensatz, **ohne** Maximum). Jeder
+  Kopf-Konflikt oder ein Kopf ohne schließendes ``---`` → Konfliktdatei; so
+  überschreibt Rückgängig nie still jüngere Zeitwerte, Stempel oder fremde
+  Eigenschaften.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .conflicts import render
+from .conflicts import merge_is_safe, render
 from .merge.diff3 import merge3
-from .merge.model import MergeResult
-from .merge.verify import verify
+from .merge.frontmatter import OPEN, merge_frontmatter, split
 from .source import SourceText
 
 
@@ -32,14 +37,6 @@ class UndoPlan:
     data: bytes | None = None
 
 
-def merge_is_safe(result: MergeResult, a: list[str], b: list[str], base: list[str]) -> bool:
-    """Eindeutige Sicherheitsentscheidung (Y9): direkt schreiben nur, wenn sauber **und** ``verify`` leer ist.
-
-    ``verify`` liefert die Liste der Verstöße; eine leere Liste heißt bestanden.
-    """
-    return result.clean and verify(result, a, b, base) == []
-
-
 def plan_undo(before: bytes | None, after: bytes | None, current: bytes | None) -> UndoPlan:
     """Rückwärts-diff3 mit Existenz-Regel (S4), ohne Dateizugriff.
 
@@ -54,11 +51,19 @@ def plan_undo(before: bytes | None, after: bytes | None, current: bytes | None) 
     texts = [SourceText.from_bytes(x or b"") for x in (after, current, before)]
     if not all(t.writable for t in texts):
         return UndoPlan("konflikt")
-    base, a, b = ([line.text for line in t.lines] for t in texts)
+    (h_base, base), (h_a, a), (h_b, b) = (split(x or b"") for x in (after, current, before))
+    head: tuple[str, ...] = ()
+    if OPEN in (h_base.state, h_a.state, h_b.state):
+        return UndoPlan("konflikt")
+    if h_base.lines or h_a.lines or h_b.lines:
+        fm = merge_frontmatter(h_a, h_b, h_base, reverse=True)
+        if fm.conflicts:
+            return UndoPlan("konflikt")
+        head = fm.resolve()
     result = merge3(base, a, b)
     if not merge_is_safe(result, a, b, base):
         return UndoPlan("konflikt")
-    merged = result.lines()
+    merged = tuple(head) + tuple(result.lines())
     exists = (before is not None) if (current is not None) == (after is not None) else (current is not None)
     if not exists:
         if merged:
