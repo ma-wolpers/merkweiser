@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-23 – Phase 8: Tab „Zeit“
+
+- Neu `mobile/ui/time_view.py`, `mobile/ui/time_dialogs.py`, `app/ticker.py`; Tabs jetzt Tag, Todos, Suche, Zeit, Einstellungen (`TIME_TAB`, `SETTINGS_TAB` aus `TAB_NAMES`).
+- Ticker über `page.run_task` (liefert ein `Future` mit `cancel`); Laufzeit nur Anzeige.
+- „Wechseln“ als eigener Knopf statt beim Auswählen im Dropdown, damit ein versehentliches Antippen keine Messung beendet.
+- BAUSTELLE(Zeit-UI): Gerätetest (TimePicker-Wert, SegmentedButton-Auswahl, Ticker im Hintergrund).
+
 ## 2026-10-23 – Phase 7: Zeit-Tracker-Core
 
 - Neu `core/timetrack.py`, `core/time_ops.py`, `app/time_state.py`, `app/time_scan.py`, `app/time_service.py`; `NotesService.start` ruft `recover_time_ops`, `NotesService.conflicts` übergibt die Umbenennungen; `interrupted` kennt `zeitbuchung`/`umbenennen` (Erneut prüfen = `time_ops.resume`).

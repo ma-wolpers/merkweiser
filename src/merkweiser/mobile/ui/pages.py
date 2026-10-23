@@ -12,6 +12,7 @@ Seiten:
   Sync-Konflikte und automatisch zusammengeführte Konflikte.
 * ``backups`` und ``backup_datei`` – unter Einstellungen (W4): Dateien mit
   Änderungen bzw. die Änderungen einer Datei mit „Rückgängig“ (``backup_view``).
+* ``taetigkeiten`` – im Tab „Zeit“ (W6): Tätigkeiten verwalten (``time_view``).
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ import flet as ft
 from ...app.nav import PageRef
 from ...app.ordering import note_is_pressing, stable_first
 from ...core.query import Filter
-from . import backup_view, conflict_view
+from . import backup_view, conflict_view, time_view
 from .duplicate_view import duplicate_controls
 from .interrupted_view import interrupted_controls
 from .note_view import note_card
@@ -92,7 +93,13 @@ def backup_file_page(app: "MobileApp", relpath: str) -> list[ft.Control]:
     return [page_header(app, relpath), *backup_view.backup_file_page(app, relpath)]
 
 
-BUILDERS = {"tag": tag_page, "konflikte": conflicts_page, "backups": backups_page, "backup_datei": backup_file_page}
+def activities_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
+    """Tätigkeiten verwalten."""
+    return [page_header(app, "Tätigkeiten"), *time_view.activities_page(app, _arg)]
+
+
+BUILDERS = {"tag": tag_page, "konflikte": conflicts_page, "backups": backups_page, "backup_datei": backup_file_page,
+            "taetigkeiten": activities_page}
 
 
 def build_page(app: "MobileApp", page: PageRef) -> list[ft.Control]:

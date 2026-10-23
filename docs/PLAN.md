@@ -37,7 +37,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 5 | W6a YAML-Kern | erledigt |
 | 6 | W6b YAML-Merge | erledigt |
 | 7 | W6c Tracker-Core | erledigt |
-| 8 | W6d Zeit-Tab | offen |
+| 8 | W6d Zeit-Tab | erledigt (APK für Gerätetest gebaut) |
 | 9 | Spike S5 Benachrichtigungen | offen |
 | 10 | W5 Benachrichtigungen | offen |
 

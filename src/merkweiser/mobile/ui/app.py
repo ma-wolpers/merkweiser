@@ -34,15 +34,17 @@ import flet as ft
 from ...app.diagnostics import build_report, write_report
 from ...app.interrupted import open_issue_count
 from ...app.nav import Nav, PageRef
+from ...app.ticker import Ticker
 from ...app.notes_service import NotesService, StartReport
 from ...app.settings import Settings, load_settings, save_settings
 from ...core.clock import SystemClock
 from ...ports.storage_access import AppStorage, FolderAccess
 from ..platform.flet_access import FletFolderAccess, resolve_app_storage
-from . import pages, tabs
+from . import pages, tabs, time_view
 
-TAB_NAMES = ("Tag", "Todos", "Suche", "Einstellungen")
-TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.SETTINGS)
+TAB_NAMES = ("Tag", "Todos", "Suche", "Zeit", "Einstellungen")
+TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.TIMER, ft.Icons.SETTINGS)
+TIME_TAB = TAB_NAMES.index("Zeit")
 SETTINGS_TAB = TAB_NAMES.index("Einstellungen")
 
 
@@ -61,8 +63,11 @@ class MobileApp:
         self.service: NotesService | None = None
         self.report: StartReport | None = None
         self.pages = Nav(len(TAB_NAMES))
+        self.ticker = Ticker(lambda tick: self.page.run_task(tick))
+        self.time_tick = None  # von time_view gesetzt, solange eine Messung läuft
         self.day: date = date.today()  # beim Öffnen des Vaults auf „heute“ laut Service-Uhr gesetzt
         self.messages: deque[tuple[datetime, str]] = deque(maxlen=30)
+        self.page_visible = True
         self.status = ft.Text("", size=12, color=ft.Colors.ERROR)
         self.status_link = ft.TextButton("Konflikte ansehen", visible=False, on_click=self._open_conflicts)
         self.body = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
@@ -264,12 +269,22 @@ class MobileApp:
 
     def render(self) -> None:
         """Zeichnet die oberste Seite des aktuellen Tabs (Unterseite oder Tab-Wurzel) neu."""
-        builders = (tabs.day_view, tabs.todos_view, tabs.search_view, tabs.settings_view)
+        builders = (tabs.day_view, tabs.todos_view, tabs.search_view, time_view.time_view, tabs.settings_view)
         top = self.pages.top()
+        self.time_tick = None
         self.body.controls = pages.build_page(self, top) if top else builders[self.pages.current](self)
         self.nav.selected_index = self.pages.current
         self._update_badge()
         self.page.update()
+        self._update_ticker()
+
+    def _update_ticker(self) -> None:
+        """Y12: genau ein Ticker, solange die Zeit-Ansicht mit laufender Messung sichtbar ist."""
+        visible = self.pages.current == TIME_TAB and self.pages.top() is None and self.page_visible
+        if visible and self.time_tick is not None:
+            self.ticker.start(self.time_tick)
+        else:
+            self.ticker.stop()
 
     def _update_badge(self) -> None:
         """Badge am Einstellungen-Symbol: offene Konflikte und unterbrochene Vorgänge (W4)."""
@@ -286,9 +301,16 @@ class MobileApp:
         await event.control.confirm_pop(not self.go_back())
 
     async def _on_lifecycle(self, event) -> None:
-        """Beim Zurückkehren in den Vordergrund sofort auf Änderungen prüfen."""
-        if "resume" in str(getattr(event, "state", "")).lower():
+        """Vordergrund: sofort prüfen und neu zeichnen; Hintergrund: Ticker anhalten."""
+        state = str(getattr(event, "state", "")).lower()
+        if "hide" in state or "pause" in state or "detach" in state:
+            self.page_visible = False
+            self.ticker.stop()
+        elif "resume" in state or "show" in state:
+            self.page_visible = True
             await self._poll_once()
+            if self.service is not None and self.pages.current == TIME_TAB:
+                self.render()
 
     async def _poll_loop(self) -> None:
         """Prüft im Vordergrund regelmäßig auf Änderungen (Watcher ist nur Hinweisgeber)."""
