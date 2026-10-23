@@ -605,7 +605,8 @@ def test_settings_hub_opens_conflicts_page_with_badge(tmp_path: Path) -> None:
     assert mobile.status_link.visible and "Einstellungen → Konflikte" in mobile.status.value
     assert mobile.nav.destinations[SETTINGS_TAB].icon.badge == "1"
     asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=SETTINGS_TAB))))
-    hub, backups = [c for c in mobile.body.controls if isinstance(c, ft.ListTile)]
+    hub, backups, notifications = [c for c in mobile.body.controls if isinstance(c, ft.ListTile)]
+    assert notifications.title.value == "Benachrichtigungen"
     assert backups.title.value == "Backups"
     assert hub.title.value == "Konflikte (1)"
     asyncio.run(hub.on_click(None))

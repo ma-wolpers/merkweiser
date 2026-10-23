@@ -49,6 +49,10 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 - **Zwei Geräte:** Unterschiedliche Minuten derselben Tätigkeit nach einem Sync-Konflikt → der größere Wert zählt. Laufen auf zwei Geräten Messungen, fragt Merkweiser, welche zählt.
 - Gespeichert wird im YAML-Kopf der Tagesdatei (`zeit_Orga: 90`), siehe `docs/FORMAT.md`.
 
+## Morgen-Benachrichtigung (Android)
+
+*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste deiner offenen Todos von heute und aller dringenden (⭐). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Android kann die Zustellung bei Akkusparen verzögern; was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung. *Hinweis:* Diese Funktion wird gerade getestet (Spike S5) und ist in der App erst danach aktiv.
+
 ## Diagnosebericht
 
 *Einstellungen → Diagnosebericht speichern* legt eine Datei `merkweiser-diagnose-<Datum>-<Uhrzeit>.txt` an. Den Zielordner tippst du ins Feld darüber, oder du lässt es leer und wählst ihn aus; Merkweiser merkt sich den Ordner.

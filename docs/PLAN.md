@@ -39,7 +39,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 7 | W6c Tracker-Core | erledigt |
 | 8 | W6d Zeit-Tab | erledigt (APK für Gerätetest gebaut) |
 | 9 | Spike S5 Benachrichtigungen | vorbereitet (APK `SyncSpike/merkweiser-s5.apk`, Manifest geprüft); Gerätetest offen |
-| 10 | W5 Benachrichtigungen | offen |
+| 10 | W5 Benachrichtigungen | umgesetzt bis auf die Aktivierung der Erweiterung in der App-APK (nach Gerätetest S5) |
 
 ## Context
 

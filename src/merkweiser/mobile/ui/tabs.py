@@ -240,6 +240,9 @@ def hub_entries(app: "MobileApp") -> list[ft.Control]:
             ft.ListTile(leading=ft.Icon(ft.Icons.HISTORY), title=ft.Text("Backups"),
                         subtitle=ft.Text("Alle Änderungen je Datei, einzeln rückgängig"),
                         trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT), on_click=opener("backups")),
+            ft.ListTile(leading=ft.Icon(ft.Icons.NOTIFICATIONS), title=ft.Text("Benachrichtigungen"),
+                        subtitle=ft.Text("Morgens die Todos des Tages, Urlaub"),
+                        trailing=ft.Icon(ft.Icons.CHEVRON_RIGHT), on_click=opener("benachrichtigungen")),
             ft.Divider()]
 
 

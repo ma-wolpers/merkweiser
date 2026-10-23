@@ -31,7 +31,6 @@ from pathlib import Path
 
 import flet as ft
 
-from ...app.diagnostics import build_report, write_report
 from ...app.interrupted import open_issue_count
 from ...app.nav import Nav, PageRef
 from ...app.ticker import Ticker
@@ -41,6 +40,8 @@ from ...core.clock import SystemClock
 from ...ports.storage_access import AppStorage, FolderAccess
 from ..platform.flet_access import FletFolderAccess, resolve_app_storage
 from . import pages, tabs, time_view
+from .diagnostics_action import save_diagnostics
+from .notify_view import NotifyController
 
 TAB_NAMES = ("Tag", "Todos", "Suche", "Zeit", "Einstellungen")
 TAB_ICONS = (ft.Icons.TODAY, ft.Icons.CHECKLIST, ft.Icons.SEARCH, ft.Icons.TIMER, ft.Icons.SETTINGS)
@@ -65,6 +66,7 @@ class MobileApp:
         self.pages = Nav(len(TAB_NAMES))
         self.ticker = Ticker(lambda tick: self.page.run_task(tick))
         self.time_tick = None  # von time_view gesetzt, solange eine Messung läuft
+        self.notify = NotifyController(self)
         self.day: date = date.today()  # beim Öffnen des Vaults auf „heute“ laut Service-Uhr gesetzt
         self.messages: deque[tuple[datetime, str]] = deque(maxlen=30)
         self.page_visible = True
@@ -85,7 +87,10 @@ class MobileApp:
         root_view = self.page.views[0]
         root_view.can_pop = False
         root_view.on_confirm_pop = self._on_confirm_pop
+        self.notify.attach()
         await self.open_vault()
+        await self.notify.check_launch()
+        await self.notify.reschedule()
         self.page.run_task(self._poll_loop)
 
     async def open_vault(self) -> None:
@@ -238,34 +243,8 @@ class MobileApp:
         self.status.visible = bool(message)
 
     async def save_diagnostics(self, folder: str | None) -> None:
-        """Schreibt einen Diagnosebericht (ohne Notizinhalte) und merkt sich den Ordner.
-
-        Args:
-            folder: Zielordner (eingetippt) oder ``None`` für die Systemauswahl.
-        """
-        folder = folder or await self.access.pick_folder()
-        if not folder:
-            self.say("Kein Ordner für den Diagnosebericht gewählt.")
-            self.render()
-            return
-        now = datetime.now()
-        text = build_report(self.settings, self.service, self.report, list(self.messages), now,
-                            {"flet": ft.__version__})
-        try:
-            path = write_report(Path(folder), text, now)
-        except OSError as exc:
-            hint = (" Android sperrt die privaten Ordner anderer Apps (…/Android/data/…), auch mit „Alle Dateien“. "
-                    "Bitte einen Ordner außerhalb davon wählen, z. B. /storage/emulated/0/Download."
-                    if "/Android/" in folder else "")
-            self.say(f"Diagnosebericht nicht gespeichert: {type(exc).__name__}: {exc}.{hint}")
-            self.render()
-            return
-        if folder != self.settings.report_dir:
-            self.settings = replace(self.settings, report_dir=folder)
-            save_settings(self.storage.data_dir, self.settings)
-        self.status.value, self.status.visible = f"Diagnosebericht gespeichert: {path.name}", True
-        self.status.color = ft.Colors.PRIMARY
-        self.render()
+        """Schreibt einen Diagnosebericht (``diagnostics_action.save_diagnostics``)."""
+        await save_diagnostics(self, folder)
 
     def render(self) -> None:
         """Zeichnet die oberste Seite des aktuellen Tabs (Unterseite oder Tab-Wurzel) neu."""
@@ -306,8 +285,10 @@ class MobileApp:
         if "hide" in state or "pause" in state or "detach" in state:
             self.page_visible = False
             self.ticker.stop()
+            await self.notify.reschedule()  # W5: Stand beim Verlassen vorplanen
         elif "resume" in state or "show" in state:
             self.page_visible = True
+            await self.notify.check_launch()
             await self._poll_once()
             if self.service is not None and self.pages.current == TIME_TAB:
                 self.render()

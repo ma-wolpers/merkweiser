@@ -2,7 +2,8 @@
 
 Felder laut PLAN.md: Notizordner, Dateinamensmuster, Projekt-Präfix,
 Poll-Intervall und Aufbewahrung (Backups und Historie, Standard 30 Tage);
-dazu die Einrückbreite des Editors (2 oder 4 Leerzeichen).
+dazu die Einrückbreite des Editors (2 oder 4 Leerzeichen) und die
+Morgen-Benachrichtigung (W5: an/aus, Uhrzeit, Eskalation, Urlaub, Vorplanung).
 Einstellungen, die nur die Oberfläche betreffen, verändern nie den Vault.
 """
 
@@ -10,6 +11,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, fields
+from datetime import date, time
 from pathlib import Path
 
 from ..core.appdata import write_json_atomic
@@ -31,6 +33,12 @@ class Settings:
             Ordner außerhalb des Vaults) oder ``None``.
         indent_width: Leerzeichen je Einrückungsebene im Editor (2 oder 4;
             Standard 4 = ein Tab in Obsidian).
+        notify_enabled: Morgen-Benachrichtigung an (Standard aus; das erste
+            Einschalten fragt die Android-Berechtigung an).
+        notify_time: Uhrzeit ``HH:MM`` (Standard 07:00).
+        notify_escalate: Neutrale Erinnerungen eskalieren (Standard an).
+        vacation_until: Urlaub bis einschließlich ``JJJJ-MM-TT`` oder ``None``.
+        notify_horizon: Vorgeplante Termine (1–30, Standard 14).
     """
 
     vault: str | None = None
@@ -40,6 +48,19 @@ class Settings:
     retention_days: int = 30
     report_dir: str | None = None
     indent_width: int = 4
+    notify_enabled: bool = False
+    notify_time: str = "07:00"
+    notify_escalate: bool = True
+    vacation_until: str | None = None
+    notify_horizon: int = 14
+
+    def notify_at(self) -> time:
+        """Uhrzeit der Benachrichtigung als ``time``."""
+        return time.fromisoformat(self.notify_time)
+
+    def vacation_date(self) -> date | None:
+        """Urlaubsende als ``date`` oder ``None``."""
+        return date.fromisoformat(self.vacation_until) if self.vacation_until else None
 
     def validated(self) -> "Settings":
         """Prüft die Werte.
@@ -57,6 +78,13 @@ class Settings:
             raise ValueError("Poll-Intervall > 0 und Aufbewahrung ≥ 1 Tag")
         if self.indent_width not in INDENT_WIDTHS:
             raise ValueError("Einrückung: 2 oder 4 Leerzeichen")
+        try:
+            self.notify_at()
+            self.vacation_date()
+        except ValueError as exc:
+            raise ValueError("Uhrzeit als HH:MM, Urlaub als JJJJ-MM-TT") from exc
+        if not 1 <= self.notify_horizon <= 30:
+            raise ValueError("Vorplanung: 1 bis 30 Tage")
         return self
 
 

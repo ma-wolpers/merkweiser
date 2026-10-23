@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-23 – Phase 10: Benachrichtigungen in der App (bis auf die Aktivierung)
+
+- Neu `app/notify_plan.py`, `app/notify_content.py`, `mobile/platform/notifications.py`, `mobile/ui/notify_view.py`; `Settings` um die Benachrichtigungsfelder erweitert; Hub-Eintrag und Unterseite „Benachrichtigungen“.
+- `app.py` war auf 343 Zeilen gewachsen → `save_diagnostics` nach `mobile/ui/diagnostics_action.py` ausgelagert.
+- Festgelegte Standards (B2/B5): Benachrichtigung ab Werk aus; Eskalation 2. Termin normal, 3. hoch, ab 4. maximal, Text „Seit n Tagen nicht geöffnet …“.
+- BAUSTELLE(S5): Nach bestandenem Gerätetest `merkweiser-notify` in `[tool.flet.android] dependencies` und `[tool.flet.dev_packages]` der App aufnehmen; bis dahin `NoNotifier` (Seite zeigt „nicht verfügbar“).
+
 ## 2026-10-23 – Phase 9: Spike S5 Benachrichtigungen (vorbereitet, Gerätetest offen)
 
 - Neu `packages/merkweiser_notify/` (Flet-Erweiterung) und `spikes/s5/` (Spike-App, eigene App-ID, `dev_packages` mit relativem Pfad).

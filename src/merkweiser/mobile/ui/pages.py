@@ -13,6 +13,7 @@ Seiten:
 * ``backups`` und ``backup_datei`` – unter Einstellungen (W4): Dateien mit
   Änderungen bzw. die Änderungen einer Datei mit „Rückgängig“ (``backup_view``).
 * ``taetigkeiten`` – im Tab „Zeit“ (W6): Tätigkeiten verwalten (``time_view``).
+* ``benachrichtigungen`` – unter Einstellungen (W5, ``notify_view``).
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from . import backup_view, conflict_view, time_view
 from .duplicate_view import duplicate_controls
 from .interrupted_view import interrupted_controls
 from .note_view import note_card
+from .notify_view import notify_page
 from .tabs import date_button
 
 if TYPE_CHECKING:
@@ -98,8 +100,13 @@ def activities_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
     return [page_header(app, "Tätigkeiten"), *time_view.activities_page(app, _arg)]
 
 
+def notifications_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
+    """Benachrichtigungen."""
+    return [page_header(app, "Benachrichtigungen"), *notify_page(app, _arg)]
+
+
 BUILDERS = {"tag": tag_page, "konflikte": conflicts_page, "backups": backups_page, "backup_datei": backup_file_page,
-            "taetigkeiten": activities_page}
+            "taetigkeiten": activities_page, "benachrichtigungen": notifications_page}
 
 
 def build_page(app: "MobileApp", page: PageRef) -> list[ft.Control]:
