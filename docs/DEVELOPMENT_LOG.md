@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-23 – Phase 9: Spike S5 Benachrichtigungen (vorbereitet, Gerätetest offen)
+
+- Neu `packages/merkweiser_notify/` (Flet-Erweiterung) und `spikes/s5/` (Spike-App, eigene App-ID, `dev_packages` mit relativem Pfad).
+- Entscheidung gegen `flutter_local_notifications`: braucht core library desugaring in der App-`build.gradle`; die Flet-0.86.5-Vorlage aktiviert das nicht (`dependencies {}` leer) → nur mit eigener Build-Vorlage. Stattdessen eigenes Kotlin-Plugin mit Bordmitteln; Gradle-Aufbau wie `wakelock_plus` (von Flet eingebunden).
+- Build erfolgreich; im zusammengeführten Release-Manifest stehen `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `AlarmReceiver`, `BootReceiver` (Y10, Punkt 1).
+- BAUSTELLE(S5): Gerätetest laut `spikes/s5/ANLEITUNG.md` (Berechtigung verweigern/erlauben/entziehen, geschlossene App, Neustart, Antippen kalt/warm, Akku „eingeschränkt“, Verspätung). Danach entscheiden: Erweiterung in die App (B6).
+
 ## 2026-10-23 – Phase 8: Tab „Zeit“
 
 - Neu `mobile/ui/time_view.py`, `mobile/ui/time_dialogs.py`, `app/ticker.py`; Tabs jetzt Tag, Todos, Suche, Zeit, Einstellungen (`TIME_TAB`, `SETTINGS_TAB` aus `TAB_NAMES`).

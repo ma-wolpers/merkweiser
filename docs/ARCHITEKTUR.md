@@ -187,7 +187,7 @@ Tests (`tests/core/test_conflicts.py`): Konzeptbeispiel automatisch plus Rückg�
 
 ## Spike-Ergebnisse (Schritt 0)
 
-Der Spike-Code liegt unter `spikes/` (S1/S2: `spikes/s1s2/`, ein eigenes Flet-Projekt; S3: `spikes/s3/`; S4: `spikes/s4/`). Er ist **kein Produktcode** und wird nicht importiert oder getestet. APKs und Berichte laufen über den Syncthing-Ordner `SyncSpike/` im Repo-Root, den Git ignoriert.
+Der Spike-Code liegt unter `spikes/` (S1/S2: `spikes/s1s2/`, ein eigenes Flet-Projekt; S3: `spikes/s3/`; S4: `spikes/s4/`). Er ist **kein Produktcode** und wird nicht importiert oder getestet. APKs und Berichte laufen über den Syncthing-Ordner `SyncSpike/` im Repo-Root, den Git ignoriert. **S5** (`spikes/s5/`, 2026-10-23): eigene Spike-App „Merkweiser S5“ für geplante Benachrichtigungen; Testanleitung `spikes/s5/ANLEITUNG.md`. Die Erweiterung selbst ist Produktcode unter `packages/merkweiser_notify/` (Flet-Service + Dart-`FletService` + Android-Plugin in Kotlin mit `AlarmManager.setAndAllowWhileIdle`, drei Kanälen, Alarm- und Boot-Receiver im Plugin-Manifest, Berechtigungsanfrage ab Android 13, Start-Payload über Start-Intent bzw. `onNewIntent`, gemessene Verspätung im Status). Bauweise: serious_python kopiert `site-packages/flutter/<name>` in die Flutter-Pakete, `flet build` registriert sie als Erweiterung; das Plugin-Manifest mischt Android automatisch ein (geprüft im zusammengeführten Release-Manifest). Statt `flutter_local_notifications` (verlangt ab Version 10 core library desugaring, das die Flet-Vorlage nicht aktiviert → eigene Build-Vorlage nötig) nur Android-Bordmittel.
 
 | Spike | Ergebnis | Folgen |
 |---|---|---|

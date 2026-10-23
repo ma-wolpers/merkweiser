@@ -1,0 +1,22 @@
+[project]
+name = "merkweiser-notify"
+version = "0.1.0"
+description = "Merkweiser: geplante Android-Benachrichtigungen als Flet-0.86.5-Erweiterung (Spike S5)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "ma-wolpers" }]
+# Gepinnt wie in der App: die Dart-Seite ist nur gegen genau diese Flet-Version geprüft.
+dependencies = ["flet==0.86.5"]
+
+# Flet-Erweiterungen: serious_python kopiert beim `flet build` den Ordner
+# site-packages/flutter/<name> in die Flutter-Pakete und registriert ihn
+# (flet_cli build_base.py, „Registering Flutter user extensions“).
+[tool.setuptools.package-data]
+"flutter.merkweiser_notify" = ["**/*"]
+
+[tool.setuptools]
+license-files = []
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

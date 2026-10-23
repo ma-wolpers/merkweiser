@@ -1,0 +1,27 @@
+[project]
+name = "merkweiser-s5"
+version = "0.0.1"
+description = "Merkweiser Spike S5: geplante Benachrichtigungen (Wegwerfcode)"
+requires-python = ">=3.11"
+# flet muss ausdrücklich dabei sein, sobald hier etwas steht (Befund S1: sonst fehlt certifi).
+dependencies = ["flet==0.86.5", "merkweiser-notify"]
+
+[tool.flet]
+org = "de.merkweiser"
+product = "Merkweiser S5"
+
+[tool.flet.app]
+path = "src"
+
+# Relativer Pfad zum Erweiterungspaket im Repo (flet build macht daraus eine file://-URL).
+[tool.flet.dev_packages]
+merkweiser-notify = "../../packages/merkweiser_notify"
+
+[tool.flet.android.gradle_properties]
+"org.gradle.jvmargs" = "-Xmx4G -XX:MaxMetaspaceSize=2G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError"
+"android.useAndroidX" = "true"
+
+# Wie in der App (Befunde S2 und 2026-10-19): Upstream-Drift gegen die jni-Version der Flet-Vorlage.
+[tool.flet.flutter.pubspec.dependency_overrides]
+jni_flutter = "1.0.2"
+shared_preferences_android = "2.4.28"
