@@ -12,7 +12,9 @@ Aktionen je Art:
   (Vorgang als erledigt quittieren, keine Dateiänderung).
 * ``duplikat``: „Erneut prüfen“ (``resume_duplicate``: prüft die behaltene
   Fassung und löscht nur exakt gleiche Fundstellen) oder „Verwerfen“.
-* andere Arten: „Verwerfen“ (weitere „Erneut prüfen“ kommen mit ihren Modulen).
+* ``zeitbuchung``/``umbenennen``: „Erneut prüfen“ (``time_ops.resume``: prüft
+  Stempel bzw. geplante Werte und schreibt nur, was noch passt) oder „Verwerfen“.
+* andere Arten: „Verwerfen“.
 
 „Verwerfen“/„Beide behalten“ ändert nur App-Daten (Zustand ``DONE`` mit
 ``verworfen``); danach greift die normale Aufbewahrung.
@@ -25,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from ..core.duplicates import resume_duplicate
 from ..core.move_exec import MoveResult, resume_move
+from ..core.time_ops import resume as resume_time_op
 from ..core.ops import OpStore
 
 if TYPE_CHECKING:
@@ -34,7 +37,8 @@ ART_LABELS = {"move": "Verschieben", "zeitbuchung": "Zeit eintragen", "umbenenne
               "duplikat": "Doppelte Notiz entfernen", "rueckgaengig": "Rückgängig machen"}
 RETRY, FORCE, DISMISS = "retry", "force", "dismiss"
 ACTION_LABELS = {RETRY: "Erneut versuchen", FORCE: "Quelle trotzdem entfernen", DISMISS: "Verwerfen"}
-ACTIONS = {"move": (RETRY, FORCE, DISMISS), "duplikat": (RETRY, DISMISS)}
+ACTIONS = {"move": (RETRY, FORCE, DISMISS), "duplikat": (RETRY, DISMISS), "zeitbuchung": (RETRY, DISMISS),
+           "umbenennen": (RETRY, DISMISS)}
 
 
 @dataclass(frozen=True)
@@ -120,8 +124,9 @@ def apply_action(service: "NotesService", op_id: str, action: str) -> str:
     if action not in ACTIONS.get(manifest.get("art", ""), (DISMISS,)):
         raise ValueError(f"Aktion {action} für {manifest.get('art')} nicht möglich")
     service.check_writable()
-    if manifest["art"] == "duplikat":
-        hint = resume_duplicate(service.writer, service.store, op_id, service.settings.project_prefix)
+    if manifest["art"] in ("duplikat", "zeitbuchung", "umbenennen"):
+        resume = resume_duplicate if manifest["art"] == "duplikat" else resume_time_op
+        hint = resume(service.writer, service.store, op_id, service.settings.project_prefix)
         service.rescan()
         return hint
     result: MoveResult = resume_move(service.writer, service.store, op_id, service.settings.project_prefix,

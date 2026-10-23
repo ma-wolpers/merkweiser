@@ -68,7 +68,7 @@ def child_state(store: OpStore, parent_id: str, relpath: str) -> str | None:
     return child_states(store, parent_id).get(relpath)
 
 
-def run_step(writer: Writer, op: Op, relpath: str, prefix: str,
+def run_step(writer: Writer, op: Op | None, relpath: str, prefix: str,
              build: Callable[[Document, bytes | None], bytes | object | None]) -> WriteResult | None:
     """Plant einen Schritt auf frischem Stand und schreibt ihn als Kinder-Op.
 
@@ -77,7 +77,7 @@ def run_step(writer: Writer, op: Op, relpath: str, prefix: str,
 
     Args:
         writer: Writer.
-        op: Die Eltern-Op (gesperrt).
+        op: Die Eltern-Op (gesperrt) oder ``None`` für einen einzelnen Schreibvorgang ohne Vorgang.
         relpath: Datei relativ zum Vault.
         prefix: Projekt-Präfix (zum Parsen).
         build: ``(dokument, bytes_oder_None) → neue Bytes``; ``REMOVE`` entfernt
@@ -91,15 +91,16 @@ def run_step(writer: Writer, op: Op, relpath: str, prefix: str,
         StaleTargetError: Planung gescheitert oder nach ``MAX_REPLANS`` Versuchen.
     """
     path = writer.root / relpath
+    parent = op.id if op is not None else None
     for _attempt in range(MAX_REPLANS):
         before = path.read_bytes() if path.exists() else None
         after = build(parse_document(before or b"", prefix), before)
         try:
             if after is REMOVE:
-                return None if before is None else writer.remove(relpath, before, parent=op.id)
+                return None if before is None else writer.remove(relpath, before, parent=parent)
             if after is None or after == before:
                 return None
-            return writer.write(relpath, before, after, parent=op.id)  # type: ignore[arg-type]
+            return writer.write(relpath, before, after, parent=parent)  # type: ignore[arg-type]
         except ChangedBeforeWriteError:
             continue
     raise StaleTargetError(f"{relpath}: wiederholt extern geändert")

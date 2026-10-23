@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import timezone
 
 from ..activities import same_name
 from ..frontmatter import (ACTIVITY, NONE, OK, OPAQUE, OPEN, START, ZEIT, Damaged, Frontmatter, Stamp, minutes,
@@ -194,7 +195,8 @@ class FmMerge:
         if choice == "frueher":
             return earlier
         if choice == "frueher_endet":
-            booked = int((later.start - earlier.start).total_seconds() // 60)
+            span = later.start.astimezone(timezone.utc) - earlier.start.astimezone(timezone.utc)  # echte Dauer
+            booked = int(span.total_seconds() // 60)
             zeit[earlier.activity] = zeit.get(earlier.activity, 0) + max(booked, 0)
         return later
 

@@ -288,7 +288,7 @@ Nach allen Dateien wird die Geräteliste aktualisiert und die Op `DONE`.
 - **Ohne Konflikt** (beim Scan des geprüften Zeitraums bzw. Archivs):
   - Taucht `zeit_alt` in einer Datei **ohne** `zeit_neu` auf, wird automatisch migriert. Das ist eine reine Umbenennung, also ist nichts doppelt.
   - Stehen **beide** in einer Datei (z. B. ein anderes Gerät hat ohne Kenntnis der Umbenennung zusammengeführt), wird **nicht** automatisch gerechnet. Stattdessen erscheint der Hinweis „Umbenennung unklar“ für diese Tage, mit der Wahl **addieren / größeren Wert / nichts ändern**.
-- **Fremde aktive Stempel** mit altem Namen werden **nicht** umgeschrieben (das andere Gerät könnte gerade stoppen). Sie werden mit neuem Namen angezeigt. Ein Stopp auf diesem Gerät bucht auf `neu`; ein Stopp auf dem anderen Gerät bucht `zeit_alt`, und diese Zeit wird später wie oben migriert.
+- **Aktive Stempel** mit altem Namen werden umbenannt (Anforderung W6). *Abweichung bei der Umsetzung (2026-10-23):* Ein Stempel verrät nicht, von welchem Gerät er stammt; „fremde“ Stempel lassen sich also nicht ausnehmen. Stoppt ein anderes Gerät gleichzeitig, entsteht ein Sync-Konflikt um den Stempel-Datensatz, der nachgefragt wird (S5) – nichts wird still doppelt gebucht. Ein Stopp auf dem anderen Gerät mit altem Namen bucht `zeit_alt`; das wird später migriert (siehe oben).
 - Legt man eine Tätigkeit neu an, deren Name im Log als `alt` steht, wird der Log-Eintrag entfernt, mit Hinweis.
 - `GRENZE(Umbenennung)`: Das andere Gerät kennt die Umbenennung nicht und zeigt den alten Namen weiter, bis er dort ebenfalls umbenannt wird.
 

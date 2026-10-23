@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-23 – Phase 7: Zeit-Tracker-Core
+
+- Neu `core/timetrack.py`, `core/time_ops.py`, `app/time_state.py`, `app/time_scan.py`, `app/time_service.py`; `NotesService.start` ruft `recover_time_ops`, `NotesService.conflicts` übergibt die Umbenennungen; `interrupted` kennt `zeitbuchung`/`umbenennen` (Erneut prüfen = `time_ops.resume`).
+- Befund im Sommer-/Winterzeit-Test: Python subtrahiert und vergleicht zwei Zeitpunkte mit **derselben** `tzinfo` (z. B. `ZoneInfo`) nach Wanduhr. `segments`, `stale` und die Option „frühere endet …“ rechnen deshalb in UTC.
+- Tätigkeitsliste und Umbenennungs-Log liegen je Vault in den App-Daten (`zeit.json`), nicht in `settings.json`: kein Neuöffnen des Vaults bei Listenänderungen.
+- Abweichung von S2: Aktive Stempel werden beim Umbenennen umgeschrieben (Herkunftsgerät ist nicht erkennbar); gleichzeitiges Stoppen anderswo endet als Stempel-Konflikt mit Nachfrage (Plan entsprechend ergänzt).
+- Fehler beim Testen gefunden: Eine geleerte Tätigkeitsliste wurde beim Laden wieder zu „Orga“.
+
 ## 2026-10-22/23 – Phase 6: YAML-Merge
 
 - Neu `core/merge/frontmatter.py`, `mobile/ui/frontmatter_choices.py`; `conflicts._evaluate` trennt Kopf und Rumpf, sobald eine Seite einen Kopf hat (sonst Altverhalten, damit bestehende Vaults ohne Frontmatter unverändert gemergt werden).

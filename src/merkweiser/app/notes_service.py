@@ -32,6 +32,7 @@ from ..core.fsops import FsOps
 from ..core.history import History
 from ..core.backups import recover_undos
 from ..core.duplicates import recover_duplicates
+from ..core.time_ops import recover_time_ops
 from ..core.move_exec import MoveResult, move_todo, recover_moves
 from ..core.move_plan import MoveContext, move_context, tag_for_move
 from ..core.tags import tag_from_input
@@ -47,6 +48,7 @@ from ..core.vault import DayPattern, VaultIndex, scan, write_target
 from ..core.watch import Changes, State, observe, poll
 from ..ports.clock import Clock
 from .settings import Settings
+from .time_state import load_state
 
 MAX_REPLANS = 3
 READ_ONLY_GUARANTEE = "keine (schreibgeschützt)"
@@ -103,6 +105,7 @@ class StartReport:
     moves: list[MoveResult] = field(default_factory=list)
     undos: list[str] = field(default_factory=list)
     duplicates: list[str] = field(default_factory=list)
+    time_ops: list[str] = field(default_factory=list)
     automerges: list[str] = field(default_factory=list)
     removed_empty: list[str] = field(default_factory=list)
 
@@ -193,6 +196,7 @@ class NotesService:
         report.moves = recover_moves(self.writer, self.store, self.settings.project_prefix)
         report.undos = recover_undos(self.writer, self.store, self.settings.project_prefix)
         report.duplicates = recover_duplicates(self.writer, self.store, self.settings.project_prefix)
+        report.time_ops = recover_time_ops(self.writer, self.store, self.settings.project_prefix)
         prune_sidecars(self.root, self.data)
         prune_ops(self.root, self.data, self.store, self.clock, self.settings.retention_days)
         self.rescan()
@@ -277,7 +281,8 @@ class NotesService:
     def conflicts(self) -> list[ConflictCase]:
         """Aktuelle Konfliktfälle."""
         manual = manual_only_paths(self.store) | undone_manual_paths(self.store)
-        return classify(self.root, self.writer, self.index, self.busy, manual)
+        renames = load_state(self.data).rename_pairs()  # Tätigkeits-Umbenennungen dieses Geräts (S2)
+        return classify(self.root, self.writer, self.index, self.busy, manual, renames)
 
     @_writes
     def auto_merge_all(self) -> list[str]:
