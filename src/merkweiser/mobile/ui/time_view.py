@@ -2,7 +2,9 @@
 
 Aufbau von oben: laufende Messung („Orga läuft seit 08:15 (1:23)“),
 Tätigkeit (Dropdown, sortiert nach 7-Tage-Summe), **ein** Start/Stopp-Knopf,
-„Wechseln zu …“ (wenn eine andere Tätigkeit gewählt ist), „Messung abbrechen …“;
+„Wechseln zu … …“ (wenn eine andere Tätigkeit gewählt ist; öffnet immer die
+Uhrzeit-Wahl, vorbelegt mit jetzt) mit Mini-Knopf „Sofort wechseln“ daneben (W6a),
+„Messung abbrechen …“;
 darunter Hinweise (veraltet verworfen, beschädigt, nicht lesbar, Umbenennung
 unklar, mehrere laufende Messungen), dann die Übersicht (7/14/30 Tage, je Tag
 eine Zeile, Summen) und „Tätigkeiten verwalten“ (Unterseite ``taetigkeiten``).
@@ -28,7 +30,7 @@ from ...core.activities import DEFAULT_ACTIVITY, is_valid
 from ...core.frontmatter import Stamp
 from ...core.time_ops import pending_booking
 from ...core.timetrack import hm, totals
-from .time_dialogs import show_abort_dialog, show_rename_dialog
+from .time_dialogs import show_abort_dialog, show_rename_dialog, show_switch_dialog
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -82,8 +84,11 @@ def _measure(app: "MobileApp", scan: ScanResult, state: dict) -> list[ft.Control
     if run:
         controls.append(ft.Button("Stopp", icon=ft.Icons.STOP, on_click=_action(app, lambda s: ts.stop(s))))
         if chosen != run.stamp.activity:
-            controls.append(ft.Button(f"Wechseln zu „{chosen}“", icon=ft.Icons.SWAP_HORIZ,
-                                      on_click=_action(app, lambda s: ts.switch(s, chosen))))
+            controls.append(ft.Row([
+                ft.Button(f"Wechseln zu „{chosen}“ …", icon=ft.Icons.SWAP_HORIZ,
+                          on_click=lambda _e: show_switch_dialog(app, chosen, run.stamp.start)),
+                ft.IconButton(icon=ft.Icons.FAST_FORWARD, tooltip="Sofort wechseln",
+                              on_click=_action(app, lambda s: ts.switch(s, chosen)))], spacing=4))
         controls.append(ft.TextButton("Messung abbrechen …",
                                       on_click=lambda _e: show_abort_dialog(app, run.stamp.start)))
     elif not scan.running:

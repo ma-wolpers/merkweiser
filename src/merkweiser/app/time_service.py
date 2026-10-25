@@ -9,7 +9,8 @@ aus ``time_scan.refresh``; solange eine Zeitbuchung offen ist
 * ``stop`` / ``abort(end)``: Dauer aus Zeitstempeln, je Tag abgerundet,
   Mitternacht geteilt (``timetrack.segments``), in die Tagesdateien gebucht.
 * ``abort(None)``: „Keine Zeit eintragen“ – nur der Stempel wird gelöscht.
-* ``switch``: laufende Messung endet jetzt, neue beginnt jetzt.
+* ``switch``: laufende Messung endet jetzt bzw. zu einer gewählten früheren
+  Uhrzeit nach ihrem Beginn (W6a), die neue beginnt im selben Moment.
 * ``resolve_running``: mehrere laufende Messungen (z. B. von zwei Geräten in
   verschiedenen Dateien) mit denselben Optionen wie im Konfliktdialog.
 * Tätigkeiten: ``add``, ``rename_activity`` (alle Tagesdateien und Stempel,
@@ -28,7 +29,7 @@ from ..core.merge.frontmatter import StampConflict
 from ..core.time_ops import (MeasurementError, Part, book, discard_stamp, pending_booking, plan_rename_file, rename,
                              start_measurement)
 from ..core.step_ops import run_step
-from ..core.timetrack import order_activities, segments, totals
+from ..core.timetrack import local_date, order_activities, segments, totals
 from ..core.vault import write_target
 from .time_scan import Running, ScanResult, refresh
 from .time_state import load_state, save_state
@@ -114,18 +115,43 @@ def abort(service: "NotesService", end: datetime | None) -> str:
     return f"Messung „{run.stamp.activity}“ verworfen, keine Zeit eingetragen."
 
 
-def switch(service: "NotesService", activity: str) -> str:
-    """Laufende Messung endet jetzt, eine neue mit ``activity`` beginnt jetzt."""
+def switch(service: "NotesService", activity: str, at: datetime | None = None) -> str:
+    """Laufende Messung endet um ``at``, eine neue mit ``activity`` beginnt um ``at`` (W6a, „Wechsel nachtragen“).
+
+    Args:
+        service: Geöffneter, beschreibbarer Service.
+        activity: Neue Tätigkeit.
+        at: Wechselzeitpunkt; ``None`` = jetzt. Muss nach dem Beginn der
+            laufenden Messung und spätestens jetzt liegen.
+
+    Returns:
+        Meldung.
+
+    Raises:
+        MeasurementError: keine bzw. mehrere Messungen oder ``at`` außerhalb des erlaubten Bereichs.
+
+    Der neue Stempel steht wie jeder Stempel in der Datei seines Starttags (Tag
+    von ``at``, frühestens der Tag der laufenden Messung); bei gleichem Tag ist
+    das die Datei des alten Stempels, dann geschieht alles in einem
+    Schreibvorgang. GRENZE(Wechsel nachtragen): Ein Wechsel vor einem schon
+    eingetragenen Wechsel ist nicht möglich. Ein „Start nachtragen“ gibt es
+    bewusst nicht (Starten gehört zur Arbeitsstart-Routine).
+    """
     service.check_writable()
     name = valid_activity(activity)
     run = _single(service)
     now = _now(service)
-    new_rel = write_target(service.index, service.pattern, service.clock.today())
-    hint = book(service.writer, service.store, run.stamp, run.relpath, now, _parts(service, run, now),
-                Stamp(now, name), new_rel, service.settings.project_prefix)
+    at = (at or now).replace(microsecond=0)
+    if at <= run.stamp.start or at > now:
+        raise MeasurementError(f"Der Wechsel muss nach dem Beginn ({run.stamp.start:%H:%M}) und spätestens jetzt "
+                               "liegen.")
+    day = max(run.day, local_date(at, None))
+    new_rel = run.relpath if day == run.day else write_target(service.index, service.pattern, day)
+    hint = book(service.writer, service.store, run.stamp, run.relpath, at, _parts(service, run, at),
+                Stamp(at, name), new_rel, service.settings.project_prefix)
     _remember(service, name)
     service.rescan()
-    return hint or f"„{run.stamp.activity}“ beendet, „{name}“ läuft seit {now:%H:%M}."
+    return hint or f"„{run.stamp.activity}“ beendet, „{name}“ läuft seit {at:%H:%M}."
 
 
 def running_conflict(scan: ScanResult) -> StampConflict | None:

@@ -154,6 +154,41 @@ def test_switch_same_day_sets_new_stamp_in_same_write(tmp_path) -> None:
     assert minutes(head)[0] == {"Orga": 70} and stamp_of(head) == new
 
 
+def switch_next_day(env: Env) -> str:
+    """Wechsel um 00:10 am Folgetag: Orga 22:00–00:10, Kurs ab 00:10 in der Datei des Folgetags."""
+    new = Stamp(datetime(2026, 1, 2, 0, 10, tzinfo=CET), "Kurs")
+    return book(env.writer, env.store, START, D1, new.start,
+                [Part(D1, date(2026, 1, 1), 120), Part(D2, date(2026, 1, 2), 10)], new, D2)
+
+
+def assert_switched_next_day(env: Env) -> None:
+    h1, h2 = parse_bytes((env.root / D1).read_bytes()), parse_bytes((env.root / D2).read_bytes())
+    assert minutes(h1)[0] == {"Orga": 130} and stamp_of(h1) is None
+    assert minutes(h2)[0] == {"Orga": 10} and stamp_of(h2).activity == "Kurs"
+
+
+def test_switch_into_another_day_file_regression(tmp_path) -> None:
+    """Befund 2026-10-25: Nach dem Stempel-Schritt galt der selbst entfernte Stempel als „anderswo beendet“."""
+    env = setup(tmp_path)
+    assert switch_next_day(env) == ""
+    env.settle()
+    assert_switched_next_day(env)
+
+
+def test_switch_into_another_day_file_resumes_after_crash(tmp_path) -> None:
+    """Absturz vor dem zweiten Schritt (neuer Stempel) → Wiederaufnahme setzt ihn genau einmal."""
+    env = setup(tmp_path, crash=("write:before_prepared", 2))
+    with pytest.raises(SimulatedCrash):
+        switch_next_day(env)
+    env.die()
+    fresh = Env(tmp_path)
+    recover(fresh.writer)
+    fresh.settle()
+    assert len(recover_time_ops(fresh.writer, fresh.store)) == 1
+    fresh.settle()
+    assert_switched_next_day(fresh)
+
+
 def test_start_refuses_second_stamp_and_discard_checks_identity(tmp_path) -> None:
     env = setup(tmp_path)
     with pytest.raises(MeasurementError):

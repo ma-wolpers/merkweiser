@@ -157,6 +157,10 @@ def _continue_booking(writer: Writer, store: OpStore, op: Op, prefix: str) -> st
             incomplete(op, hint)
             return hint
         booked.append(rel)
+        # Eigener Fortschritt zählt sofort: Nach dem Stempel-Schritt fehlt der Stempel
+        # absichtlich; die Prüfung vor dem nächsten Schritt darf das nicht als „anderswo
+        # beendet“ deuten (Befund 2026-10-25, Wechsel in eine andere Tagesdatei).
+        done[rel] = "DONE"
     finish(op)
     return ""
 

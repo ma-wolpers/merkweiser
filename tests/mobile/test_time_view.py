@@ -161,3 +161,28 @@ def test_mobile_app_runs_ticker_only_while_time_tab_is_visible(tmp_path: Path) -
     tab(TIME_TAB)
     asyncio.run(mobile._on_lifecycle(SimpleNamespace(state="AppLifecycleState.HIDE")))
     assert not mobile.ticker.active
+
+
+def test_switch_button_opens_time_picker_and_mini_button_switches_now(tmp_path: Path) -> None:
+    """W6a: „Wechseln zu … …“ öffnet die Uhrzeit-Wahl (vorbelegt jetzt); der Mini-Knopf wechselt sofort."""
+    app, said, dialogs, _pages = fake_app(tmp_path)
+    asyncio.run(by_label(time_view.time_view(app), "Start").on_click(None))  # Kurs ab 10:00
+    app._time["activity"] = "Orga"
+    app.service.clock.advance(60 * 60)  # 11:00
+    controls = time_view.time_view(app)
+    [row] = [c for c in controls if isinstance(c, ft.Row) and isinstance(c.controls[-1], ft.IconButton)]
+    dialog_button, mini = row.controls
+    assert dialog_button.content == "Wechseln zu „Orga“ …" and mini.tooltip == "Sofort wechseln"
+    dialog_button.on_click(None)
+    picker = dialogs[-1]
+    assert isinstance(picker, ft.TimePicker) and picker.value.hour == 11
+    asyncio.run(picker.on_change(SimpleNamespace(control=SimpleNamespace(value=time(10, 20)))))
+    assert any("„Orga“ läuft seit 10:20" in s for s in said)
+    app.service.clock.advance(121)
+    app.service.writer.finish_due()
+    head = parse_bytes((app.service.root / "2026-01-15.md").read_bytes())
+    assert minutes(head)[0] == {"Kurs": 20}
+    app._time["activity"] = "Kurs"
+    row = next(c for c in time_view.time_view(app) if isinstance(c, ft.Row) and isinstance(c.controls[-1], ft.IconButton))
+    asyncio.run(row.controls[1].on_click(None))
+    assert any("„Kurs“ läuft seit" in s for s in said)

@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-25 – W6a: Wechsel nachtragen; Fehler in der Zeitbuchung
+
+- `time_service.switch(…, at)`, `time_dialogs.show_switch_dialog`, in `time_view` Dialog-Knopf „Wechseln zu … …“ plus Mini-Knopf „Sofort wechseln“ (Nutzerentscheidung). Bewusst kein „Start nachtragen“ (Starten gehört zur Arbeitsstart-Routine).
+- **Fehler aus Phase 7 behoben:** `_continue_booking` aktualisierte `done` nicht nach eigenen Schritten. Beim Wechsel in eine andere Tagesdatei (Stempel-Schritt vor dem neuen-Stempel-Schritt) galt der eben selbst entfernte Stempel als „anderswo beendet“ → `INCOMPLETE`, neuer Stempel fehlte. Trat auch beim Sofort-Wechsel nach Mitternacht auf. Regressionstest (schlägt ohne die Korrektur fehl) und Absturztest zwischen den Schritten.
+
 ## 2026-10-25 – Signaturprüfung, Benachrichtigungen in der App, Plan „Wechsel nachtragen“
 
 - `tools/build_apk.py` (aus `8a0b5fb`) ergänzt: `--project` (z. B. `spikes/s5`) und Prüfung des Fingerabdrucks per `apksigner` vor dem Kopieren. `keytool -printcert -jarfile` taugt dafür nicht: Die APK von `flet build` ist nur v2/v3-signiert („Not a signed jar file“).

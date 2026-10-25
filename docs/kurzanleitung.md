@@ -46,7 +46,7 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 ## Arbeitszeit (Tab „Zeit“)
 
 - **Messen:** Tätigkeit wählen, *Start*. Oben steht „Orga läuft seit 08:15 (1:23)“. *Stopp* trägt die Minuten (immer abgerundet) in die Tagesdatei ein, über Mitternacht aufgeteilt auf beide Tage.
-- **Wechseln:** Während eine Messung läuft, eine andere Tätigkeit wählen und *Wechseln zu …* tippen: Die laufende endet jetzt, die neue beginnt jetzt.
+- **Wechseln:** Während eine Messung läuft, eine andere Tätigkeit wählen. *Wechseln zu … …* fragt nach der Uhrzeit (vorbelegt mit jetzt) – so trägst du einen vergessenen Wechsel nach; die Uhrzeit muss nach dem Beginn der laufenden Messung liegen. Der kleine Knopf daneben wechselt sofort. Die laufende Messung endet zur gewählten Uhrzeit, die neue beginnt im selben Moment. Eine Startzeit kann man bewusst nicht nachtragen: Das Starten gehört zur Arbeitsstart-Routine.
 - **Messung abbrechen:** Endzeit wählen (die Zeit bis dahin wird eingetragen) oder *Keine Zeit eintragen*.
 - **Vergessen?** Eine Messung, die länger als 24 Stunden läuft, verwirft Merkweiser beim nächsten Öffnen von App bzw. Zeit-Tab ohne Eintrag und sagt es dir.
 - **Übersicht:** die letzten 7 Tage (oder 14/30), je Tag eine Zeile, darunter die Summen.

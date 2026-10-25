@@ -18,6 +18,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Wechselte man die Tätigkeit nach Mitternacht, während die Messung noch vom Vortag lief, wurde die alte Zeit zwar eingetragen, die neue Messung startete aber nicht (Hinweis „anderswo beendet“).
 - Bei einem Sync-Konflikt zweier Fassungen mit YAML-Kopf (Frontmatter) wurden unterschiedliche Eigenschaften bisher beide übernommen, sodass doppelte Schlüssel und damit ungültiges YAML entstanden – auch über „Zusammenführen“. Jetzt wird der Kopf je Eigenschaft zusammengeführt: Gleiches einmal, Einseitiges übernommen, Widersprüchliches als Frage im Konfliktdialog (Abschnitt „Kopfbereich“). Zeiterfassungs-Minuten nehmen automatisch den größeren Wert; zwei laufende Messungen oder eine nur auf einem Gerät laufende Messung werden immer nachgefragt.
 - Ein unvollständiges Verschieben, das länger als die Aufbewahrungszeit der Backups (Standard 30 Tage) offen blieb, konnte beim erneuten Versuch das Todo ein zweites Mal in den Zieltag schreiben.
 - Im Editor sprang der Cursor nach Checkbox, Listenpunkt, Einrücken und Ausrücken an eine andere Stelle; er bleibt jetzt beim selben Zeichen.
@@ -33,6 +34,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Wechsel nachtragen (Tab „Zeit“):** „Wechseln zu … …“ öffnet jetzt die Uhrzeit-Wahl (vorbelegt mit jetzt). So lässt sich ein vergessener Wechsel nachträglich eintragen – zu jeder Uhrzeit nach dem Beginn der laufenden Messung. Der kleine Knopf daneben wechselt wie bisher sofort. Eine Startzeit lässt sich bewusst nicht nachtragen.
 - **Morgen-Benachrichtigung (Android):** *Einstellungen → Benachrichtigungen* mit den offenen Todos des Tages und allen dringenden, Uhrzeit, Urlaub bis einschließlich, Vorplanung 7/14/30 Tage und abschaltbarer Eskalation der Folge-Erinnerungen; Anzeige der Android-Erlaubnis mit „Erlaubnis anfragen“. Antippen der Benachrichtigung öffnet den Tab „Tag“ mit heute.
 - **Arbeitszeit messen (Tab „Zeit“):** Start/Stopp für eine Tätigkeit, Wechseln während der Messung, Abbrechen mit Endzeit oder ohne Eintrag. Die Minuten landen abgerundet im YAML-Kopf der Tagesdatei (über Mitternacht auf beide Tage verteilt). Übersicht der letzten 7/14/30 Tage mit Tageszeilen und Summen. Tätigkeiten lassen sich hinzufügen, umbenennen (auch in allen früheren Einträgen, auf Wunsch zusammenführen) und löschen. Vergessene Messungen (über 24 Stunden) werden mit Hinweis verworfen; laufen auf zwei Geräten Messungen, fragt Merkweiser nach.
 - **Doppelte Notizen:** Steht dieselbe Notiz in mehreren Tagesdateien, zeigt *Einstellungen → Konflikte* sie mit allen Fundstellen und Datum. Du wählst, welche bleibt („Neuere/Ältere behalten“, ab drei Fundstellen je Fundstelle oder „Neueste“/„Älteste“); die anderen werden nach Rückfrage gelöscht. Hat sich eine Fundstelle inzwischen verändert, bleibt sie stehen und Merkweiser sagt es dir.

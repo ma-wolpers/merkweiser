@@ -1,4 +1,4 @@
-"""Dialoge des Zeit-Tabs: Messung abbrechen (Endzeit oder keine Zeit) und Tätigkeit umbenennen (W6).
+"""Dialoge des Zeit-Tabs: Wechseln mit Uhrzeit, Messung abbrechen (Endzeit oder keine Zeit), Tätigkeit umbenennen (W6).
 
 Alle Aktionen laufen über ``app.act`` (Fehler werden angezeigt, danach wird
 neu gezeichnet). ``end_from_time`` macht aus einer gewählten Uhrzeit einen
@@ -34,6 +34,27 @@ def end_from_time(picked: time, start: datetime, now: datetime) -> datetime:
     if candidate > now:
         candidate -= timedelta(days=1)
     return candidate
+
+
+def show_switch_dialog(app: "MobileApp", activity: str, start: datetime) -> None:
+    """„Wechseln zu …“ (W6a): Uhrzeit des Wechsels wählen, vorbelegt mit jetzt.
+
+    Die gewählte Uhrzeit wird über ``end_from_time`` zum Zeitpunkt (heute bzw.
+    Vortag); ``time_service.switch`` prüft „nach dem Beginn und spätestens jetzt“.
+
+    Args:
+        app: Die laufende App.
+        activity: Neue Tätigkeit.
+        start: Beginn der laufenden Messung.
+    """
+    async def picked(e) -> None:
+        if e.control.value is not None:
+            at = end_from_time(e.control.value, start, app.service.clock.now())
+            await _run(app, lambda s: ts.switch(s, activity, at))
+
+    app.page.show_dialog(ft.TimePicker(value=app.service.clock.now().time(),
+                                       help_text=f"Wechsel zu „{activity}“ um … (nach {start:%H:%M})",
+                                       confirm_text="Wechseln", cancel_text="Abbrechen", on_change=picked))
 
 
 def show_abort_dialog(app: "MobileApp", start: datetime) -> None:

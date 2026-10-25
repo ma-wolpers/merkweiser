@@ -19,12 +19,12 @@ CET = timezone(timedelta(hours=1))
 TODAY = "2026-01-15.md"  # FakeClock: 2026-01-15 10:00 +01:00
 
 
-def service(tmp_path: Path, files: dict[str, bytes] | None = None) -> NotesService:
+def service(tmp_path: Path, files: dict[str, bytes] | None = None, now: datetime | None = None) -> NotesService:
     root = tmp_path / "vault"
     root.mkdir()
     for name, data in (files or {}).items():
         (root / name).write_bytes(data)
-    svc = NotesService(root, tmp_path / "app", Settings(vault=str(root)), FakeClock())
+    svc = NotesService(root, tmp_path / "app", Settings(vault=str(root)), FakeClock(now))
     svc.start()
     return svc
 
@@ -168,3 +168,55 @@ def test_delete_keeps_times_but_not_while_running(tmp_path: Path) -> None:
     assert "Orga" not in load_state(svc.data).activities and minutes(head(svc))[0] == {"Orga": 10}
     with pytest.raises(ValueError):
         ts.add_activity(svc, "a:b")
+
+
+# --- W6a: Wechsel nachtragen -------------------------------------------------------------
+
+
+def test_switch_at_an_earlier_time_books_until_then_and_starts_then(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    ts.start(svc, "Orga")  # 10:00
+    later(svc, 90)  # jetzt 11:30
+    assert "„Kurs“ läuft seit 10:40" in ts.switch(svc, "Kurs", datetime(2026, 1, 15, 10, 40, 30, tzinfo=CET))
+    later(svc, 1)
+    assert minutes(head(svc))[0] == {"Orga": 40}
+    assert stamp_of(head(svc)).start == datetime(2026, 1, 15, 10, 40, 30, tzinfo=CET)
+
+
+def test_switch_time_must_be_after_start_and_not_in_the_future(tmp_path: Path) -> None:
+    svc = service(tmp_path)
+    ts.start(svc, "Orga")
+    later(svc, 30)
+    for wrong in (datetime(2026, 1, 15, 10, 0, tzinfo=CET), datetime(2026, 1, 15, 9, 0, tzinfo=CET),
+                  svc.clock.now() + timedelta(minutes=5)):
+        with pytest.raises(MeasurementError):
+            ts.switch(svc, "Kurs", wrong)
+    assert stamp_of(head(svc)).activity == "Orga" and minutes(head(svc))[0] == {}
+
+
+def test_switch_before_midnight_entered_after_midnight_stays_in_yesterdays_file(tmp_path: Path) -> None:
+    """Start 22:00, jetzt 00:30, Wechsel um 23:30 nachgetragen → alles in der gestrigen Datei, neuer Stempel dort."""
+    svc = service(tmp_path, now=datetime(2026, 1, 14, 22, 0, tzinfo=CET))
+    ts.start(svc, "Orga")
+    later(svc, 150)
+    ts.switch(svc, "Kurs", datetime(2026, 1, 14, 23, 30, tzinfo=CET))
+    later(svc, 1)
+    yesterday = head(svc, "2026-01-14.md")
+    assert minutes(yesterday)[0] == {"Orga": 90} and stamp_of(yesterday).activity == "Kurs"
+    assert not (svc.root / TODAY).exists()
+    later(svc, 30)  # 01:01: Stopp teilt die Kurs-Messung an Mitternacht
+    ts.stop(svc)
+    later(svc, 1)
+    assert minutes(head(svc, "2026-01-14.md"))[0] == {"Orga": 90, "Kurs": 30}
+    assert minutes(head(svc))[0] == {"Kurs": 61}
+
+
+def test_switch_after_midnight_splits_old_minutes_and_starts_today(tmp_path: Path) -> None:
+    svc = service(tmp_path, now=datetime(2026, 1, 14, 22, 0, tzinfo=CET))
+    ts.start(svc, "Orga")
+    later(svc, 150)  # 00:30
+    ts.switch(svc, "Kurs", datetime(2026, 1, 15, 0, 10, tzinfo=CET))
+    later(svc, 1)
+    assert minutes(head(svc, "2026-01-14.md"))[0] == {"Orga": 120}
+    assert stamp_of(head(svc, "2026-01-14.md")) is None
+    assert minutes(head(svc))[0] == {"Orga": 10} and stamp_of(head(svc)).activity == "Kurs"

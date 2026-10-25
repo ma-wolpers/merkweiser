@@ -714,7 +714,7 @@ Gerätetests nach Spike-Prüfliste (Y10).
 
 ---
 
-## Ergänzung W6a – Wechsel nachtragen (Planung 2026-10-25, Rückfragen geklärt)
+## Ergänzung W6a – Wechsel nachtragen (umgesetzt 2026-10-25)
 
 **Wunsch:** Beim Wechseln der Tätigkeit eine Uhrzeit in der Vergangenheit wählen können – aber nur nach dem Beginn der laufenden Messung –, um Wechsel nachträglich einzutragen.
 
@@ -730,4 +730,6 @@ Gerätetests nach Spike-Prüfliste (Y10).
 
 **Tests:** Wechsel in der Vergangenheit bucht die alte Tätigkeit bis `t` und startet die neue um `t`; `t` ≤ Beginn und `t` in der Zukunft werden abgelehnt; `t` vor Mitternacht bei jetzt nach Mitternacht (neuer Stempel in der gestrigen Datei, Minuten geteilt); Absturz vor jedem Schritt → genau einmal gebucht; Dialog Jetzt/Uhrzeit in der Oberfläche.
 
-**Entschieden (2026-10-25):** Bedienung mit Dialog-Knopf und Mini-Knopf (siehe UI); **kein** „Start nachtragen“ – nur Wechseln bekommt die Uhrzeit-Wahl (Stoppen mit Uhrzeit gibt es schon über „Messung abbrechen → Endzeit wählen“).
+**Entschieden (2026-10-25):** Bedienung mit Dialog-Knopf und Mini-Knopf (siehe UI). **Bewusst kein „Start nachtragen“:** Das Starten der Zeitmessung soll immer Teil der Arbeitsstart-Routine sein (Nutzerentscheidung) – also bitte auch später nicht nachrüsten. Nur Wechseln bekommt die Uhrzeit-Wahl; Stoppen mit Uhrzeit gibt es schon über „Messung abbrechen → Endzeit wählen“.
+
+**Umgesetzt (2026-10-25).** Dabei gefunden und behoben: Beim Wechsel in eine **andere** Tagesdatei (z. B. Start 22:00, Wechsel nach Mitternacht – auch beim Sofort-Wechsel) hielt die Zeitbuchung den im eigenen Stempel-Schritt entfernten Stempel für „anderswo beendet“ und setzte den neuen Stempel nicht.
