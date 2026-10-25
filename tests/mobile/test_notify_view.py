@@ -37,7 +37,7 @@ def test_without_extension_the_page_says_so(tmp_path: Path) -> None:
     app, _saved, _said = make_app(tmp_path)
     assert isinstance(app.notify.notifier, NoNotifier)
     [text] = notify_page(app, "")
-    assert "noch nicht verfügbar" in text.value
+    assert "nur in der Android-App" in text.value
 
 
 def test_switch_asks_permission_then_saves_and_reschedules(tmp_path: Path) -> None:
@@ -66,3 +66,28 @@ def test_switch_asks_permission_then_saves_and_reschedules(tmp_path: Path) -> No
     dropdown = next(c for c in notify_page(app, "") if isinstance(c, ft.Dropdown))
     asyncio.run(dropdown.on_select(SimpleNamespace(control=SimpleNamespace(value="7"))))
     assert saved[-1].notify_horizon == 7
+
+
+def test_missing_permission_is_shown_with_request_button(tmp_path: Path) -> None:
+    """Eingeschaltet, aber ohne Erlaubnis: „Erlaubnis: fehlt“ und „Erlaubnis anfragen“; nach Erteilen verschwindet er."""
+    app, _saved, said = make_app(tmp_path)
+    answers = iter(["denied", "granted"])
+
+    class Fake:
+        available = True
+
+        async def permission(self):
+            return next(answers)
+
+        async def request_permission(self):
+            return "granted"
+
+    app.notify.notifier = Fake()
+    app.settings = Settings(vault=app.settings.vault, notify_enabled=True)
+    asyncio.run(app.notify.refresh_permission())
+    row = next(c for c in notify_page(app, "") if isinstance(c, ft.Row) and c.controls[0].value.startswith("Erlaubnis"))
+    assert row.controls[0].value == "Erlaubnis: fehlt" and row.controls[1].content == "Erlaubnis anfragen"
+    asyncio.run(row.controls[1].on_click(None))
+    assert said[-1] == "Erlaubnis erteilt." and app.notify.permission == "granted"
+    row = next(c for c in notify_page(app, "") if isinstance(c, ft.Row) and c.controls[0].value.startswith("Erlaubnis"))
+    assert len(row.controls) == 1

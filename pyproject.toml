@@ -41,7 +41,12 @@ path = "src"
 # Nur für den APK-Build (Desktop bleibt frei von Flet und Java). flet-cli bündelt flet
 # NUR bei leeren Abhängigkeiten automatisch; sobald hier etwas steht, muss flet selbst
 # mit dabei sein, sonst stürzt die App mit „No module named certifi“ ab (Spike S1).
-dependencies = ["flet==0.86.5", "pyjnius"]
+dependencies = ["flet==0.86.5", "pyjnius", "merkweiser-notify"]
+
+# Eigene Flet-Erweiterung für geplante Benachrichtigungen (W5, Spike S5); relativer Pfad,
+# flet build macht daraus eine file://-URL.
+[tool.flet.dev_packages]
+merkweiser-notify = "packages/merkweiser_notify"
 
 [tool.flet.android.permission]
 # Plan: echter Pfadzugriff auf den Syncthing-Ordner (wird durch Spike S1 bestätigt).

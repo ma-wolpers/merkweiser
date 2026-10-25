@@ -34,10 +34,21 @@ class NotifyController:
     def __init__(self, app: "MobileApp") -> None:
         self.app = app
         self.notifier = NoNotifier()
+        self.permission = "unbekannt"
 
     def attach(self) -> None:
         """Erzeugt den Adapter (im Seitenkontext, damit sich der Flet-Service anmeldet)."""
         self.notifier = make_notifier()
+
+    async def refresh_permission(self) -> str:
+        """Fragt den Zustand der Android-Erlaubnis ab und merkt ihn für die Einstellungsseite."""
+        self.permission = await self.notifier.permission()
+        return self.permission
+
+    async def request_permission(self) -> str:
+        """Fragt (ab Android 13) nach der Erlaubnis und merkt den Zustand danach."""
+        self.permission = await self.notifier.request_permission()
+        return self.permission
 
     def settings(self) -> NotifySettings:
         """Planer-Einstellungen aus den App-Einstellungen."""
@@ -74,7 +85,7 @@ def notify_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
 
     async def toggle(e) -> None:
         if e.control.value:
-            state = await control.notifier.request_permission()
+            state = await control.request_permission()
             if state != "granted":
                 app.say("Ohne Erlaubnis kann Merkweiser keine Benachrichtigungen zeigen. Bitte in den "
                         "Android-Einstellungen für Merkweiser erlauben.")
@@ -100,10 +111,21 @@ def notify_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
     async def escalate(e) -> None:
         await save(notify_escalate=bool(e.control.value))
 
+    async def ask(_e) -> None:
+        state = await control.request_permission()
+        app.say("Erlaubnis erteilt." if state == "granted" else
+                "Keine Erlaubnis – bitte in den Android-Einstellungen bei Merkweiser → Benachrichtigungen erlauben.")
+        app.render()
+
     today = app.service.clock.today()
+    granted = control.permission == "granted"
+    permission_row = ft.Row([ft.Text("Erlaubnis: erteilt" if granted else "Erlaubnis: fehlt",
+                                     color=None if granted else ft.Colors.ERROR, expand=True),
+                             *([] if granted else [ft.TextButton("Erlaubnis anfragen", on_click=ask)])])
     vacation_text = f"Urlaub bis einschließlich {s.vacation_date():%d.%m.%Y}" if s.vacation_until else "Kein Urlaub"
     controls: list[ft.Control] = [
         ft.Switch(label="Morgen-Benachrichtigung", value=s.notify_enabled, on_change=toggle),
+        *([permission_row] if s.notify_enabled else []),
         ft.TextButton(f"Uhrzeit: {s.notify_time}", icon=ft.Icons.SCHEDULE, on_click=choose_time),
         ft.Switch(label="Erinnerungen eskalieren, wenn die App länger nicht geöffnet wurde",
                   value=s.notify_escalate, on_change=escalate),

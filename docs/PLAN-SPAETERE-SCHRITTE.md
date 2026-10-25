@@ -709,5 +709,25 @@ Gerätetests nach Spike-Prüfliste (Y10).
 - **B3 – Allowlist.** Zusätzlich erlaubt sind *Ziffern, `-`, `_` und einzelne Leerzeichen*, etwa für „Klasse 7b“.
 - **B4 – Zurück-Verhalten.** An der Wurzel eines anderen Tabs geht es *zum Tab Tag*; erneutes Antippen eines Tabs führt *zur Wurzel*.
 - **B5 – Eskalationsstufen und Texte.** Wie in Design W5; nach dem Spike anpassbar.
-- **B6 – Plugin oder Build-Template.** Entscheidung nach Spike S5 (Phase 9), gemeinsam mit dir.
+- **B6 – Plugin oder Build-Template.** Entschieden: eigenes Kotlin-Plugin in der Flet-Erweiterung (`packages/merkweiser_notify`); seit 2026-10-25 auf Wunsch in der App-APK, Gerätetest offen.
 - **B7 – „Unterbrochene Vorgänge“.** Vor Phase 2 prüfen, ob es schon eine Anzeige für `INCOMPLETE`-Moves gibt; sonst neuer Abschnitt auf der Konflikte-Seite.
+
+---
+
+## Ergänzung W6a – Wechsel nachtragen (Planung 2026-10-25, wartet auf Freigabe)
+
+**Wunsch:** Beim Wechseln der Tätigkeit eine Uhrzeit in der Vergangenheit wählen können – aber nur nach dem Beginn der laufenden Messung –, um Wechsel nachträglich einzutragen.
+
+**Regel:** Wechselzeitpunkt `t` mit *Beginn der laufenden Messung < t ≤ jetzt*. Die laufende Messung endet um `t` (Minuten wie immer je Tag abgerundet, über Mitternacht geteilt), die neue Messung beginnt um `t`.
+
+**Umsetzung:**
+- `time_service.switch(service, activity, at=None)`: `at` Standard jetzt; Prüfung der Regel mit deutscher Meldung; `book(alter Stempel, ende=at, Segmente bis at, neuer Stempel = Stamp(at, neu), neue Datei = Tagesdatei des **Tages von `at`**)`. Der neue Stempel steht damit wie jeder Stempel in der Datei seines Starttags; liegt `at` vor Mitternacht und ist es jetzt nach Mitternacht, landet er in der gestrigen Datei, und sein späterer Stopp teilt wieder an Mitternacht.
+- Absturzsicherheit unverändert über das Zeitbuchungs-Protokoll (S1): Die Datei des Tages von `at` bekommt Minuten und neuen Stempel in **einem** Schreibvorgang (bzw. bei gleichem Tag zusammen mit dem Entfernen des alten Stempels).
+- 24-h-Regel: `at` liegt nach dem Beginn der laufenden (höchstens 24 h alten) Messung, der neue Stempel ist also nie veraltet.
+- UI: Knopf „Wechseln zu „X“ …“ öffnet einen kleinen Dialog *Jetzt* / *Uhrzeit wählen …* / *Zurück*; die Uhrzeit wird wie beim Abbrechen über `end_from_time` (heute bzw. Vortag) bestimmt.
+- Mehrere nachgetragene Wechsel nacheinander gehen (jeder nach dem vorigen).
+- `GRENZE(Wechsel nachtragen)`: Ein Wechsel **vor** einem schon eingetragenen Wechsel ist nicht möglich (dafür müssten gebuchte Minuten geändert werden); Korrektur dann über *Backups* bzw. von Hand im YAML-Kopf.
+
+**Tests:** Wechsel in der Vergangenheit bucht die alte Tätigkeit bis `t` und startet die neue um `t`; `t` ≤ Beginn und `t` in der Zukunft werden abgelehnt; `t` vor Mitternacht bei jetzt nach Mitternacht (neuer Stempel in der gestrigen Datei, Minuten geteilt); Absturz vor jedem Schritt → genau einmal gebucht; Dialog Jetzt/Uhrzeit in der Oberfläche.
+
+**Offen (Rückfrage):** Bedienung des Dialogs; ob es dasselbe auch für *Start* („nachträglich starten“) geben soll.

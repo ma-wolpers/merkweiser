@@ -5,9 +5,10 @@ Erweiterungspaket nicht installiert (Desktop, Tests, APK ohne Erweiterung)
 oder antwortet die Plattform nicht (kein Android), ist ``available`` falsch
 und alle Aufrufe tun nichts.
 
-BAUSTELLE(S5): Die App-APK enthält die Erweiterung erst, wenn der Gerätetest
-des Spikes S5 bestanden ist (dann ``merkweiser-notify`` in
-``[tool.flet.android] dependencies`` und ``[tool.flet.dev_packages]``).
+Die App-APK enthält die Erweiterung (``[tool.flet.android] dependencies`` und
+``[tool.flet.dev_packages]`` in ``pyproject.toml``, seit 2026-10-25 auf Wunsch
+vor Abschluss des Gerätetests). BAUSTELLE(S5): Gerätetest laut
+``spikes/s5/ANLEITUNG.md`` – er kann jetzt auch direkt in der App laufen.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ class NoNotifier:
     """Keine Benachrichtigungen verfügbar."""
 
     available = False
-    reason = "In dieser Version noch nicht verfügbar (Test S5 läuft)."
+    reason = "Benachrichtigungen gibt es nur in der Android-App."
 
     async def permission(self) -> str:
         return "nicht verfügbar"

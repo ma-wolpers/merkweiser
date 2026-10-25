@@ -89,6 +89,7 @@ class MobileApp:
         root_view.on_confirm_pop = self._on_confirm_pop
         self.notify.attach()
         await self.open_vault()
+        await self.notify.refresh_permission()
         await self.notify.check_launch()
         await self.notify.reschedule()
         self.page.run_task(self._poll_loop)
@@ -288,6 +289,7 @@ class MobileApp:
             await self.notify.reschedule()  # W5: Stand beim Verlassen vorplanen
         elif "resume" in state or "show" in state:
             self.page_visible = True
+            await self.notify.refresh_permission()  # kann in den Android-Einstellungen geändert worden sein
             await self.notify.check_launch()
             await self._poll_once()
             if self.service is not None and self.pages.current == TIME_TAB:

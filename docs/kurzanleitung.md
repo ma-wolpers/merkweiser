@@ -5,11 +5,13 @@
 Voraussetzungen: Android-SDK (`ANDROID_HOME` bzw. `ANDROID_SDK_ROOT` gesetzt) und `flet-cli 0.86.5` (`pip install -e ".[build]"`).
 
 ```bash
-python tools/build_apk.py
+python tools/build_apk.py                     # die App
+python tools/build_apk.py --project spikes/s5 # ein Spike (eigene App-ID)
 ```
 
 - Das Skript signiert mit dem **gemeinsamen Keystore** und kopiert das APK nach `SyncSpike/`. Ohne eigene Signatur nimmt `flet build` den Debug-Schlüssel des jeweiligen Rechners, und Android lehnt ein Update von einem anderen Rechner ab („package conflicts with an existing package“).
 - Der Keystore (`merkweiser.jks`, `passwort.txt`) liegt im Syncthing-Ordner 7thCloud unter `tools/merkweiser-signing/`. Das Skript findet ihn relativ zum Repo (`../../7thCloud/tools/merkweiser-signing`); liegt er woanders, `MERKWEISER_SIGNING_DIR` setzen. Pfad und Passwort gehen nur über Umgebungsvariablen an flet-cli, nie ins Repo. **Den Keystore nie neu anlegen:** Ein neuer Schlüssel erzwingt wieder eine Neuinstallation samt Verlust der App-Daten.
+- Nach dem Build prüft das Skript per `apksigner` (Android-SDK), ob die APK wirklich mit dem Merkweiser-Schlüssel signiert ist, und kopiert sie nur dann.
 - Unsigniert (nur zum Ausprobieren auf einem Gerät ohne installierte Merkweiser-App): `PYTHONIOENCODING=utf-8 flet build apk --no-rich-output`.
 - Das APK liegt danach in `build/apk/`. Ohne `--no-rich-output` bricht der Build unter Windows ab, sobald die Ausgabe umgeleitet wird (Emoji in der Konsole).
 - Während eines Builds kein `flet run` starten: beide laufen als `flet.exe`.
@@ -54,7 +56,7 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 
 ## Morgen-Benachrichtigung (Android)
 
-*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste deiner offenen Todos von heute und aller dringenden (⭐). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Android kann die Zustellung bei Akkusparen verzögern; was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung. *Hinweis:* Diese Funktion wird gerade getestet (Spike S5) und ist in der App erst danach aktiv.
+*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste deiner offenen Todos von heute und aller dringenden (⭐). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Android kann die Zustellung bei Akkusparen verzögern; was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung. *Hinweis:* Die Funktion ist neu; die Gerätetests (siehe `spikes/s5/ANLEITUNG.md`) stehen noch aus.
 
 ## Diagnosebericht
 

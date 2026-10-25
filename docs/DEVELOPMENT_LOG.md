@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-25 – Signaturprüfung, Benachrichtigungen in der App, Plan „Wechsel nachtragen“
+
+- `tools/build_apk.py` (aus `8a0b5fb`) ergänzt: `--project` (z. B. `spikes/s5`) und Prüfung des Fingerabdrucks per `apksigner` vor dem Kopieren. `keytool -printcert -jarfile` taugt dafür nicht: Die APK von `flet build` ist nur v2/v3-signiert („Not a signed jar file“).
+- Fehler meinerseits: Das Skript zuerst neu angelegt, ohne vorher `git fetch` zu machen; danach mit dem Remote-Stand zusammengeführt (dessen Fassung ist die Grundlage).
+- Auf Wunsch: `merkweiser-notify` jetzt in `[tool.flet.android] dependencies` und `[tool.flet.dev_packages]` der App (vor Abschluss des Gerätetests S5). `NotifyController` merkt den Erlaubnis-Zustand (bei Start und Rückkehr); Einstellungsseite mit „Erlaubnis anfragen“.
+- Plan für „Wechsel nachtragen“ in `docs/PLAN-SPAETERE-SCHRITTE.md` (Ergänzung W6a), wartet auf Freigabe.
+
 ## 2026-10-23 – Gemeinsamer Keystore für die Android-App
 
 - Befund: Eine auf diesem Rechner gebaute APK ließ sich nicht über die vom Standrechner installieren („package conflicts with an existing package“), weil `flet build` ohne Signatur den Debug-Schlüssel des jeweiligen Rechners nimmt.
