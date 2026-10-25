@@ -40,7 +40,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 8 | W6d Zeit-Tab | erledigt (APK für Gerätetest gebaut) |
 | 9 | Spike S5 Benachrichtigungen | vorbereitet (APK `SyncSpike/merkweiser-s5.apk`, Manifest geprüft); Gerätetest offen |
 | 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest offen |
-| 11 | W6a Wechsel nachtragen | geplant, wartet auf Freigabe |
+| 11 | W6a Wechsel nachtragen | geplant, Rückfragen geklärt (Dialog-Knopf + Mini-Knopf, kein Start nachtragen) |
 
 ## Context
 

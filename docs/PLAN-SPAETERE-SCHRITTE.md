@@ -714,7 +714,7 @@ Gerätetests nach Spike-Prüfliste (Y10).
 
 ---
 
-## Ergänzung W6a – Wechsel nachtragen (Planung 2026-10-25, wartet auf Freigabe)
+## Ergänzung W6a – Wechsel nachtragen (Planung 2026-10-25, Rückfragen geklärt)
 
 **Wunsch:** Beim Wechseln der Tätigkeit eine Uhrzeit in der Vergangenheit wählen können – aber nur nach dem Beginn der laufenden Messung –, um Wechsel nachträglich einzutragen.
 
@@ -724,10 +724,10 @@ Gerätetests nach Spike-Prüfliste (Y10).
 - `time_service.switch(service, activity, at=None)`: `at` Standard jetzt; Prüfung der Regel mit deutscher Meldung; `book(alter Stempel, ende=at, Segmente bis at, neuer Stempel = Stamp(at, neu), neue Datei = Tagesdatei des **Tages von `at`**)`. Der neue Stempel steht damit wie jeder Stempel in der Datei seines Starttags; liegt `at` vor Mitternacht und ist es jetzt nach Mitternacht, landet er in der gestrigen Datei, und sein späterer Stopp teilt wieder an Mitternacht.
 - Absturzsicherheit unverändert über das Zeitbuchungs-Protokoll (S1): Die Datei des Tages von `at` bekommt Minuten und neuen Stempel in **einem** Schreibvorgang (bzw. bei gleichem Tag zusammen mit dem Entfernen des alten Stempels).
 - 24-h-Regel: `at` liegt nach dem Beginn der laufenden (höchstens 24 h alten) Messung, der neue Stempel ist also nie veraltet.
-- UI: Knopf „Wechseln zu „X“ …“ öffnet einen kleinen Dialog *Jetzt* / *Uhrzeit wählen …* / *Zurück*; die Uhrzeit wird wie beim Abbrechen über `end_from_time` (heute bzw. Vortag) bestimmt.
+- UI (Entscheidung 2026-10-25): **Zwei Knöpfe.** „Wechseln zu „X“ …“ öffnet **immer** einen Dialog mit Uhrzeit-Wahl (TimePicker, vorbelegt mit jetzt; die aktuelle Uhrzeit ist also auch dort wählbar). Daneben ein **Mini-Knopf** (Symbol, Tooltip „Sofort wechseln“) für den Wechsel jetzt ohne Dialog. Die gewählte Uhrzeit wird wie beim Abbrechen über `end_from_time` (heute bzw. Vortag) zum Zeitpunkt.
 - Mehrere nachgetragene Wechsel nacheinander gehen (jeder nach dem vorigen).
 - `GRENZE(Wechsel nachtragen)`: Ein Wechsel **vor** einem schon eingetragenen Wechsel ist nicht möglich (dafür müssten gebuchte Minuten geändert werden); Korrektur dann über *Backups* bzw. von Hand im YAML-Kopf.
 
 **Tests:** Wechsel in der Vergangenheit bucht die alte Tätigkeit bis `t` und startet die neue um `t`; `t` ≤ Beginn und `t` in der Zukunft werden abgelehnt; `t` vor Mitternacht bei jetzt nach Mitternacht (neuer Stempel in der gestrigen Datei, Minuten geteilt); Absturz vor jedem Schritt → genau einmal gebucht; Dialog Jetzt/Uhrzeit in der Oberfläche.
 
-**Offen (Rückfrage):** Bedienung des Dialogs; ob es dasselbe auch für *Start* („nachträglich starten“) geben soll.
+**Entschieden (2026-10-25):** Bedienung mit Dialog-Knopf und Mini-Knopf (siehe UI); **kein** „Start nachtragen“ – nur Wechseln bekommt die Uhrzeit-Wahl (Stoppen mit Uhrzeit gibt es schon über „Messung abbrechen → Endzeit wählen“).
