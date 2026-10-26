@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Verschieben ohne Tag-Frage, wenn schon ein Tag da ist:** Erbt das Todo einen Tag von Thema oder Überpunkt, geht es direkt zur Datumswahl; der Tag wandert explizit mit. Der Knopf „Mit bestehendem Tag verschieben“ erscheint nur noch, wenn das Todo das gemeinsame Projekt selbst trägt.
 - **Tab Todos:** Oben stehen alle offenen roten Todos, dann die von heute, darunter die früheren Tage (je Abschnitt gelbe zuerst). Gelbe Todos früherer Tage stehen nicht mehr über den heutigen. Todos aus zukünftigen Tagen erscheinen nicht mehr.
 - **Morgen-Benachrichtigung:** Reihenfolge 🔥 rote Todos, dann die von heute (⭐ gelbe zuerst), dann gelbe früherer Tage; normale ältere und zukünftige Todos fehlen. Dringende sind fett, der Titel zählt sie, und bei einem roten Todo kommt die Benachrichtigung als Banner (wenn Android es zulässt).
 - **Signatur der Android-App:** Ab jetzt signieren alle Rechner mit demselben Schlüssel, Updates lassen sich also von jedem Rechner aus installieren. **Einmalig** muss die bisherige App dafür deinstalliert werden. Die Notizen bleiben erhalten; Einstellungen und Backups der App gehen dabei verloren.

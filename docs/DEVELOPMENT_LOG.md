@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 2: kein Tag-Dialog bei geerbtem Tag
+
+- `MoveContext.inherited_tags` (vorhandenes `_inherited_tag_names`) und `needs_tag_dialog`; `show_move_flow` fragt nur noch bei weiteren Todos **ohne** geerbten Tag.
+- Folge für „Mit bestehendem Tag verschieben (#projekt/x)“: Ein nur geerbtes gemeinsames Projekt überspringt den Dialog jetzt; der Knopf bleibt für Todos, die das Projekt selbst tragen (Test angepasst). Der geerbte Tag wird wie bisher von `plan_move` explizit ans Todo geschrieben (neuer Test).
+
 ## 2026-10-26 – W7 Phase 1: Ampel-Dringlichkeit
 
 - `core/inline.py` ist die einzige Quelle der Grammatik: `Urgency`, `urgency_span`, `urgency`, `strip_urgency`; `is_urgent` bleibt als Wrapper. `ListItem.urgency`/`Hit.urgency` statt `urgent` (Property bleibt für `UrgentFilter`).

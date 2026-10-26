@@ -290,6 +290,9 @@ class MoveContext:
         t_projects: Effektive Projekte des Todos.
         p_projects: Effektive Projekte des Überpunkts.
         shared_projects: Projekte, die beide haben (ohne Groß-/Kleinschreibung).
+        inherited_tags: Tags, die das Todo von Thema bzw. Überpunkten erbt (Originalschreibweise,
+            ohne eigene). Nicht leer → kein Tag-Dialog (W7): Das Todo hat schon einen Tag, und
+            ``plan_move`` schreibt geerbte Tags beim Verschieben ohnehin explizit an das Todo.
     """
 
     sole_todo: bool
@@ -297,6 +300,12 @@ class MoveContext:
     t_projects: tuple[str, ...]
     p_projects: tuple[str, ...]
     shared_projects: tuple[str, ...]
+    inherited_tags: tuple[str, ...] = ()
+
+    @property
+    def needs_tag_dialog(self) -> bool:
+        """Ob vor dem Verschieben der Tag-Dialog erscheint: nur bei weiteren Todos und ohne geerbten Tag."""
+        return not self.sole_todo and not self.inherited_tags
 
     def project_conflict(self, name: str) -> str | None:
         """Prüft, ob ein neues Projekt ``name`` eine bestehende Zuordnung überschreiben würde.
@@ -340,7 +349,8 @@ def move_context(doc: Document, target: Target) -> MoveContext:
     own = note.tags[node.index].effective_projects
     theirs = note.tags[parent.index].effective_projects if parent_target else ()
     shared = tuple(p for p in own if p.casefold() in {q.casefold() for q in theirs})
-    return MoveContext(is_sole_todo(note, node), parent_target, own, theirs, shared)
+    return MoveContext(is_sole_todo(note, node), parent_target, own, theirs, shared,
+                       tuple(_inherited_tag_names(note, node.index)))
 
 
 def tag_for_move(doc: Document, target: Target, tag: str) -> tuple[bytes, Target]:

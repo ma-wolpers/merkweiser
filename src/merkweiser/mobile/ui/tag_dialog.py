@@ -35,6 +35,9 @@ HINT = "Diese Notiz hat weitere Todos. Mit einem gemeinsamen Tag findest du sie 
 async def show_move_flow(app: "MobileApp", target: Target) -> None:
     """Startet das Verschieben: direkt zur Datumswahl oder erst der Tag-Dialog.
 
+    Der Tag-Dialog erscheint nur, wenn die Notiz weitere Todos hat **und** das
+    Todo noch keinen Tag erbt (``MoveContext.needs_tag_dialog``, W7).
+
     Args:
         app: Die laufende App.
         target: Adresse des Todos.
@@ -42,10 +45,10 @@ async def show_move_flow(app: "MobileApp", target: Target) -> None:
     context = await app.act(lambda s: s.move_info(target))
     if context is None:  # Fehler hat ``act`` bereits gemeldet
         return
-    if context.sole_todo:
-        show_move_dialog(app, target)
-    else:
+    if context.needs_tag_dialog:
         app.page.show_dialog(tag_dialog(app, target, context))
+    else:
+        show_move_dialog(app, target)
 
 
 def tag_dialog(app: "MobileApp", target: Target, context: MoveContext) -> ft.AlertDialog:

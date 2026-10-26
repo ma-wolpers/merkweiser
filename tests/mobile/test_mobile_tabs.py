@@ -309,8 +309,11 @@ def test_move_flow_shows_tag_dialog_and_passes_the_tag_on(tmp_path: Path) -> Non
 
 
 def test_tag_dialog_offers_the_shared_project(tmp_path: Path) -> None:
-    """Gemeinsames Projekt von Todo und Überpunkt → „Mit bestehendem Tag verschieben“."""
-    fake, _target = _flow(tmp_path, b"T #projekt/umzug\n- [ ] eins\n- [ ] zwei\n", 1)
+    """Gemeinsames Projekt von Todo und Überpunkt → „Mit bestehendem Tag verschieben“.
+
+    Seit W7 nur, wenn das Todo das Projekt **selbst** trägt; ein nur geerbtes überspringt den Dialog.
+    """
+    fake, _target = _flow(tmp_path, b"T #projekt/umzug\n- [ ] eins #projekt/umzug\n- [ ] zwei\n", 1)
     [dialog] = fake.page.dialogs
     assert dialog.actions[1].content == "Mit bestehendem Tag verschieben (#projekt/umzug)"
 
@@ -644,3 +647,10 @@ def test_backup_pages_list_files_and_undo_with_confirmation(tmp_path: Path) -> N
     fake.service.clock.advance(121)
     fake.service.writer.finish_due()
     assert (Path(fake.settings.vault) / "2026-01-15.md").read_bytes().startswith(b"Heute #h\n- [ ] Aufgabe")
+
+
+def test_move_flow_skips_tag_dialog_when_the_todo_inherits_a_tag(tmp_path: Path) -> None:
+    """W7: Erbt das Todo einen Tag (hier vom Thema), geht es direkt zur Datumswahl."""
+    fake, _target = _flow(tmp_path, b"Elternabend #schule\n- [ ] eins\n- [ ] zwei\n", 1)
+    [dialog] = fake.page.dialogs
+    assert dialog.title == "Todo verschieben auf …"
