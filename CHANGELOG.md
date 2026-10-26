@@ -40,6 +40,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Tag-Auswahl im Editor:** Der #-Knopf öffnet ein Fenster mit allen schon verwendeten Tags (häufigste zuerst, mit Anzahl) und einer Suche (regulärer Ausdruck). Ein Tipp fügt den Tag am Zeilenende ein und führt zurück in den Editor; ein neuer Name lässt sich über „#… neu verwenden“ übernehmen. Ist ein Wort am Zeilenende markiert und wählst du genau diesen Tag, wird das Wort selbst zum Tag.
 - **Zur Notiz eines Todos (Tab Todos):** Rechts an jedem Todo öffnet ein Knopf die ganze Originalnotiz auf einer eigenen Seite; Zurück führt zur Liste mit deinem Filter. Dort lässt sich die **ganze Notiz verschieben**: Am Zieltag wird sie mit genau einer Notiz gleichen Themas zusammengeführt, sonst als neue Notiz angelegt.
 - **Dringlichkeit als Ampel:** Der Stern am Todo schaltet jetzt farblos → gelb (dringend) → rot (sehr dringend) → farblos. Offene dringende Todos bekommen links eine farbige Leiste; Rot steht vor Gelb. In der Datei steht Rot als `==🔴Text==` (Obsidian hebt es hervor), Gelb wie bisher als `==Text==`.
 - **Wechsel nachtragen (Tab „Zeit“):** „Wechseln zu … …“ öffnet jetzt die Uhrzeit-Wahl (vorbelegt mit jetzt). So lässt sich ein vergessener Wechsel nachträglich eintragen – zu jeder Uhrzeit nach dem Beginn der laufenden Messung. Der kleine Knopf daneben wechselt wie bisher sofort. Eine Startzeit lässt sich bewusst nicht nachtragen.

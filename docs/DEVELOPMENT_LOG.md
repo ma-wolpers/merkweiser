@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 6: Tag-Picker im Editor
+
+- `app/tag_index.py` (`used_tags` mit Identitäts-Zwischenspeicher, `filter_tags`), `mobile/ui/tag_picker.py` (Popup im Dialogstapel), `text_tools.insert_tag_name` mit gemeinsamem `_append_at_line_end`; `editor_toolbar(…, tag_picker)` nur im mobilen Editor gesetzt, ohne Picker bleibt `insert_tag`.
+- Tag-Anzahl wie `tag_check` („n Einträge“ = Suchtreffer mit wirksamem Tag), Test vergleicht direkt mit `search`.
+- Reihenfolge beim Auswählen: erst Popup schließen, dann einfügen und fokussieren (Abweichung vom Plan, im W7-Abschnitt vermerkt).
+- `refresh` im Picker austauschbar, weil `Control.update()` ohne eingehängte Seite wirft (Flet 0.86.5, `base_control.update`).
+
 ## 2026-10-26 – W7 Phase 5: Todos-Tab mit Filter-Knopf und Abschnitten
 
 - Neu `app/todo_list.py` (UI-neutral, `DEFAULT_FILTER` als einzige Quelle; Tag-Parsing aus `tabs` hierher gezogen) und `mobile/ui/todo_filter.py` (Knopf mit Badge, Dialog auf einer Kopie).

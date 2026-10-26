@@ -25,7 +25,7 @@ Flutter (und damit Flet) zählt Positionen in UTF-16-Einheiten; dafür gibt es
 
 from __future__ import annotations
 
-from ..core.inline import TodoStatus, leading_whitespace, parse_list_item
+from ..core.inline import TodoStatus, find_tags, leading_whitespace, parse_list_item
 
 _CHECKBOX = "[ ] "
 _BULLET = "- "
@@ -226,8 +226,63 @@ def insert_tag(text: str, start: int | None, end: int | None) -> tuple[str, int 
         if text[word:word + 1] == "#":
             return text, start, end
         return apply_text_edits(text, start, end, [(word, 0, "#")])
+    return _append_at_line_end(text, start, end, "#")
+
+
+def insert_tag_name(text: str, start: int | None, end: int | None, name: str) -> tuple[str, int | None, int | None]:
+    """Fügt einen im Tag-Picker gewählten Tag ein (W7, mobiler #-Knopf).
+
+    Regeln (Nutzerentscheidung 2026-10-26):
+
+    * Standard: ``#name`` ans **Ende der Caret-Zeile** (bzw. der ersten Zeile
+      einer Auswahl), Leerzeichen davor nur bei Bedarf, Caret dahinter.
+    * Ist genau ein ganzes Wort markiert, steht dahinter in der Zeile nur
+      Leerraum und ist der gewählte Tag dieses Wort (ohne Groß-/Kleinschreibung),
+      wird es **an Ort und Stelle** zu ``#Wort`` (Schreibweise des Worts bleibt).
+    * Steht der Tag schon als echter Tag in der Zeile (``inline.find_tags``:
+      nicht in Code, nur am Wortanfang), ändert sich nichts.
+
+    Args:
+        text: Editortext (Zeilen mit ``\\n``).
+        start: Auswahlanfang oder ``None``.
+        end: Auswahlende oder ``None``.
+        name: Tag-Name ohne ``#``.
+
+    Returns:
+        ``(text, start, end)``; unverändert bei unbekannter Position oder vorhandenem Tag.
+    """
+    if start is None or end is None:
+        return text, start, end
+    line_start, line_end = line_spans(text)[affected_lines(text, start, end)[0]]
+    key = name.casefold()
+    if any(tag.key == key for tag in find_tags(text[line_start:line_end])):
+        return text, start, end
+    word = text[start:end]
+    at_line_end = start >= line_start and end <= line_end and not text[end:line_end].strip()
+    whole_word = bool(word) and not any(char.isspace() for char in word) \
+        and (start == line_start or text[start - 1].isspace())
+    if whole_word and at_line_end and word.casefold() == key:
+        new_text, _s, new_end = apply_text_edits(text, start, end, [(start, 0, "#")])
+        return new_text, new_end, new_end
+    return _append_at_line_end(text, start, end, "#" + name)
+
+
+def _append_at_line_end(text: str, start: int, end: int, insert: str) -> tuple[str, int, int]:
+    """Hängt ``insert`` ans Ende der (ersten) betroffenen Zeile; Leerzeichen davor nur bei Bedarf.
+
+    Gemeinsame Regel für ``insert_tag`` und ``insert_tag_name``.
+
+    Args:
+        text: Editortext.
+        start: Auswahlanfang.
+        end: Auswahlende.
+        insert: Einzufügender Text (z. B. ``#`` oder ``#schule``).
+
+    Returns:
+        ``(neuer Text, Caret, Caret)`` mit dem Caret hinter dem Eingefügten.
+    """
     line_start, line_end = line_spans(text)[affected_lines(text, start, end)[0]]
     line = text[line_start:line_end]
-    insert = "#" if not line or line[-1].isspace() else " #"
+    insert = insert if not line or line[-1].isspace() else " " + insert
     new_text, _s, _e = apply_text_edits(text, start, end, [(line_end, 0, insert)])
     return new_text, line_end + len(insert), line_end + len(insert)

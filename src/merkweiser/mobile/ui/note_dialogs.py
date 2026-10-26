@@ -24,6 +24,7 @@ import flet as ft
 
 from ...app.views import NoteRef
 from .note_editor import editor_toolbar
+from .tag_picker import show_tag_picker
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -85,7 +86,9 @@ def editor_dialog(app: "MobileApp", text: str, on_save: Callable[[str], Awaitabl
         app.page.pop_dialog()
 
     return ft.AlertDialog(modal=True, scrollable=True,
-                          content=ft.Column([editor_toolbar(field, app.settings.indent_width), field, hint], tight=True),
+                          content=ft.Column([editor_toolbar(field, app.settings.indent_width,
+                                                            lambda initial, pick: show_tag_picker(app, initial, pick)),
+                                             field, hint], tight=True),
                           actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
 
 

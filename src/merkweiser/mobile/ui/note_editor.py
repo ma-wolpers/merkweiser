@@ -1,6 +1,7 @@
 """Einfüge-Leiste und Listen-Verhalten der Notiz-Editoren (Mobile).
 
-Knöpfe: Checkbox, Listenpunkt, Einrücken, Ausrücken, ``#``. Dazu setzt Enter
+Knöpfe: Checkbox, Listenpunkt, Einrücken, Ausrücken, ``#`` (mit ``tag_picker``:
+Popup mit verwendeten Tags, W7). Dazu setzt Enter
 in einem Listenpunkt/Todo die Liste fort bzw. beendet sie. Die Textlogik
 steckt UI-neutral in ``app.text_tools`` und ``app.list_editing``; hier geht es
 nur um Flet:
@@ -29,27 +30,34 @@ nur um Flet:
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable
 from typing import Callable
 
 import flet as ft
 
 from ...app.list_editing import continue_list, shift_item
-from ...app.text_tools import index_to_utf16, insert_tag, toggle_list, toggle_todo, utf16_to_index
+from ...app.text_tools import index_to_utf16, insert_tag, insert_tag_name, toggle_list, toggle_todo, utf16_to_index
 
 Tool = Callable[[str, int | None, int | None], tuple[str, int | None, int | None]]
+#: Öffnet den Tag-Picker: ``(Vorbelegung, on_pick)``; ``on_pick`` erhält den Namen ohne ``#``.
+TagPicker = Callable[[str, Callable[[str], Awaitable[None]]], object]
 
 # Auswahl-Ereignisse ohne Nutzerursache; kurz nach einer eigenen Änderung sind das Echos.
 PROGRAMMATIC = (None, ft.TextSelectionChangeCause.UNKNOWN)
 QUIET_SECONDS = 1.0
 
 
-def editor_toolbar(field: ft.TextField, indent_width: int = 4) -> ft.Row:
+def editor_toolbar(field: ft.TextField, indent_width: int = 4, tag_picker: TagPicker | None = None) -> ft.Row:
     """Knopfleiste über einem Notiz-Editor; belegt auch Enter (Listen fortsetzen).
 
     Args:
         field: Mehrzeiliges Textfeld; ``on_selection_change`` und ``on_change``
             werden hier belegt.
         indent_width: Leerzeichen je Einrückungsebene (Einstellung, 2 oder 4).
+        tag_picker: Mit Picker öffnet ``#`` das Popup (Vorbelegung = markierter
+            Text); die gewählte Stelle wird beim Tipp festgehalten und der Tag
+            über ``text_tools.insert_tag_name`` eingefügt. Ohne Picker (Tests,
+            Desktop) gilt ``insert_tag``.
 
     Returns:
         Eine Zeile mit fünf Symbolknöpfen.
@@ -105,11 +113,25 @@ def editor_toolbar(field: ft.TextField, indent_width: int = 4) -> ft.Row:
             await run(tool)
         return ft.IconButton(icon=icon, tooltip=tooltip, on_click=click)
 
+    async def pick_tag(_e) -> None:
+        text, start, end = field.value or "", state["start"], state["end"]
+        initial = text[start:end].strip() if start is not None and end is not None and start != end else ""
+
+        async def chosen(name: str) -> None:
+            current = field.value or ""
+            new_text, new_start, new_end = insert_tag_name(current, start, end, name)
+            if new_start is not None and new_end is not None and new_text != current:
+                await show(new_text, new_start, new_end)
+
+        tag_picker(initial, chosen)  # type: ignore[misc]
+
     field.on_selection_change = remember
     field.on_change = changed
+    tag_button = ft.IconButton(icon=ft.Icons.TAG, tooltip="Tag (#)", on_click=pick_tag) if tag_picker \
+        else button(ft.Icons.TAG, "Tag (#)", insert_tag)
     return ft.Row([
         button(ft.Icons.CHECK_BOX_OUTLINED, "Checkbox", toggle_todo),
         button(ft.Icons.FORMAT_LIST_BULLETED, "Listenpunkt", toggle_list),
         button(ft.Icons.FORMAT_INDENT_INCREASE, "Einrücken", lambda t, s, e: shift_item(t, s, e, 1, indent_width)),
         button(ft.Icons.FORMAT_INDENT_DECREASE, "Ausrücken", lambda t, s, e: shift_item(t, s, e, -1, indent_width)),
-        button(ft.Icons.TAG, "Tag (#)", insert_tag)], spacing=0)
+        tag_button], spacing=0)

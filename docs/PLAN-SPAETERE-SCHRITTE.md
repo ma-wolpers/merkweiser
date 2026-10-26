@@ -995,6 +995,7 @@ Jede Phase: fetch/pull → Code → Tests → `tools/code_lines.py` → Doku →
   - Liste mit `ListTile` „#name“ und Anzahl.
   - Bei gültigem neuen Namen (`tag_from_input`) oben „#x neu verwenden“.
   - Klick → `insert_tag_name` → `show()` → `pop_dialog()` (schließt nur das Popup).
+    *Abweichung bei der Umsetzung:* erst `pop_dialog()`, dann einfügen und `show()`, damit der Fokus sicher im Editor landet. Der Editortext enthält nur `\n` (CRLF kommt dort nicht vor); getestet wird Mehrzeiligkeit.
   - Ohne Picker bleibt `insert_tag`.
 - **Tests:**
   - `used_tags`: Anzahl == Suchtreffer, Schreibweise, Sortierung, Code wird ignoriert, Cache nach eigenem Schreiben und nach externer Änderung erneuert.
