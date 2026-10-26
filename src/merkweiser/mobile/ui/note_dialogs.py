@@ -16,6 +16,7 @@ Bearbeiten und Löschen adressieren die Notiz über ``NoteRef`` (Inhaltszeilen b
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from typing import TYPE_CHECKING, Awaitable, Callable
 
@@ -28,15 +29,16 @@ if TYPE_CHECKING:
     from .app import MobileApp
 
 
-def note_actions(app: "MobileApp", ref: NoteRef) -> ft.Control:
+def note_actions(app: "MobileApp", ref: NoteRef, extra: Sequence[ft.Control] = ()) -> ft.Control:
     """Knopfleiste „Bearbeiten“/„Löschen“ unter einer Notiz.
 
     Args:
         app: Die laufende App.
         ref: Adresse und Text der Notiz zum Zeitpunkt der Anzeige.
+        extra: Zusätzliche Knöpfe davor (nur die Notiz-Unterseite: „Notiz verschieben“).
 
     Returns:
-        Eine rechtsbündige Zeile mit zwei Symbolknöpfen.
+        Eine rechtsbündige Zeile mit den Symbolknöpfen.
     """
     async def edit(_e) -> None:
         app.page.show_dialog(_edit_dialog(app, ref))
@@ -44,7 +46,7 @@ def note_actions(app: "MobileApp", ref: NoteRef) -> ft.Control:
     async def delete(_e) -> None:
         app.page.show_dialog(_delete_dialog(app, ref))
 
-    return ft.Row([ft.IconButton(icon=ft.Icons.EDIT, on_click=edit, tooltip="Notiz bearbeiten"),
+    return ft.Row([*extra, ft.IconButton(icon=ft.Icons.EDIT, on_click=edit, tooltip="Notiz bearbeiten"),
                    ft.IconButton(icon=ft.Icons.DELETE_OUTLINE, on_click=delete, tooltip="Notiz löschen")],
                   alignment=ft.MainAxisAlignment.END)
 

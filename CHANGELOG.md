@@ -38,6 +38,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Zur Notiz eines Todos (Tab Todos):** Rechts an jedem Todo öffnet ein Knopf die ganze Originalnotiz auf einer eigenen Seite; Zurück führt zur Liste mit deinem Filter. Dort lässt sich die **ganze Notiz verschieben**: Am Zieltag wird sie mit genau einer Notiz gleichen Themas zusammengeführt, sonst als neue Notiz angelegt.
 - **Dringlichkeit als Ampel:** Der Stern am Todo schaltet jetzt farblos → gelb (dringend) → rot (sehr dringend) → farblos. Offene dringende Todos bekommen links eine farbige Leiste; Rot steht vor Gelb. In der Datei steht Rot als `==🔴Text==` (Obsidian hebt es hervor), Gelb wie bisher als `==Text==`.
 - **Wechsel nachtragen (Tab „Zeit“):** „Wechseln zu … …“ öffnet jetzt die Uhrzeit-Wahl (vorbelegt mit jetzt). So lässt sich ein vergessener Wechsel nachträglich eintragen – zu jeder Uhrzeit nach dem Beginn der laufenden Messung. Der kleine Knopf daneben wechselt wie bisher sofort. Eine Startzeit lässt sich bewusst nicht nachtragen.
 - **Morgen-Benachrichtigung (Android):** *Einstellungen → Benachrichtigungen* mit den offenen Todos des Tages und allen dringenden, Uhrzeit, Urlaub bis einschließlich, Vorplanung 7/14/30 Tage und abschaltbarer Eskalation der Folge-Erinnerungen; Anzeige der Android-Erlaubnis mit „Erlaubnis anfragen“. Antippen der Benachrichtigung öffnet den Tab „Tag“ mit heute.

@@ -14,6 +14,8 @@ Seiten:
   Änderungen bzw. die Änderungen einer Datei mit „Rückgängig“ (``backup_view``).
 * ``taetigkeiten`` – im Tab „Zeit“ (W6): Tätigkeiten verwalten (``time_view``).
 * ``benachrichtigungen`` – unter Einstellungen (W5, ``notify_view``).
+* ``notiz`` – im Tab „Todos“ (W7): die ganze Notiz eines Todos, frisch
+  aufgelöst, mit „Notiz verschieben“; Zurück führt zur Liste mit Filter.
 """
 
 from __future__ import annotations
@@ -22,12 +24,13 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.nav import PageRef
+from ...app.nav import PageRef, parse_note_arg
 from ...app.ordering import by_rank, note_rank
 from ...core.query import Filter
 from . import backup_view, conflict_view, time_view
 from .duplicate_view import duplicate_controls
 from .interrupted_view import interrupted_controls
+from .move_dialog import show_note_move_dialog
 from .note_view import note_card
 from .notify_view import notify_page
 from .tabs import date_button
@@ -105,8 +108,41 @@ def notifications_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
     return [page_header(app, "Benachrichtigungen"), *notify_page(app, _arg)]
 
 
+def note_page(app: "MobileApp", arg: str) -> list[ft.Control]:
+    """Notiz-Unterseite: die ganze Notiz, die das Todo enthält (W7).
+
+    Die Notiz wird bei jedem Aufbau frisch aus der Datei aufgelöst
+    (``NotesService.note_of``). Ist das nicht eindeutig möglich, erscheint ein
+    Hinweis – es wird nie eine andere Notiz gezeigt.
+
+    Args:
+        app: Die laufende App.
+        arg: ``nav.note_arg`` des Todos.
+
+    Returns:
+        Kopfzeile und Notizkarte (mit Datum und „Notiz verschieben“) bzw. Hinweis.
+    """
+    controls: list[ft.Control] = [page_header(app, "Notiz")]
+    target = parse_note_arg(arg)
+    found = app.service.note_of(target) if target is not None else None
+    if target is None or found is None:
+        controls.append(ft.Text("Diese Notiz hat sich inzwischen geändert oder ist nicht mehr eindeutig "
+                                "auffindbar. Bitte zurück zur Liste."))
+        return controls
+    doc, note = found
+    day = app.service.day_of(target.relpath)
+
+    def extra(ref) -> list[ft.Control]:
+        async def move(_e) -> None:
+            show_note_move_dialog(app, ref, after=app.go_back)
+        return [ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="Notiz verschieben")]
+
+    card = note_card(app, target.relpath, doc, note, date_button(app, day) if day else None, extra)
+    return controls + ([card] if card is not None else [ft.Text("Diese Notiz ist leer.")])
+
+
 BUILDERS = {"tag": tag_page, "konflikte": conflicts_page, "backups": backups_page, "backup_datei": backup_file_page,
-            "taetigkeiten": activities_page, "benachrichtigungen": notifications_page}
+            "taetigkeiten": activities_page, "benachrichtigungen": notifications_page, "notiz": note_page}
 
 
 def build_page(app: "MobileApp", page: PageRef) -> list[ft.Control]:

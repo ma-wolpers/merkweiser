@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 4: Notiz-Unterseite
+
+- `nav.note_arg`/`parse_note_arg` (JSON) als einzige Kodierung; `NotesService.note_of` löst das Todo frisch auf (gleiche Zeile mit gleichem Text, sonst eindeutige Suche) und liefert sonst `None` → Hinweis, nie eine falsche Notiz.
+- `pages.note_page` mit „Notiz verschieben“ (nur dort: `note_card(…, extra)` → `note_actions(…, extra)`); `todo_line(…, open_note)` nur im Tab „Todos“.
+- Tests: Roundtrip/ungültige Argumente, Knopf nur im Tab „Todos“, ganze Notiz und Verschieben-Knopf nur auf der Seite, verschobene Zeile → richtige Notiz, doppelte Zeile/kaputtes Argument → Hinweis, Verschieben führt zurück, Filter bleibt über Hin und Zurück erhalten.
+
 ## 2026-10-26 – W7 Phase 3: ganze Notiz verschieben (Core, Service, Dialog)
 
 - `note_ops.find_note` öffentlich (liefert `ParsedNote`) statt `_find_note`; `move_plan.plan_note_move` und der Fall „alleiniges Todo“ teilen `_note_plan` → identisches Manifest im Modus `notiz`, Recovery unverändert.

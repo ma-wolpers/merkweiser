@@ -15,7 +15,7 @@ import flet as ft
 
 from ...app.interrupted import open_issue_count
 from ...app.list_editing import INDENT_WIDTHS
-from ...app.nav import PageRef
+from ...app.nav import PageRef, note_arg
 from ...app.ordering import by_rank, note_rank, todo_groups
 from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
@@ -170,9 +170,13 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
 
 
 def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
-    """Ein Treffer mit Datum und Kontext; Todos sind abhakbar."""
+    """Ein Treffer mit Datum und Kontext; Todos sind abhakbar und öffnen per Knopf ihre Notiz (W7)."""
+    def open_note() -> None:
+        app.open_page(PageRef("notiz", note_arg(row.target)))
+
     head = ft.Text(f"{row.day} · {row.context}" if row.context else row.day, size=11)
-    body = todo_line(app, row.text, row.done, row.urgency, row.target) if row.done is not None else ft.Text(row.text)
+    body = todo_line(app, row.text, row.done, row.urgency, row.target, open_note) if row.done is not None \
+        else ft.Text(row.text)
     return ft.Column([head, body], spacing=0)
 
 

@@ -20,7 +20,10 @@ Regeln:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+
+from ..core.patch import Target
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,36 @@ class PageRef:
 
     kind: str
     arg: str = ""
+
+
+def note_arg(target: Target) -> str:
+    """Argument der Unterseite ``notiz`` für das Todo an ``target`` (einzige Kodierung, W7).
+
+    Args:
+        target: Adresse des Todos (Datei, Zeile, erwarteter Text).
+
+    Returns:
+        JSON ``[relpath, zeile, text]``; robust gegen beliebige Zeichen im Text.
+    """
+    return json.dumps([target.relpath, target.line_no, target.expected_text], ensure_ascii=False)
+
+
+def parse_note_arg(arg: str) -> Target | None:
+    """Liest das Argument von ``note_arg`` zurück (einzige Dekodierung).
+
+    Args:
+        arg: ``PageRef.arg``.
+
+    Returns:
+        Das Target oder ``None`` bei ungültigem Argument (die Seite zeigt dann einen Hinweis).
+    """
+    try:
+        relpath, line_no, text = json.loads(arg)
+    except (ValueError, TypeError):
+        return None
+    if not (isinstance(relpath, str) and isinstance(line_no, int) and isinstance(text, str)) or line_no < 0:
+        return None
+    return Target(relpath, line_no, text)
 
 
 class Nav:

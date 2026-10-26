@@ -39,7 +39,7 @@ from ..core.move_plan import MoveContext, move_context, tag_for_move
 from ..core.tags import tag_from_input
 from ..core.note_ops import NoteNotFoundError, append_note, delete_note, replace_note_text
 from ..core.ops import OpStore
-from ..core.patch import StaleTargetError, Target
+from ..core.patch import StaleTargetError, Target, resolve_line
 from ..core.query import Filter, Hit, search
 from ..core.recovery import RecoveryReport, recover
 from ..core.resolve import ResolveOutcome, manual_only_paths, recover_resolves, resolve
@@ -423,6 +423,25 @@ class NotesService:
             cf.write_sidecar(self.data, rel, cf.sha1(ours), relpath, base.id, cf.sha1(planned_raw))
             self.rescan()
             return WriteResult(base.id, "CONFLICTED", [rel])
+
+    def note_of(self, target: Target) -> tuple[Document, ParsedNote] | None:
+        """Die Notiz, die das Todo an ``target`` enthält – frisch aufgelöst (Notiz-Unterseite, W7).
+
+        Gleiche Zeile mit gleichem Text, sonst eindeutige Suche (``patch.resolve_line``);
+        nie eine andere Notiz.
+
+        Args:
+            target: Adresse des Todos aus der Liste.
+
+        Returns:
+            ``(Dokument, Notiz)`` oder ``None``, wenn Datei fehlt, die Zeile nicht
+            (mehr) eindeutig ist oder dort kein Listenpunkt beginnt.
+        """
+        try:
+            doc = self.cache.get(target.relpath)
+            return doc, doc.item_at(resolve_line(doc.source, target))[0]
+        except (FileNotFoundError, StaleTargetError):
+            return None
 
     def move_info(self, target: Target) -> MoveContext:
         """Kontext eines Todos vor dem Verschieben (alleiniges Todo, Überpunkt, Projekte), frisch gelesen.

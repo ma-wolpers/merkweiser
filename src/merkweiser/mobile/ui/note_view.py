@@ -19,13 +19,14 @@ sind fett in der Primärfarbe und öffnen per Tipp die Tag-Seite
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 import flet as ft
 
 from ...app.ordering import urgent_first
 from ...app.tag_spans import text_parts
-from ...app.views import Row, next_urgency, note_ref, note_rows
+from ...app.views import NoteRef, Row, next_urgency, note_ref, note_rows
 from ...core.document import Document, ParsedNote
 from ...core.inline import Urgency, strip_urgency
 from .note_dialogs import note_actions
@@ -41,7 +42,8 @@ TAG_STYLE = ft.TextStyle(weight=ft.FontWeight.W_600, color=ft.Colors.PRIMARY)
 
 
 def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
-              header: ft.Control | None = None) -> ft.Control | None:
+              header: ft.Control | None = None,
+              extra: Callable[[NoteRef], list[ft.Control]] | None = None) -> ft.Control | None:
     """Eine ganze Notiz als Karte: Zeilen, Aktionsleiste (bearbeiten, löschen), optional ein Kopf.
 
     Genutzt vom Tab „Tag“ und von der Suche; die Targets stammen immer aus dem
@@ -53,6 +55,8 @@ def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
         doc: Dokument der Datei.
         note: Die Notiz.
         header: Optionaler Kopf über der Notiz (z. B. das Datum in der Suche).
+        extra: Zusätzliche Aktionen aus der Notizadresse; nur die Notiz-Unterseite
+            setzt sie („Notiz verschieben“, W7).
 
     Returns:
         Die Karte oder ``None`` bei einer Notiz ohne anzeigbare Zeilen.
@@ -61,7 +65,7 @@ def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
     ref = note_ref(relpath, doc, note)
     if not rows or ref is None:
         return None
-    column = ([header] if header is not None else []) + [note_row(app, r) for r in rows] + [note_actions(app, ref)]
+    column = ([header] if header is not None else []) + [note_row(app, r) for r in rows] + [note_actions(app, ref, extra(ref) if extra else ())]
     return ft.Container(content=ft.Column(column), padding=8, border_radius=8, bgcolor=ft.Colors.SURFACE_CONTAINER)
 
 
@@ -93,7 +97,8 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
     return ft.Container(content=ft.Column([head, *continuation], spacing=0), padding=pad)
 
 
-def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, target) -> ft.Control:
+def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, target,
+              open_note: Callable[[], None] | None = None) -> ft.Control:
     """Todo mit Checkbox, antippbarem Text und Schnellaktionen (Ampel-Stern, verschieben).
 
     Der Stern zeigt die Stufe (farblos, gelb, rot; ``style.URGENCY_STYLE``) und
@@ -106,9 +111,11 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, 
         done: Erledigt-Status.
         urgency: Angezeigte Dringlichkeitsstufe.
         target: Adresse des Todos.
+        open_note: Nur im Tab „Todos“: öffnet die Unterseite mit der ganzen Notiz
+            (zusätzlicher Knopf rechts, W7).
 
     Returns:
-        Eine Zeile mit Markerspalte, Text und zwei Symbolknöpfen.
+        Eine Zeile mit Markerspalte, Text und den Symbolknöpfen.
     """
     async def set_done(value: bool) -> None:
         await app.act(lambda s: s.set_done(target, value))
@@ -130,6 +137,8 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, 
     line = _marked(checkbox, ft.GestureDetector(content=rich_text(app, strip_urgency(text)), on_tap=tap), [
         ft.IconButton(icon=icon, icon_color=color, on_click=cycle, tooltip=tooltip),
         ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
+        *([ft.IconButton(icon=ft.Icons.ARTICLE_OUTLINED, on_click=lambda _e: open_note(), tooltip="Notiz öffnen")]
+          if open_note else []),
     ])
     bar = color if urgency and done is False else None
     return ft.Container(content=line, border=ft.Border.only(left=ft.BorderSide(URGENCY_BAR, bar)) if bar else None)
