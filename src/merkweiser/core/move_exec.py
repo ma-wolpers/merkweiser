@@ -1,4 +1,4 @@
-"""Move-Protokoll: Todo auf ein anderes Datum verschieben (PLAN.md, „Move-Protokoll“).
+"""Move-Protokoll: Todo bzw. ganze Notiz auf ein anderes Datum verschieben (PLAN.md, „Move-Protokoll“).
 
 Ein Move ist eine Eltern-Op ``move`` (Manifest: Quelle, Ziel, exakter
 Quellblock ``B``, einzufügende Zeilen ``B'``). Reihenfolge: **erst Ziel, dann
@@ -22,7 +22,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .document import parse_document
-from .move_plan import NEW, MovePlan, insert_moved, moved_chunks, plan_move, plan_target, remove_moved_source
+from .move_plan import (NEW, MovePlan, insert_moved, moved_chunks, plan_move, plan_note_move, plan_target,
+                        remove_moved_source)
 from .ops import Op, OpStore
 from .patch import BlockTarget, StaleTargetError, Target, resolve_block
 from .safe_write import Writer
@@ -63,7 +64,49 @@ def move_todo(writer: Writer, store: OpStore, src_rel: str, target: Target, dst_
         StaleTargetError: Todo nicht eindeutig auffindbar (nichts verändert).
     """
     source = parse_document((writer.root / src_rel).read_bytes(), prefix)
-    plan = plan_move(source, target)
+    return _start(writer, store, src_rel, plan_move(source, target), dst_rel, prefix)
+
+
+def move_note(writer: Writer, store: OpStore, src_rel: str, original: tuple[str, ...], dst_rel: str,
+              prefix: str) -> MoveResult:
+    """Verschiebt eine ganze Notiz in eine andere Tagesdatei (W7, „Notiz verschieben“).
+
+    Gleiches Protokoll und gleiches Manifest wie ``move_todo`` im Modus ``notiz``:
+    am Zieltag Zusammenführen mit genau einer gleichen Themennotiz, sonst neue
+    Notiz; erst Ziel, dann Quelle; Wiederaufnahme über ``resume_move``.
+
+    Args:
+        writer: Writer.
+        store: Op-Store.
+        src_rel: Quelldatei.
+        original: Inhaltszeilen der Notiz beim Öffnen.
+        dst_rel: Zieldatei (aus ``vault.write_target``).
+        prefix: Projekt-Präfix.
+
+    Returns:
+        Ergebnis; ``INCOMPLETE`` mit Hinweis, wenn die Quelle nicht nachweisbar ist.
+
+    Raises:
+        NoteNotFoundError: Notiz nicht eindeutig auffindbar (nichts verändert).
+    """
+    source = parse_document((writer.root / src_rel).read_bytes(), prefix)
+    return _start(writer, store, src_rel, plan_note_move(source, src_rel, original), dst_rel, prefix)
+
+
+def _start(writer: Writer, store: OpStore, src_rel: str, plan: MovePlan, dst_rel: str, prefix: str) -> MoveResult:
+    """Wählt das Ziel einmalig, legt die Move-Op mit Manifest an und führt sie aus.
+
+    Args:
+        writer: Writer.
+        store: Op-Store.
+        src_rel: Quelldatei.
+        plan: Geplanter Move (Todo oder ganze Notiz).
+        dst_rel: Zieldatei.
+        prefix: Projekt-Präfix.
+
+    Returns:
+        Ergebnis des Protokolls.
+    """
     dst_path = writer.root / dst_rel
     ziel = plan_target(parse_document(dst_path.read_bytes() if dst_path.exists() else b"", prefix), plan)
     op = store.create("move", {"src": src_rel, "dst": dst_rel, "block": list(plan.source_block.expected_lines),
@@ -118,7 +161,7 @@ def _continue(writer: Writer, store: OpStore, op: Op, prefix: str, force_source:
     same_file = m["src"] == m["dst"]
     target_state = child_state(store, op.id, m["dst"])
     if target_state == "CONFLICTED":
-        return _incomplete(op, "Zieldatei war gleichzeitig in Bearbeitung – verschobenes Todo steht in einer Konfliktdatei")
+        return _incomplete(op, f"Zieldatei war gleichzeitig in Bearbeitung – {_what(plan)} steht in einer Konfliktdatei")
     if target_state not in DONE_LIKE:
         try:
             _apply(writer, op, m["dst"], prefix, "ziel", lambda doc: _insert(doc, plan, m, same_file))
@@ -136,8 +179,24 @@ def _continue(writer: Writer, store: OpStore, op: Op, prefix: str, force_source:
     try:
         _apply(writer, op, m["src"], prefix, "quelle", lambda doc: remove_moved_source(doc, plan))
     except StaleTargetError:
-        return _incomplete(op, "Todo steht jetzt in beiden Dateien (Quelle wurde inzwischen verändert)")
+        return _incomplete(op, f"{_what(plan, capital=True)} steht jetzt in beiden Dateien "
+                               "(Quelle wurde inzwischen verändert)")
     return _done(op)
+
+
+def _what(plan: MovePlan, capital: bool = False) -> str:
+    """Bezeichnung des verschobenen Inhalts für Hinweise.
+
+    Args:
+        plan: Der Plan.
+        capital: Satzanfang.
+
+    Returns:
+        „verschobene Notiz“/„Notiz“ im Modus ``notiz``, sonst „verschobenes Todo“/„Todo“.
+    """
+    if plan.mode == "notiz":
+        return "Notiz" if capital else "verschobene Notiz"
+    return "Todo" if capital else "verschobenes Todo"
 
 
 def _manifest_plan(manifest: dict) -> MovePlan:

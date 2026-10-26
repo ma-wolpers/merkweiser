@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from .document import Document
+from .document import Document, ParsedNote
 from .patch import LineEdit, StaleTargetError, UnsupportedEncodingError, apply_edits
 from .source import Line, SourceText, split_lines
 
@@ -76,7 +76,7 @@ def replace_note_text(doc: Document, original: tuple[str, ...], text: str) -> by
         NoteNotFoundError: Notiz nicht eindeutig als ganze Notiz auffindbar.
         ValueError: leerer Text (zum Löschen gibt es ``delete_note``).
     """
-    note = _find_note(doc, original)
+    note = find_note(doc, original).note
     assert note.content is not None
     return apply_edits(doc.source, [LineEdit(note.content.start, note.content.end, _content_lines(text))])
 
@@ -99,7 +99,7 @@ def delete_note(doc: Document, original: tuple[str, ...]) -> bytes:
     Raises:
         NoteNotFoundError: Notiz nicht eindeutig auffindbar.
     """
-    note = _find_note(doc, original)
+    note = find_note(doc, original).note
     notes = [n.note.span for n in doc.notes]
     position = next(i for i, span in enumerate(notes) if span == note.span)
     body_start = doc.layout.frontmatter.end if doc.layout.frontmatter else 0
@@ -112,15 +112,18 @@ def delete_note(doc: Document, original: tuple[str, ...]) -> bytes:
     return apply_edits(doc.source, [LineEdit(start, end, ())])
 
 
-def _find_note(doc: Document, original: tuple[str, ...]):
+def find_note(doc: Document, original: tuple[str, ...]) -> ParsedNote:
     """Löst eine Notiz über ihre Inhaltszeilen auf (eindeutig und als ganze Notiz).
+
+    Einzige Quelle für „Notiz wiederfinden“: Bearbeiten, Löschen und
+    „Notiz verschieben“ (``move_plan.plan_note_move``) nutzen sie gemeinsam.
 
     Args:
         doc: Aktuelles Dokument.
         original: Inhaltszeilen zum Planungszeitpunkt.
 
     Returns:
-        Die passende ``NoteSpan``.
+        Die passende Notiz.
 
     Raises:
         NoteNotFoundError: kein oder mehrere Vorkommen, oder das Vorkommen ist
@@ -134,7 +137,7 @@ def _find_note(doc: Document, original: tuple[str, ...]):
     for parsed in doc.notes:
         content = parsed.note.content
         if content and (content.start, content.end) == (hits[0], hits[0] + size):
-            return parsed.note
+            return parsed
     raise NoteNotFoundError("Notizgrenzen haben sich verändert")
 
 

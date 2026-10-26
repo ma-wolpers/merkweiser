@@ -33,7 +33,7 @@ from dataclasses import dataclass
 from .document import Document, ParsedNote, parse_document
 from .edits import tagged_line, with_tags
 from .inline import find_tags
-from .note_ops import append_note, delete_note
+from .note_ops import append_note, delete_note, find_note
 from .outline import Node, NodeKind, Outline
 from .patch import BlockTarget, LineEdit, StaleTargetError, Target, apply_edits, resolve_block, resolve_line
 from .topics import find_topic_note, is_empty_topic, mergeable, topic_key, topic_line
@@ -81,10 +81,7 @@ def plan_move(doc: Document, target: Target) -> MovePlan:
     topic = topic_line(doc, note)
     key = topic_key(topic) if mergeable(topic) else None
     if is_sole_todo(note, node):
-        content = note.note.content
-        assert content is not None  # Notizen haben seit 2026-10-21 immer Inhalt
-        lines = tuple(doc.line_text(no) for no in range(content.start, content.end))
-        return MovePlan(BlockTarget(target.relpath, content.start, lines), lines, "notiz", None, key)
+        return _note_plan(doc, target.relpath, note)
     end = note.outline.subtree_end(node)
     lines = tuple(doc.line_text(no) for no in range(line_no, end + 1))
     prefix = lines[0][: len(lines[0]) - len(lines[0].lstrip(" \t"))]
@@ -94,6 +91,46 @@ def plan_move(doc: Document, target: Target) -> MovePlan:
     names = [name for name in _inherited_tag_names(note, node.index) if name.casefold() not in present]
     dedented[0] = with_tags(dedented[0], names)
     return MovePlan(BlockTarget(target.relpath, line_no, lines), tuple(dedented), "todo", written, key)
+
+
+def plan_note_move(doc: Document, relpath: str, original: tuple[str, ...]) -> MovePlan:
+    """Plant das Verschieben einer **ganzen** Notiz („Notiz verschieben“, W7).
+
+    Ergibt denselben Plan wie der Fall „alleiniges Todo“ von ``plan_move``
+    (Modus ``notiz``); Zielwahl, Zusammenführen und Wiederaufnahme laufen damit
+    über denselben, getesteten Weg des Move-Protokolls.
+
+    Args:
+        doc: Aktuelles Dokument der Quelldatei.
+        relpath: Quelldatei.
+        original: Inhaltszeilen der Notiz beim Öffnen (``NoteRef.original``).
+
+    Returns:
+        Der Plan.
+
+    Raises:
+        NoteNotFoundError: Notiz nicht (mehr) eindeutig als ganze Notiz vorhanden.
+    """
+    return _note_plan(doc, relpath, find_note(doc, original))
+
+
+def _note_plan(doc: Document, relpath: str, note: ParsedNote) -> MovePlan:
+    """Plan „ganze Notiz“: Block = Notizinhalt, unverändert verschoben, Themenschlüssel zum Zusammenführen.
+
+    Args:
+        doc: Dokument.
+        relpath: Quelldatei.
+        note: Die Notiz.
+
+    Returns:
+        ``MovePlan`` im Modus ``notiz``.
+    """
+    topic = topic_line(doc, note)
+    key = topic_key(topic) if mergeable(topic) else None
+    content = note.note.content
+    assert content is not None  # Notizen haben seit 2026-10-21 immer Inhalt
+    lines = tuple(doc.line_text(no) for no in range(content.start, content.end))
+    return MovePlan(BlockTarget(relpath, content.start, lines), lines, "notiz", None, key)
 
 
 def is_sole_todo(note: ParsedNote, node: Node) -> bool:

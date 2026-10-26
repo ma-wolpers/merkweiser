@@ -34,7 +34,7 @@ from ..core.inline import Urgency
 from ..core.backups import recover_undos
 from ..core.duplicates import recover_duplicates
 from ..core.time_ops import recover_time_ops
-from ..core.move_exec import MoveResult, move_todo, recover_moves
+from ..core.move_exec import MoveResult, move_note, move_todo, recover_moves
 from ..core.move_plan import MoveContext, move_context, tag_for_move
 from ..core.tags import tag_from_input
 from ..core.note_ops import NoteNotFoundError, append_note, delete_note, replace_note_text
@@ -50,6 +50,7 @@ from ..core.watch import Changes, State, observe, poll
 from ..ports.clock import Clock
 from .settings import Settings
 from .time_state import load_state
+from .views import NoteRef
 
 MAX_REPLANS = 3
 READ_ONLY_GUARANTEE = "keine (schreibgeschützt)"
@@ -463,10 +464,8 @@ class NotesService:
             ProjectConflictError: Projekttag würde ein Projekt überschreiben; nichts geändert.
             StaleTargetError: Todo nicht eindeutig auffindbar (vor dem Tag-Schreiben).
         """
-        if self.day_of(target.relpath) == day:
-            raise SameDayMoveError(f"Das Todo steht schon am {day:%d.%m.%Y}.")
+        dst = self._move_target(target.relpath, day, "Das Todo")
         prefix = self.settings.project_prefix
-        dst = write_target(self.index, self.pattern, day)
         if tag is not None:
             name = tag_from_input(tag.name, tag.project, prefix)
             if tag.project and (conflict := self.move_info(target).project_conflict(name.split("/", 1)[1])):
@@ -484,6 +483,53 @@ class NotesService:
         if tag is not None and result.state != "DONE" and not result.hint.startswith("Tag gesetzt"):
             result = MoveResult(result.op_id, result.state, f"Tag gesetzt, Verschieben fehlgeschlagen: {result.hint}")
         return result
+
+    @_writes
+    def move_note(self, ref: NoteRef, day: date) -> MoveResult:
+        """Ganze Notiz auf ``day`` verschieben (W7, nur von der Notiz-Unterseite).
+
+        Gleiches Protokoll wie ``move_todo`` (``move_exec.move_note``): am Zieltag
+        Zusammenführen mit genau einer gleichen Themennotiz, sonst neue Notiz.
+
+        Args:
+            ref: Adresse der Notiz beim Öffnen (``views.note_ref``).
+            day: Zieldatum.
+
+        Returns:
+            Ergebnis des Move-Protokolls.
+
+        Raises:
+            SameDayMoveError: ``day`` ist das Datum der Quelldatei; nichts geändert.
+            NoteNotFoundError: Notiz inzwischen verändert bzw. doppelt; nichts geändert.
+        """
+        dst = self._move_target(ref.relpath, day, "Die Notiz")
+        try:
+            return move_note(self.writer, self.store, ref.relpath, ref.original, dst, self.settings.project_prefix)
+        except NoteNotFoundError as exc:
+            raise NoteNotFoundError(f"Die Notiz hat sich inzwischen geändert oder steht doppelt in der Datei – "
+                                    f"nichts verschoben ({exc}).") from exc
+        finally:
+            for path in (ref.relpath, dst):
+                self.cache.forget(path)
+            self.rescan()
+
+    def _move_target(self, relpath: str, day: date, what: str) -> str:
+        """Gemeinsame Vorbedingung für Todo und Notiz: anderes Datum, Zieldatei des Tages.
+
+        Args:
+            relpath: Quelldatei.
+            day: Zieldatum.
+            what: „Das Todo“ bzw. „Die Notiz“ für die Meldung.
+
+        Returns:
+            Zieldatei (``vault.write_target``).
+
+        Raises:
+            SameDayMoveError: ``day`` ist das Datum der Quelldatei.
+        """
+        if self.day_of(relpath) == day:
+            raise SameDayMoveError(f"{what} steht schon am {day:%d.%m.%Y}.")
+        return write_target(self.index, self.pattern, day)
 
     def _tag_for_move(self, target: Target, name: str) -> Target:
         """Schreibt den Tag vor dem Verschieben und liefert das neu aufgelöste Target des Todos.

@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 3: ganze Notiz verschieben (Core, Service, Dialog)
+
+- `note_ops.find_note` öffentlich (liefert `ParsedNote`) statt `_find_note`; `move_plan.plan_note_move` und der Fall „alleiniges Todo“ teilen `_note_plan` → identisches Manifest im Modus `notiz`, Recovery unverändert.
+- `move_exec._start` gemeinsam für `move_todo`/`move_note`; Hinweise modusabhängig („Notiz steht jetzt in beiden Dateien …“).
+- `NotesService.move_note` und `_move_target` (gemeinsame Vorbedingung mit `move_todo`).
+- `move_dialog.day_dialog` mit Callback; `show_note_move_dialog`. Der Knopf erscheint in Phase 4 auf der Notiz-Unterseite.
+- Tests: neue Notiz, genau eine bzw. zwei gleiche Themennotizen, doppelte/geänderte Quelle (nichts geschrieben, keine Op), Absturz nach dem Ziel, geänderte Quelle → `INCOMPLETE` ohne Verlust, alle Absturzgrenzen.
+
 ## 2026-10-26 – W7 Phase 2: kein Tag-Dialog bei geerbtem Tag
 
 - `MoveContext.inherited_tags` (vorhandenes `_inherited_tag_names`) und `needs_tag_dialog`; `show_move_flow` fragt nur noch bei weiteren Todos **ohne** geerbten Tag.
