@@ -88,8 +88,9 @@ def test_filter_survives_the_round_trip_to_the_page(tmp_path: Path) -> None:
     mobile.settings = Settings(vault=str(root))
     asyncio.run(mobile.open_vault())
     asyncio.run(mobile._on_tab(SimpleNamespace(control=SimpleNamespace(selected_index=1))))
-    mobile._todo_filter = {"status": "alle", "tags": "schule", "oder": True}
+    chosen = {"status": "alle", "zeitraum": "beides", "tags": "schule", "oder": True}
+    mobile._todo_filter = dict(chosen)
     mobile.open_page(PageRef("notiz", note_arg(Target("2026-01-15.md", 2, "- [ ] Brief"))))
     assert mobile.pages.top().kind == "notiz"
     assert mobile.go_back() and mobile.pages.top() is None and mobile.pages.current == 1
-    assert mobile._todo_filter == {"status": "alle", "tags": "schule", "oder": True}
+    assert mobile._todo_filter == chosen

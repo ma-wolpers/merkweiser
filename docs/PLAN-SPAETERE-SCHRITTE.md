@@ -49,7 +49,7 @@ Danach folgen Schritt 7 und Schritt 9.
 
 ### W1 – Dringende Todos zuerst (nur Anzeige)
 - Dringend heißt `==…==`; erkannt über `inline.is_urgent` bzw. `Row.urgent`.
-- Gilt in **Todos**, **Suche** und im Tab **Tag**. Im Tab Tag (und in der Suche, die ganze Notizen zeigt) wird innerhalb jeder Notiz sortiert; die **Datei wird nie umsortiert**.
+- Gilt in **Todos**, **Suche** und im Tab **Tag**. *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* Der Tab „Todos“ zeigt standardmäßig keine zukünftigen Tage, hat Abschnitte und einen Filter-Knopf statt sichtbarer Filter (W7). Im Tab Tag (und in der Suche, die ganze Notizen zeigt) wird innerhalb jeder Notiz sortiert; die **Datei wird nie umsortiert**.
 - Die Sortierung ist **stabil**: Einträge gleicher Dringlichkeit behalten ihre Reihenfolge.
 - In Bäumen wird **je Geschwistergruppe** sortiert; ein Teilbaum bleibt an seinem Elternpunkt.
 - In der Suche stehen Notizkarten mit einem dringenden Treffer zuerst, sonst gilt die bisherige Reihenfolge (neueste zuerst). Gleiches gilt für die Tag-Seite (W2).

@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Tab Todos aufgeräumt:** Alle Filter (Status, Zeitraum, Tags, UND/ODER) liegen hinter einem Filter-Knopf; eine Zahl daran zeigt, wie viele vom Standard abweichen, daneben steht eine kurze Zusammenfassung. Neu ist der Zeitraum: *bis heute* (Standard), *ab morgen* oder *alle Tage*. Die Liste ist in Abschnitte mit Anzahl geteilt: „Sehr dringend“, „Zukünftig“, „Heute“, „Frühere Tage“. Der Filter gilt bis zum Schließen der App.
 - **Verschieben ohne Tag-Frage, wenn schon ein Tag da ist:** Erbt das Todo einen Tag von Thema oder Überpunkt, geht es direkt zur Datumswahl; der Tag wandert explizit mit. Der Knopf „Mit bestehendem Tag verschieben“ erscheint nur noch, wenn das Todo das gemeinsame Projekt selbst trägt.
 - **Tab Todos:** Oben stehen alle offenen roten Todos, dann die von heute, darunter die früheren Tage (je Abschnitt gelbe zuerst). Gelbe Todos früherer Tage stehen nicht mehr über den heutigen. Todos aus zukünftigen Tagen erscheinen nicht mehr.
 - **Morgen-Benachrichtigung:** Reihenfolge 🔥 rote Todos, dann die von heute (⭐ gelbe zuerst), dann gelbe früherer Tage; normale ältere und zukünftige Todos fehlen. Dringende sind fett, der Titel zählt sie, und bei einem roten Todo kommt die Benachrichtigung als Banner (wenn Android es zulässt).
@@ -21,6 +22,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Im Tab Todos erschien „Keine Todos.“ nie, auch wenn nichts passte.
 - Ein Todo wie `x = 1 ==` verlor in der Anzeige seine Gleichheitszeichen am Rand; jetzt wird nur eine echte Dringlichkeits-Markierung ausgeblendet.
 - Wechselte man die Tätigkeit nach Mitternacht, während die Messung noch vom Vortag lief, wurde die alte Zeit zwar eingetragen, die neue Messung startete aber nicht (Hinweis „anderswo beendet“).
 - Bei einem Sync-Konflikt zweier Fassungen mit YAML-Kopf (Frontmatter) wurden unterschiedliche Eigenschaften bisher beide übernommen, sodass doppelte Schlüssel und damit ungültiges YAML entstanden – auch über „Zusammenführen“. Jetzt wird der Kopf je Eigenschaft zusammengeführt: Gleiches einmal, Einseitiges übernommen, Widersprüchliches als Frage im Konfliktdialog (Abschnitt „Kopfbereich“). Zeiterfassungs-Minuten nehmen automatisch den größeren Wert; zwei laufende Messungen oder eine nur auf einem Gerät laufende Messung werden immer nachgefragt.

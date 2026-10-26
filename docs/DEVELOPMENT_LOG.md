@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 5: Todos-Tab mit Filter-Knopf und Abschnitten
+
+- Neu `app/todo_list.py` (UI-neutral, `DEFAULT_FILTER` als einzige Quelle; Tag-Parsing aus `tabs` hierher gezogen) und `mobile/ui/todo_filter.py` (Knopf mit Badge, Dialog auf einer Kopie).
+- `tabs.todos_view` nur noch Kopfzeile plus Abschnitte. Behoben: „Keine Todos.“ erschien nie (`[...] or [...]` mit immer nicht leerer Liste).
+- Filterzustände älterer Sitzungen ohne `zeitraum` werden ergänzt (`normalized`).
+- Tests: Standard ohne Zukunft, „ab morgen“/„alle Tage“, Status offen/erledigt/alle mit roten Todos (keines verschwindet oder doppelt), Tags, Anzahlen, Badge/Zusammenfassung mit ODER, Dialog Anwenden/Abbrechen/Zurücksetzen.
+
 ## 2026-10-26 – W7 Phase 4: Notiz-Unterseite
 
 - `nav.note_arg`/`parse_note_arg` (JSON) als einzige Kodierung; `NotesService.note_of` löst das Todo frisch auf (gleiche Zeile mit gleichem Text, sonst eindeutige Suche) und liefert sonst `None` → Hinweis, nie eine falsche Notiz.

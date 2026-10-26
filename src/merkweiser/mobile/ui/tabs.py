@@ -16,12 +16,14 @@ import flet as ft
 from ...app.interrupted import open_issue_count
 from ...app.list_editing import INDENT_WIDTHS
 from ...app.nav import PageRef, note_arg
-from ...app.ordering import by_rank, note_rank, todo_groups
-from ...app.views import HitRow, day_label, hit_rows
-from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
+from ...app.ordering import by_rank, note_rank
+from ...app.todo_list import DEFAULT_FILTER, changed_count, filter_summary, normalized, todo_sections
+from ...app.views import HitRow, day_label
+from ...core.query import Filter, TextMode, TextQuery
 from .date_pick import open_date_picker
 from .note_dialogs import new_note_dialog
 from .note_view import note_card, todo_line
+from .todo_filter import filter_button
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -141,32 +143,23 @@ def day_view(app: "MobileApp") -> list[ft.Control]:
 
 
 def todos_view(app: "MobileApp") -> list[ft.Control]:
-    """Todos bis heute mit Status- und Tag-Filter in der gemeinsamen Reihenfolge (``ordering.todo_groups``).
+    """Tab „Todos“ (W7): Filter-Knopf mit Zusammenfassung, darunter die Abschnitte.
 
-    Offene rote Todos stehen oben, danach die von heute und die früheren Tage,
-    je Abschnitt gelbe vor dem Rest (W7; Filter-Knopf und Abschnitte folgen in
-    Phase 5). Zukünftige Tage erscheinen nicht.
+    Abschnitte und Reihenfolge kommen aus ``todo_list.todo_sections`` (offene
+    rote zuerst, dann Zukünftig/Heute/Frühere Tage je nach Zeitraum, je
+    Abschnitt gelbe vorn). Der Filter gilt je Sitzung.
     """
-    state = app.__dict__.setdefault("_todo_filter", {"status": "offen", "tags": "", "oder": False})
-    status = ft.Dropdown(label="Status", value=state["status"], options=[
-        ft.DropdownOption(key="offen", text="offen"), ft.DropdownOption(key="erledigt", text="erledigt"),
-        ft.DropdownOption(key="alle", text="alle")])
-    tags = ft.TextField(label="Tags (Leerzeichen getrennt)", value=state["tags"])
-    either = ft.Switch(label="ODER statt UND", value=state["oder"])
-
-    async def apply(_e) -> None:
-        state.update(status=status.value or "offen", tags=tags.value or "", oder=bool(either.value))
-        app.render()
-
-    status.on_select = apply
-    tags.on_submit = apply
-    either.on_change = apply
-    today = app.service.clock.today()
-    criteria = Filter(nur_todos=True, status=StatusFilter(state["status"]), bis=today,
-                      tags=tuple(state["tags"].split()), tag_modus=TagMode.ODER if state["oder"] else TagMode.UND)
-    groups = todo_groups(hit_rows(app.service.search(criteria)), today)
-    rows = groups.red + groups.today + groups.past
-    return [status, tags, either, *[_hit(app, r) for r in rows]] or [ft.Text("Keine Todos.")]
+    state = normalized(app.__dict__.setdefault("_todo_filter", dict(DEFAULT_FILTER)))
+    head = ft.Row([filter_button(app, state, changed_count(state)),
+                   ft.Text(filter_summary(state), size=13, expand=True)], spacing=4)
+    sections = todo_sections(app.service, state)
+    controls: list[ft.Control] = [head]
+    if not sections:
+        controls.append(ft.Text("Keine Todos."))
+    for title, rows in sections:
+        controls += [ft.Divider(height=8), ft.Text(title, size=16, weight=ft.FontWeight.BOLD),
+                     *[_hit(app, row) for row in rows]]
+    return controls
 
 
 def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
