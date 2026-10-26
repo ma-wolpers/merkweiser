@@ -8,7 +8,8 @@ Verlassen der App alles für die nächsten Tage **vorgeplant**:
   dann gelbe früherer Tage). Titel mit Anzahl (``· 🔥 n · ⭐ m``, gezählt vor
   dem Kürzen), 🔥/⭐-Zeilen fett, Kanal ``hoch`` bei mindestens einem roten
   Todo, sonst ``normal``. Ohne passende Todos keine Inhaltsbenachrichtigung –
-  das sperrt die neutralen Erinnerungen nicht.
+  das sperrt die neutralen Erinnerungen nicht. GRENZE(Banner): Ob ``hoch`` als
+  Banner erscheint, entscheiden Android und die Kanal-Einstellungen des Nutzers.
 * **Folgetermine**: neutral („Öffne Merkweiser, um deine Todos zu sehen“).
   Mit Eskalation: 2. Termin ``normal``, 3. ``hoch``, ab dem 4. ``maximal``.
   Ohne Eskalation: alle ``normal`` mit gleichem Text, weiterhin täglich.

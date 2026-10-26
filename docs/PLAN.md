@@ -41,7 +41,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 9 | Spike S5 Benachrichtigungen | **bestanden** (2026-10-26, Bericht `spikes/s5/bericht.md`): Zustellung ohne Exakt-Alarme, 10–122 s Verspätung |
 | 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest in der App offen (Antippen öffnet „heute“) |
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
-| 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | in Arbeit (Phasen 0–6 erledigt; APK und Gerätetest offen) |
+| 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | umgesetzt (Phasen 0–7, signierte APK 2026-10-26); Gerätetest offen |
 
 ## Context
 

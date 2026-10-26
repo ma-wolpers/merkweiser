@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 7: APK
+
+- Signierte APK über `tools/build_apk.py` gebaut (Signatur per `apksigner` geprüft) und nach `SyncSpike/` gelegt; Kotlin-Änderungen (Fettdruck) kompilieren. `GRENZE(Banner)` in `notify_plan` ergänzt.
+- Stand: 689 Tests bestanden, 1 übersprungen; alle Dateien unter 300 Code-Zeilen (`tools/code_lines.py`).
+
 ## 2026-10-26 – W7 Phase 6: Tag-Picker im Editor
 
 - `app/tag_index.py` (`used_tags` mit Identitäts-Zwischenspeicher, `filter_tags`), `mobile/ui/tag_picker.py` (Popup im Dialogstapel), `text_tools.insert_tag_name` mit gemeinsamem `_append_at_line_end`; `editor_toolbar(…, tag_picker)` nur im mobilen Editor gesetzt, ohne Picker bleibt `insert_tag`.
