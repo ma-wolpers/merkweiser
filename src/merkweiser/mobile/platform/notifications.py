@@ -7,8 +7,10 @@ und alle Aufrufe tun nichts.
 
 Die App-APK enthält die Erweiterung (``[tool.flet.android] dependencies`` und
 ``[tool.flet.dev_packages]`` in ``pyproject.toml``, seit 2026-10-25 auf Wunsch
-vor Abschluss des Gerätetests). BAUSTELLE(S5): Gerätetest laut
-``spikes/s5/ANLEITUNG.md`` – er kann jetzt auch direkt in der App laufen.
+vor Abschluss des Gerätetests). Spike S5 ist bestanden (2026-10-26,
+``spikes/s5/bericht.md``). GRENZE(Zustellung): Alarme sind bewusst ungenau
+(kein Exakt-Alarm-Recht); gemessen kamen sie 10–122 s zu spät, im Doze bzw.
+bei selten genutzten Apps kann es länger dauern.
 """
 
 from __future__ import annotations

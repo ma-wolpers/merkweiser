@@ -569,6 +569,7 @@ Die Klasse `Ticker` (rein, testbar, in `mobile/ui/time_view.py` bzw. `app/ticker
   7. gemessene Verspätung gegenüber der Soll-Uhrzeit
 
   Das Ergebnis kommt nach `spikes/s5/bericht.md`.
+- **Ergebnis S5 (2026-10-26): bestanden.** Bericht in `spikes/s5/bericht.md`. Zustellung ohne Exakt-Alarm-Recht und ohne Akku-Ausnahme; gemessene Verspätung 10–122 s; zwei nahe Alarme wurden gebündelt. Laut Nutzer ebenfalls beobachtet: Antippen öffnet die App, Zustellung nach Neustart und bei Akku „Eingeschränkt“, Stornieren, Anzeige `denied`. Folge: keine Exakt-Alarme, keine Akku-Ausnahme anfragen.
 - **Fallback**, wenn die Erweiterung scheitert: eigenes Build-Template (`tool.flet.template.dir`) mit Kotlin-Receiver und Aufruf per pyjnius; gleiche Prüfliste.
 - **Genauigkeit:** Ohne Exact-Alarm-Recht (Android 14 standardmäßig verweigert) ist die Auslösung **ungenau**. Die Einstellungen sagen ehrlich: „gegen 7:00, kann sich bei Akkusparen verzögern“.
 - **Begründung des Horizonts:** Android kann Alarme einer App, die lange nicht geöffnet wurde, über App-Standby-Buckets („selten“ bzw. „eingeschränkt“) stark drosseln, bis zu einem Alarm je Tag oder weniger. Deshalb ist der Standard 14 Tage, das Maximum 30; mehr wäre nicht verlässlich. `GRENZE(Zustellung)`: Android garantiert keine Zustellung.
@@ -733,3 +734,305 @@ Gerätetests nach Spike-Prüfliste (Y10).
 **Entschieden (2026-10-25):** Bedienung mit Dialog-Knopf und Mini-Knopf (siehe UI). **Bewusst kein „Start nachtragen“:** Das Starten der Zeitmessung soll immer Teil der Arbeitsstart-Routine sein (Nutzerentscheidung) – also bitte auch später nicht nachrüsten. Nur Wechseln bekommt die Uhrzeit-Wahl; Stoppen mit Uhrzeit gibt es schon über „Messung abbrechen → Endzeit wählen“.
 
 **Umgesetzt (2026-10-25).** Dabei gefunden und behoben: Beim Wechsel in eine **andere** Tagesdatei (z. B. Start 22:00, Wechsel nach Mitternacht – auch beim Sofort-Wechsel) hielt die Zeitbuchung den im eigenen Stempel-Schritt entfernten Stempel für „anderswo beendet“ und setzte den neuen Stempel nicht.
+
+---
+
+## W7 – Ampel-Dringlichkeit, Todos-Tab, Notiz-Unterseite, ganze Notiz verschieben, Tag-Auswahl (Planung 2026-10-26, freigegeben)
+
+### Context
+
+Nutzerwünsche vom 2026-10-26:
+- **Dringlichkeit** als Ampel (☆ → gelb → rot → ☆).
+- **Todos-Tab:**
+  - Zukunft ausgeblendet, Abschnitte nach Zeit.
+  - Ein Filter-Knopf statt der vielen Steuerelemente.
+  - Knopf zur Originalnotiz (Unterseite), dort die ganze Notiz verschieben.
+- **Kein Tag-Dialog**, wenn das Todo schon einen Tag erbt.
+- **Tag-Picker** am #-Knopf im Editor.
+- **Hervorhebung** in der Morgen-Benachrichtigung.
+
+### Verbindliche Nutzerentscheidungen (unverändert erhalten)
+
+**Dringlichkeit:**
+- `==text==` = Gelb, `==🔴text==` = Rot.
+- Der Stern schaltet farblos → Gelb → Rot → farblos.
+- Markierung: farbiger Stern und linke farbige Leiste, kein Hintergrund, kein Etikett.
+- Bestehende `==…==` bleiben gültig und gelten als Gelb.
+
+**Reihenfolge (Todos-Tab und Benachrichtigung):**
+- 🔥 Sehr dringend → (Zukünftig) → Heute (⭐ → normal) → Vergangen (⭐ → normal).
+- Vergangene gelbe Todos stehen nie über heutigen normalen.
+
+**Benachrichtigung:**
+- Inhalt in dieser Reihenfolge:
+  1. Rote offene Todos bis einschließlich Auslösetag
+  2. Heute ⭐
+  3. Heute •
+  4. Vergangen ⭐
+- Keine normalen vergangenen und keine zukünftigen Todos.
+- 🔥 nur in der Benachrichtigung.
+- Titel mit Anzahl.
+- Fettdruck.
+- Kanal „hoch“ bei Rot.
+- Keine Exakt-Alarm-Berechtigung und keine Akku-Ausnahme. S5 ist bestanden; ungenaue Zustellung bleibt dokumentiert.
+
+**Todos-Tab:**
+- Zukunft standardmäßig aus.
+- Abschnitte mit Anzahl, klar getrennt, leere entfallen.
+- Filter-Knopf mit Badge und Dialog (Status, Zeitraum aktuell/zukünftig/beides, Tags, ODER).
+- Filter gilt je Sitzung.
+- Im Modus „beides“ steht „Zukünftig“ direkt unter „Sehr dringend“.
+- `UrgentFilter.JA` = Stufe ≥ 1.
+
+**Notiz:**
+- Öffnen-Knopf nur an Todos im Todos-Tab.
+- Die Unterseite zeigt die ganze Notiz; nur dort „Notiz verschieben“.
+- Am Zieltag: Genau eine passende Themennotiz wird zusammengeführt, sonst entsteht eine neue Notiz.
+
+**Tag-Dialog beim Verschieben:** entfällt bei geerbtem Tag; geerbte Tags werden wie bisher explizit ans Todo geschrieben.
+
+**Tag-Picker:**
+- Popup mit Regex-Suche, ungültige Regex → Teilstring plus Hinweis.
+- Häufigste Schreibweise; Sortierung nach Anzahl, dann alphabetisch.
+- Markierung: belegt die Suche vor; Umwandlung nur, wenn das markierte Wort am Zeilenende steht und gewählt wird.
+- Sonst kommt der Tag ans Zeilenende, nie doppelt.
+- Desktop und Tests behalten `insert_tag`.
+
+**Arbeitsweise:**
+- Vor jeder Phase `git fetch` + `pull --ff-only`.
+- Ein Commit je Phase auf main, nur eigene Änderungen, keine Attribution.
+- **Kein Push.**
+- Doku im selben Commit.
+- Keine Gerätedaten erfragen.
+
+### Klärungen am Code (statt neuer Architektur)
+
+| Frage | Befund im Code | Festlegung |
+|---|---|---|
+| Blau 1 Dringlichkeits-API | `inline.is_urgent` (bool), `ListItem.urgent` (Feld), `Hit.urgent` (Feld), `edits.set_urgent` | **Kanonisch:** `inline.Urgency` (IntEnum NONE=0, GELB=1, ROT=2) und `urgency_span(body) -> UrgencySpan \| None`. Daraus `urgency(body) -> Urgency` und `strip_urgency(body) -> str`. `is_urgent(body)` bleibt als dünner Wrapper (`urgency ≥ 1`). `ListItem.urgency` und `Hit.urgency` werden Felder; `urgent` wird bei beiden eine Property (≥ 1). |
+| Blau 2 Tag-Anzahl | `views.tag_check` meldet „#x gibt es schon (n Einträge)“ mit `len(search(Filter(tags=(x,))))` = Knoten mit **wirksamem** Tag | Diese Konvention gilt auch im Picker: Anzahl der Einträge mit wirksamem Tag, gleiche Zählweise wie `query.search` (implizite und leere Knoten zählen nicht). Test: Anzahl == `len(service.search(Filter(tags=(key,))))`. Schreibweise: häufigste explizite (`node.tags`). |
+| Blau 3 Titelanzahl | – | Gesamtzahlen **vor** `MAX_LINES`: alle roten und alle in der Benachrichtigung enthaltenen gelben (heute und vergangen). |
+| Blau 4 Kanal | `NotifyStore.ensureChannels` legt `mw_hoch` schon mit `IMPORTANCE_HIGH` an (seit Phase 9) | Kein neuer Kanal, keine Änderung der Wichtigkeit. Die Inhaltsbenachrichtigung nutzt bei Rot `level="hoch"` → `mw_hoch`. `GRENZE`: Ob ein Banner erscheint, entscheiden Android bzw. die Kanal-Einstellungen des Nutzers. |
+| R6 alte Aufrufer | `set_urgent` nur in `NotesService.set_urgent` und `note_view.todo_line` (plus Tests) | **Kein Wrapper:** `set_urgent` entfällt in `edits` und `NotesService`. Es gibt nur noch `set_urgency(level)` mit einem **Zielzustand**, wie bei `set_done`; kein Umschalten im Core. Den Zyklus berechnet nur die UI aus der angezeigten Stufe (`next_urgency`). Eine fremde Änderung zwischen Anzeige und Tipp führt deshalb nicht zu einem falschen Sprung, und ein alter Aufruf kann eine rote Markierung nicht verändern. Tests werden umgestellt. |
+| Zeitquelle | `service.clock` | „Heute“ wird **einmal** pro Aufbau aus `service.clock.today()` gelesen (`todo_list.todo_sections(service, state)`) und an Filter und Gruppierung weitergereicht. Die Benachrichtigung nutzt den Auslösetag. Kein `date.today()`. |
+| Tag-Cache | `DocumentCache` (mtime/size, `forget` nach eigenem Schreiben); `duplicate_service` merkt sich per Dokument-Identität | `tag_index.used_tags` nutzt dasselbe Identitätsmuster. Eigene Schreibvorgänge (`forget`), Verschieben (`forget` beider Dateien und `rescan`), Löschen (Datei fehlt → anderer Index) und externe Änderungen (mtime/size; neue Dateien nach `poll` → `rescan`) erzeugen neue Dokumentobjekte, der Zwischenspeicher wird also ungültig. `GRENZE` wie beim `DocumentCache`. |
+| Move-Recovery | `plan_move` liefert bei alleinigem Todo schon `MovePlan(mode="notiz", block=Notizinhalt, moved=lines, key)`; `_continue`/`resume_move`/`recover_moves` arbeiten nur mit dem Manifest | `plan_note_move` baut **genau diesen** `MovePlan` (gemeinsame Hilfsfunktion `_note_plan` mit dem Zweig „alleiniges Todo“). Das Manifest-Format ist identisch, `move_exec._start(…)` wird gemeinsam genutzt. Die Recovery ist dieselbe, wird aber ausdrücklich getestet (siehe D). |
+| PageRef-Argument | `PageRef(kind, arg: str)` | `nav.note_arg(target) -> str` (JSON `[relpath, line_no, text]`) und `nav.parse_note_arg(arg) -> Target \| None`. Ungültige Argumente ergeben `None`. |
+
+### Phasen
+
+Jede Phase: fetch/pull → Code → Tests → `tools/code_lines.py` → Doku → Commit (kein Push).
+
+#### Phase 0 – Plan ins Repo, S5, Doku-Altlast
+- Abschnitt „W7“ in `PLAN-SPAETERE-SCHRITTE.md` (dieser Plan ohne Maschinenpfade), Statuszeile in `PLAN.md`.
+- S5-Ergebnis dokumentieren (`PLAN-SPAETERE-SCHRITTE` W5/S5, `DEVELOPMENT_LOG`). `BAUSTELLE(S5)` in `mobile/platform/notifications.py` wird erledigt bzw. zu `GRENZE(Zustellung)`: gemessen 10–120 s Verspätung.
+- `BAUSTELLE(S1)`-Text in `flet_access.py` nachziehen.
+- Kurzanleitung: „Benachrichtigung kann ein paar Minuten später kommen“.
+
+#### Phase 1 – A Ampel-Dringlichkeit (Core, App, UI, Benachrichtigung)
+
+**Core** (`core/inline.py`, `core/edits.py`, `core/query.py`):
+- Grammatik am Inhaltsanfang, nach führendem Leerraum:
+  - `==` · optional `🔴` mit optional **einem** Leerzeichen · Inhalt (mindestens 1 Zeichen) · `==`.
+  - Geschlossen wird am ersten `==` nach dem Inhaltsbeginn.
+  - `==🔴==` ohne weiteren Inhalt ist **Gelb mit Inhalt „🔴“**, damit kein Text verloren geht.
+  - Nichts sonst ist eine Markierung.
+- `strip_urgency` entfernt nur eine erkannte Markierung (öffnendes `==`, ggf. `🔴` und das eine Leerzeichen, schließendes `==`). Andere `=` und Formatierungen bleiben.
+- `set_urgency(doc, target, level)` schreibt einen Zielzustand. Idempotent; ändert nur die eine Zeile.
+  - Inhalt bleibt byte-gleich.
+  - Rot wird ohne Leerzeichen nach 🔴 geschrieben.
+  - Beim Markieren bleiben Tags am Ende außerhalb (`_content_end`, wie bisher).
+  - Leerer Inhalt → `ValueError`.
+  - Zeilenenden (CRLF) bleiben, weil `apply_edits` zeilenweise arbeitet.
+
+**App:**
+- `ordering`:
+  - `rank(row)` = Stufe, nur bei **offenen** Todos, sonst 0.
+  - `by_rank(items, key)` ist stabil und ersetzt `stable_first`. Aufrufer: Notizzeilen `urgent_first` je Geschwistergruppe; Karten in Suche und Tag-Seite mit `note_rank` = höchste offene Stufe.
+  - `todo_groups(rows, today) -> TodoGroups(red, future, today, past)`:
+    - **Jede Zeile genau einmal.**
+    - `red` = offen und Rot (beliebiger Tag), sortiert heute → vergangen (neueste zuerst) → zukünftig (nächster zuerst).
+    - Alle übrigen (auch **erledigte rote**) gehen in ihren Tagesabschnitt.
+    - In jedem Tagesabschnitt: offene gelbe vor dem Rest (`by_rank`). Je Rang Tagesreihenfolge (vergangen neueste zuerst, Zukunft nächster zuerst), innerhalb eines Tages Dateireihenfolge.
+    - Erledigte werden nie vorgezogen.
+- `views.HitRow` erhält `urgency` statt `urgent`.
+- `NotesService.set_urgency` ersetzt `set_urgent`.
+- `notify_content.content(service, day) -> NotifyContent(lines, red, yellow, bold)`:
+  - **Auswahl:** offene Todos mit `bis=day`.
+  - **Reihenfolge:** `todo_groups(…, day)`. Dann `red` + `today` + nur die gelben aus `past`; `future` ist durch `bis` leer.
+  - Keine eigene Sortierung.
+  - Zeilen: `🔥 Text (TT.MM.)`, `⭐ Text`, `• Text`, `⭐ Text (TT.MM.)`.
+  - Text über `strip_urgency`.
+  - `SYMBOL = {ROT: "🔥", GELB: "⭐"}`.
+- `notify_plan`:
+  - `content_for` liefert `NotifyContent`.
+  - `_body` kürzt auf `MAX_LINES` und liefert `bold` als **Indizes in die tatsächlich angezeigten Zeilen** (`tuple[int, ...]`). Die Zeile „… und n weitere“ ist nie fett.
+  - Titel: `Deine Todos am TT.MM.` + `· 🔥 n` + `· ⭐ m` (Gesamtzahlen vor dem Kürzen, Teile mit 0 entfallen).
+  - `level = "hoch"`, wenn `red > 0`, sonst `"normal"`.
+  - `Planned.bold`, `as_item` mit `"bold": [int, …]`.
+
+**Plugin** (`packages/merkweiser_notify`):
+- Dart: `schedule` reicht die Map unverändert durch (prüfen; keine Änderung erwartet).
+- Kotlin, `NotifyStore.Item`:
+  - neues Feld `bold: List<Int>`
+  - `from(map)`: `(map["bold"] as? List<*>)?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList()`
+  - `toJson`: `JSONArray`
+  - `fromJson`: `optJSONArray("bold")` → sonst leer
+- `pendingFor`: `putExtra(EXTRA_BOLD, bold.toIntArray())`. `AlarmReceiver`: `getIntArrayExtra(EXTRA_BOLD) ?: IntArray(0)`.
+- `show(…, bold)`: `SpannableStringBuilder` aus den Zeilen, `StyleSpan(Typeface.BOLD)` je gültigem Index (ungültige ignorieren), für `setContentText` und `BigTextStyle.bigText`.
+- **Rückwärts verträglich:** Alte gespeicherte Einträge, alte PendingIntents und Python ohne `bold` ergeben keinen Fettdruck und keinen Fehler.
+
+**UI:**
+- `todo_line(app, row_text, done, urgency, target, open_note=None)`:
+  - Stern-Icon, Farbe und Tooltip aus `style.URGENCY_STYLE[level]`.
+  - Tipp → `set_urgency(next_urgency(level))`.
+  - Linke 4-px-Leiste in der Stufenfarbe nur bei offenen gelben bzw. roten Todos.
+  - Label über `strip_urgency`.
+- Tab Todos: In Phase 1 schon `todo_groups` mit `bis = heute`, damit die Tagesgrenze sofort gilt. Abschnitte und Filter folgen in Phase 5.
+
+**Tests:**
+- **Grammatik:** gelb, rot, rot mit Leerzeichen, `==🔴==`, `a == b`, `x = 1 ==`, `==` ohne Schluss, Todo mit Tags, CRLF.
+- **Übergänge:** alle Stufenwechsel mit Inhaltserhalt; Idempotenz; leerer Inhalt.
+- **`strip_urgency`:** entfernt nur Marker, lässt andere `=`.
+- **`todo_groups`:**
+  - Gelb von gestern steht unter normal von heute.
+  - Rot von gestern steht in `red`.
+  - Erledigte rote stehen im Tagesabschnitt.
+  - Jede Zeile genau einmal (Status offen, erledigt, alle).
+  - Stabilität.
+- **Benachrichtigung:**
+  - Reihenfolge; normale vergangene und Zukunft fehlen.
+  - Titelanzahl vor dem Kürzen.
+  - `bold`-Indizes nach dem Kürzen, ohne die „weitere“-Zeile.
+  - `level`.
+  - `as_item` enthält `bold`.
+- **Mobile:** Stern-Zyklus über drei Tipps; Leiste nur bei offenen.
+
+#### Phase 2 – E kein Tag-Dialog bei geerbtem Tag
+- `MoveContext.inherited_tags = tuple(_inherited_tag_names(note, node.index))`.
+- `show_move_flow`: Bei `sole_todo or inherited_tags` geht es direkt zur Datumswahl.
+- `FORMAT.md` „Gemeinsamer Tag“: Ausnahme ergänzen, „geändert am 2026-10-26 auf Nutzerwunsch“. ARCHITEKTUR `tag_dialog` anpassen.
+- **Tests:** Kontext mit und ohne Erbtag (Thema bzw. Eltern-Punkt); UI ohne Dialog; das verschobene Todo trägt den Erbtag explizit.
+
+#### Phase 3 – D ganze Notiz verschieben
+- `note_ops.find_note` wird öffentlich (vorher `_find_note`); einzige Quelle für „Notiz eindeutig und ganz auflösen“.
+- `move_plan.plan_note_move(doc, relpath, original) -> MovePlan` über `find_note` und die gemeinsame Hilfsfunktion `_note_plan` (auch vom Zweig „alleiniges Todo“ in `plan_move` genutzt).
+- `move_exec`:
+  - `_start(writer, store, src_rel, plan, dst_rel, prefix)` gemeinsam für `move_todo` und `move_note`.
+  - Hinweistexte abhängig vom Modus („Notiz“ bzw. „Todo steht jetzt in beiden Dateien“).
+- `NotesService.move_note(ref: NoteRef, day)` und `_move_target(relpath, day)` (gleicher Tag → `SameDayMoveError`, `write_target`) gemeinsam mit `move_todo`; `@_writes` wie bisher. Danach `forget` beider Dateien und `rescan`.
+- `NoteNotFoundError` vor dem Schreiben erzeugt eine verständliche Meldung; es wird nichts geschrieben.
+- `move_dialog.show_move_dialog(app, source_day, on_day)` mit Callback, gemeinsam für Todo und Notiz.
+- **Tests:**
+  - Ohne passendes Thema → neue Notiz.
+  - Genau eine passende Themennotiz → Zusammenführen (Erläuterung vor dem ersten Punkt, Rest am Ende).
+  - Zwei passende → neue Notiz.
+  - Absturz nach dem Ziel (Fault-Injection) → Recovery entfernt die Quelle genau einmal; das Ziel wird nicht doppelt geschrieben.
+  - Quelle nach Op-Anlage geändert → `INCOMPLETE`, Ziel bleibt, nichts verloren.
+  - Quelle doppelt vorhanden → nichts geschrieben, Meldung.
+  - Gleicher Tag → abgelehnt.
+  - Bestehende `move_todo`-Tests und Recovery-Tests bleiben grün.
+
+#### Phase 4 – C Notiz-Unterseite und Knopf am Todo
+- `nav.note_arg`/`parse_note_arg` (Roundtrip, ungültig → `None`).
+- `pages.note_page(app, arg)`:
+  - Ziel parsen, Datei frisch über `service.cache.get`.
+  - `resolve_line` (gleiche Zeile mit gleichem Text, sonst eindeutige Suche) → `doc.item_at` → `note_card(…, date_button, extra_actions=[Notiz verschieben])`.
+  - Bei ungültigem Argument, fehlender Datei, `StaleTargetError` oder einer Zeile, die keine Notiz ist: Hinweis „Diese Notiz hat sich inzwischen geändert …“. **Es wird keine andere Notiz geöffnet**; Zurück funktioniert.
+- `note_card(…, extra_actions=())` übergibt Zusatzaktionen an `note_actions`; nur `note_page` setzt sie.
+- `todo_line(open_note=…)`: Knopf `ARTICLE_OUTLINED` „Notiz öffnen“, nur im Tab Todos.
+- **Tests:**
+  - Knopf nur im Tab Todos.
+  - Seite zeigt die ganze Notiz mit „Notiz verschieben“; andere Karten haben den Knopf nicht.
+  - Datei geändert (Zeile verschoben) → richtige Notiz.
+  - Zeile doppelt → Hinweis.
+  - Ungültiges Argument → Hinweis.
+  - Filter vom Standard abweichend → Unterseite → Zurück → Filter unverändert.
+
+#### Phase 5 – B Todos-Tab mit Filter-Knopf und Abschnitten
+- `app/todo_list.py`:
+  - `DEFAULT_FILTER`, `criteria(state, today) -> Filter`. Hier wird die Tag-Eingabe geparst, umgezogen aus `tabs`.
+  - `todo_sections(service, state) -> list[(titel, rows)]`: liest heute einmal und nutzt `todo_groups`.
+  - Titel mit der Anzahl der tatsächlich angezeigten Zeilen.
+  - Leere Abschnitte entfallen.
+  - `filter_summary(state)` zeigt „ODER“ bei ODER; `changed_count(state)`. Beide leiten sich von `DEFAULT_FILTER` ab.
+- `mobile/ui/todo_filter.py`:
+  - Dialog mit SegmentedButtons Status und Zeitraum, Tag-Feld, ODER-Schalter.
+  - Knöpfe „Zurücksetzen“ (auf `DEFAULT_FILTER`), „Abbrechen“, „Anwenden“.
+- `tabs.todos_view`:
+  - Kopfzeile mit `IconButton(FILTER_LIST)` samt Badge und Zusammenfassung.
+  - Abschnitte mit Überschrift und Divider.
+  - „Keine Todos.“ bei null Treffern. Behebt nebenbei, dass der Text bisher nie erschien (`[…] or […]`).
+- **Tests:**
+  - Standard ohne Zukunft.
+  - „zukünftig“ und „beides“ mit Reihenfolge.
+  - Abschnittsanzahlen.
+  - Leer → Hinweis.
+  - Badge und Zusammenfassung, mit ODER.
+  - Dialog: Anwenden, Zurücksetzen, Abbrechen.
+  - Status `offen`, `erledigt`, `alle` mit roten Todos: keines verschwindet, keines doppelt.
+
+#### Phase 6 – F Tag-Auswahl im Editor
+- `app/tag_index.py`:
+  - `used_tags(service) -> list[(name, anzahl)]`:
+    - Zählung wie `search`: Knoten ohne implizite, mit wirksamem Tag.
+    - Schreibweise = häufigste explizite (`node.tags`), bei Gleichstand alphabetisch.
+    - Sortiert nach Anzahl absteigend, dann `casefold`.
+    - Merkt sich das Ergebnis per Dokument-Identität.
+  - `filter_tags(tags, pattern) -> (treffer, hinweis)`: Regex ohne Groß-/Kleinschreibung (`re.search`); ungültig → Teilstring plus Hinweis; leer → alle.
+- `text_tools`:
+  - Gemeinsame Funktion `_append_at_line_end(text, line_end, insert)`, genutzt von `insert_tag` und `insert_tag_name`.
+  - `insert_tag_name(text, start, end, name)`:
+    - Duplikat über `inline.find_tags(caret_zeile)` per `key`; also nicht in Code, nur am Wortanfang, keine reinen Ziffern-Tags, `casefold`.
+    - Markierung = genau ein ganzes Wort, dahinter in der Zeile nur Leerraum, und `name.casefold() == wort.casefold()` → `#` davor, Schreibweise des Worts bleibt.
+    - Sonst: Tag ans Zeilenende.
+    - Unbekannte Position → unverändert. Mehrzeilige Auswahl → Ende der ersten Zeile.
+- `editor_toolbar(field, indent_width, tag_picker=None)`:
+  - Mit Picker: zweiter Dialog über dem Editor.
+  - Suchfeld, vorbelegt mit der Markierung, filtert per `on_change`.
+  - Liste mit `ListTile` „#name“ und Anzahl.
+  - Bei gültigem neuen Namen (`tag_from_input`) oben „#x neu verwenden“.
+  - Klick → `insert_tag_name` → `show()` → `pop_dialog()` (schließt nur das Popup).
+  - Ohne Picker bleibt `insert_tag`.
+- **Tests:**
+  - `used_tags`: Anzahl == Suchtreffer, Schreibweise, Sortierung, Code wird ignoriert, Cache nach eigenem Schreiben und nach externer Änderung erneuert.
+  - `filter_tags`.
+  - `insert_tag_name`: alle Regeln oben, CRLF, Mehrzeiligkeit, `#tag` in Inline-Code zählt nicht als Duplikat.
+  - Mobile: Popup liegt über dem Editor, Auswahl fügt ein und schließt nur das Popup.
+
+#### Phase 7 – APK
+- `python tools/build_apk.py` (Signatur per `apksigner` geprüft, Passwort nur per Umgebungsvariable).
+- APK nach `SyncSpike/`; Gerätetest durch den Nutzer.
+
+### Flet 0.86.5 – vor der Nutzung im Paket prüfen
+
+`IconButton.badge`, `Container.border` mit `Border(left=BorderSide)`, `SegmentedButton` im `AlertDialog`, scrollbarer Dialoginhalt (`Column(scroll=…)` mit Höhe), `TextField.on_change`, `ListTile.on_click`.
+
+Schon geprüft: `show_dialog`/`pop_dialog` als Stapel.
+
+### Geänderte Entscheidungen (ausdrücklich nachtragen, „geändert am 2026-10-26 auf Nutzerwunsch“)
+
+| Bisher (Quelle) | Neu |
+|---|---|
+| Dringend = `==…==`, an/aus (`PLAN.md` inline, `toggle_urgent`; `FORMAT.md`) | Zwei Stufen, Stern zyklisch |
+| W1: dringende zuerst über die ganze Liste | Todo-Listen: 🔥 → Tag → Vergangen; Karten und Notizen: Rot > Gelb > Rest |
+| W5: dringende aller Tage zuerst, Kanal normal, ⭐ | 🔥 bis zum Auslösetag → heute ⭐ → heute • → vergangen ⭐; keine Zukunft; Kanal „hoch“ bei 🔥; Titelanzahl; Fett |
+| Tag-Dialog vor jedem nicht alleinigen Todo (`FORMAT.md`) | Nicht bei geerbtem Tag |
+| #-Knopf: Markierung → `#Wort` an Ort und Stelle | Mobil: Picker; Umwandlung nur am Zeilenende |
+| Todos-Tab: sichtbare Filter, Zukunft enthalten | Filter-Knopf, Zukunft aus, Abschnitte |
+
+### Prüfungen nach jeder Phase
+- `.venv/Scripts/python -m pytest` grün (vorher 599 bestanden, 1 übersprungen).
+- `python tools/code_lines.py`: alle Dateien unter etwa 300, sonst fachlich teilen.
+- `rg -n "\b(GRENZE|BAUSTELLE)\b"` sichten; `rg -n "TODO|FIXME" src` leer; ab Phase 1 `rg -n 'strip\("="\)|strip\(.=.\)' src` leer.
+- `git status` zeigt nur eigene Dateien; Commit ohne Attribution, kein Push.
+
+### Gemeldete, unverwandte Befunde (nur melden)
+- `tabs.settings_view` zeigt „Heute: …“ mit `date.today()` statt `service.clock` (Anzeige; Tests mit `FakeClock` sehen das echte Datum).
+
+### Noch ausstehend (für den Nutzer)
+- **Gerätetests:**
+  - Diese Runde: Stern und Leiste in Hell und Dunkel, Obsidian-Darstellung `==🔴…==`, Benachrichtigung (🔥/⭐, fett, Titel, Banner), Todos-Tab, Unterseite, Notiz verschieben, Tag-Picker.
+  - Aus früheren Runden: Antippen öffnet „heute“ in Merkweiser, Navigation/Zurück, Zeit-Tab, Editor-Caret (`BAUSTELLE(Caret)`, `BAUSTELLE(Offsets)`).
+- **Zurückgestellt:** Schritt 7 (Desktop), Schritt 9 (Abschluss).
+- **Kleinere BAUSTELLEN:** Vorschläge, A2-Identität, Dart-Pins.

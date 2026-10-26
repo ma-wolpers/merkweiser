@@ -56,7 +56,7 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 
 ## Morgen-Benachrichtigung (Android)
 
-*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste deiner offenen Todos von heute und aller dringenden (⭐). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Android kann die Zustellung bei Akkusparen verzögern; was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung. *Hinweis:* Die Funktion ist neu; die Gerätetests (siehe `spikes/s5/ANLEITUNG.md`) stehen noch aus.
+*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste deiner offenen Todos von heute und aller dringenden (⭐). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Die Benachrichtigung kann ein paar Minuten später kommen (Android bündelt Alarme zum Akkusparen; im Test bis etwa 2 Minuten). Was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung.
 
 ## Diagnosebericht
 

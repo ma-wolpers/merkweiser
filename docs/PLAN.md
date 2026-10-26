@@ -38,9 +38,10 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 6 | W6b YAML-Merge | erledigt |
 | 7 | W6c Tracker-Core | erledigt |
 | 8 | W6d Zeit-Tab | erledigt (APK für Gerätetest gebaut) |
-| 9 | Spike S5 Benachrichtigungen | vorbereitet (APK `SyncSpike/merkweiser-s5.apk`, Manifest geprüft); Gerätetest offen |
-| 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest offen |
+| 9 | Spike S5 Benachrichtigungen | **bestanden** (2026-10-26, Bericht `spikes/s5/bericht.md`): Zustellung ohne Exakt-Alarme, 10–122 s Verspätung |
+| 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest in der App offen (Antippen öffnet „heute“) |
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
+| 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | in Arbeit (Phase 0 erledigt) |
 
 ## Context
 

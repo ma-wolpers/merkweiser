@@ -8,10 +8,11 @@ Geprüft gegen die gepinnte Version:
 * ``ft.FilePicker()`` ist ein Service: nur konstruieren, nicht ins Overlay;
   ``get_directory_path`` ist eine Koroutine.
 
-BAUSTELLE(S1): Berechtigungsabfrage und Einstellungsseite über ``pyjnius``
+Berechtigungsabfrage und Einstellungsseite über ``pyjnius``
 (``Environment.isExternalStorageManager``, Intent
-``ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION``) sind auf dem Gerät noch
-nicht bestätigt. Fehlt ``jnius`` (Desktop-Test) oder schlägt der Aufruf fehl,
+``ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION``) laufen auf dem Gerät
+(S1 abgeschlossen 2026-10-21; die App arbeitet seitdem mit „Zugriff auf alle
+Dateien“). Fehlt ``jnius`` (Desktop-Test) oder schlägt der Aufruf fehl,
 melden die Methoden ``None`` bzw. ``False``; die Oberfläche erklärt dann den
 manuellen Weg in den Android-Einstellungen.
 """

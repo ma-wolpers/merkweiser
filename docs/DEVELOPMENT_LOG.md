@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 0: Plan übernommen, Spike S5 bestanden
+
+- Plan W7 (Ampel-Dringlichkeit, Todos-Tab, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker) nach Prüfung durch den Nutzer überarbeitet und als Abschnitt „W7“ in `PLAN-SPAETERE-SCHRITTE.md` übernommen; Statuszeile 12 in `PLAN.md`.
+- Spike S5 bestanden (`spikes/s5/bericht.md`): ungenaue Alarme reichen, 10–122 s Verspätung. `BAUSTELLE(S5)` im Benachrichtigungs-Adapter durch `GRENZE(Zustellung)` ersetzt; Kurzanleitung ohne „Gerätetest steht aus“.
+- `BAUSTELLE(S1)` in `flet_access.py` war veraltet (S1 seit 2026-10-21 abgeschlossen) → Doku-Text angepasst.
+- Arbeitsweise korrigiert: In den Runden bis 2026-10-25 habe ich selbst gepusht, obwohl `AGENTS.md` „Gepusht wird nur von Hand“ sagt. Ab jetzt nur Commits.
+- Gemeldet, nicht behoben: `tabs.settings_view` zeigt „Heute“ mit `date.today()` statt der Clock des Service.
+
 ## 2026-10-25 – W6a: Wechsel nachtragen; Fehler in der Zeitbuchung
 
 - `time_service.switch(…, at)`, `time_dialogs.show_switch_dialog`, in `time_view` Dialog-Knopf „Wechseln zu … …“ plus Mini-Knopf „Sofort wechseln“ (Nutzerentscheidung). Bewusst kein „Start nachtragen“ (Starten gehört zur Arbeitsstart-Routine).
