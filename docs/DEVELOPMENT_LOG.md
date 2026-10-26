@@ -2,6 +2,15 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-26 – W7 Phase 1: Ampel-Dringlichkeit
+
+- `core/inline.py` ist die einzige Quelle der Grammatik: `Urgency`, `urgency_span`, `urgency`, `strip_urgency`; `is_urgent` bleibt als Wrapper. `ListItem.urgency`/`Hit.urgency` statt `urgent` (Property bleibt für `UrgentFilter`).
+- `edits.set_urgency(level)` ersetzt `set_urgent` ohne Wrapper (nur zwei Aufrufer, beide umgestellt): Zielzustand statt Umschalten, den Zyklus rechnet die Oberfläche (`views.next_urgency`). Text bleibt bei jedem Wechsel zeichengenau; neu abgelehnt: Text mit `==` (die alte Fassung hätte beim Aufheben Text zerschnitten).
+- Behoben: Die Anzeige entfernte die Markierung per `text.strip("=")` (`note_view`, `notify_content`) und damit **jedes** `=` am Rand. Jetzt überall `strip_urgency`.
+- `app/ordering.py`: `rank`/`by_rank`/`note_rank` ersetzen `is_pressing`/`stable_first`/`note_is_pressing`; neu `todo_groups` als gemeinsame Reihenfolge für Tab „Todos“ und Benachrichtigung (Tab zeigt ab jetzt keine zukünftigen Tage mehr; Abschnitte und Filter-Knopf folgen in Phase 5).
+- Benachrichtigung: `notify_content.content` → `NotifyContent`; `notify_plan` mit Titel-Anzahl, Kanal `hoch` bei Rot, `bold`-Indizes nach dem Kürzen. Plugin (Kotlin): `Item.bold` (rückwärts verträglich: fehlt → leer), Intent-Extra `mw_bold`, `styled` mit `StyleSpan(BOLD)`. Kanal `mw_hoch` bestand schon mit `IMPORTANCE_HIGH`, keine Kanaländerung nötig.
+- UI: `style.URGENCY_STYLE`/`URGENCY_BAR`; `todo_line` mit Ampel-Stern und Leiste (`Border.only(left=BorderSide)`, gegen Flet 0.86.5 geprüft).
+
 ## 2026-10-26 – W7 Phase 0: Plan übernommen, Spike S5 bestanden
 
 - Plan W7 (Ampel-Dringlichkeit, Todos-Tab, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker) nach Prüfung durch den Nutzer überarbeitet und als Abschnitt „W7“ in `PLAN-SPAETERE-SCHRITTE.md` übernommen; Statuszeile 12 in `PLAN.md`.

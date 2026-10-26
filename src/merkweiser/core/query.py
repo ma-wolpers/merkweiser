@@ -25,7 +25,7 @@ from enum import Enum
 from typing import Callable, Iterable
 
 from .document import Document, ParsedNote
-from .inline import TodoStatus
+from .inline import TodoStatus, Urgency
 from .outline import Node, NodeKind
 
 
@@ -122,7 +122,7 @@ class Hit:
         kind: Knotenart.
         text: Text der ersten Zeile.
         status: Todo-Status (``NONE`` für Nicht-Punkte).
-        urgent: Dringlichkeit.
+        urgency: Dringlichkeitsstufe (``Urgency``; ``NONE`` bei Nicht-Todos).
         tags: Effektive Tag-Schlüssel (sortiert).
         projects: Effektive Projekte.
         inherited_projects: Davon nur geerbte Projekte.
@@ -137,11 +137,16 @@ class Hit:
     kind: NodeKind
     text: str
     status: TodoStatus
-    urgent: bool
+    urgency: Urgency
     tags: tuple[str, ...]
     projects: tuple[str, ...]
     inherited_projects: tuple[str, ...]
     context: tuple[str, ...]
+
+    @property
+    def urgent(self) -> bool:
+        """``True`` ab Stufe Gelb."""
+        return self.urgency >= Urgency.GELB
 
 
 def search(documents: Iterable[tuple[str, date, Document]], criteria: Filter) -> list[Hit]:
@@ -232,6 +237,6 @@ def _hit(relpath: str, day: date, doc: Document, note: ParsedNote, node: Node) -
     item = node.item
     return Hit(relpath=relpath, day=day, note_index=note.index, node_index=node.index, line_no=node.lines[0],
                kind=node.kind, text=doc.line_text(node.lines[0]),
-               status=item.status if item else TodoStatus.NONE, urgent=bool(item and item.urgent),
+               status=item.status if item else TodoStatus.NONE, urgency=item.urgency if item else Urgency.NONE,
                tags=tuple(sorted(tags.effective)), projects=tags.effective_projects,
                inherited_projects=tags.inherited_projects, context=tuple(reversed(context)))

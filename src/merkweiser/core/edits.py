@@ -19,7 +19,8 @@ from __future__ import annotations
 import re
 
 from .document import Document, ParsedNote
-from .inline import ListItem, TodoStatus, find_tags, leading_whitespace, parse_list_item, project_name
+from .inline import (MARK, RED_MARK, ListItem, TodoStatus, Urgency, find_tags, leading_whitespace, parse_list_item,
+                     project_name, urgency_span)
 from .outline import Node
 from .patch import LineEdit, Target, apply_edits, resolve_line
 
@@ -58,38 +59,57 @@ def set_done(doc: Document, target: Target, done: bool) -> bytes:
     return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (new_text,))])
 
 
-def set_urgent(doc: Document, target: Target, urgent: bool) -> bytes:
-    """Markiert ein Todo als dringend (``==…==`` um den Inhalt) oder hebt es auf.
+def set_urgency(doc: Document, target: Target, level: Urgency) -> bytes:
+    """Setzt die Dringlichkeitsstufe eines Todos (Zielzustand, kein Umschalten).
 
-    Beim Markieren bleiben Tags am Zeilenende außerhalb der Hervorhebung:
-    ``- [ ] Kisten #keller`` → ``- [ ] ==Kisten== #keller``.
+    Gelb ist ``==Text==``, Rot ``==🔴Text==`` (geschrieben ohne Leerzeichen nach
+    🔴). Beim Markieren bleiben Tags am Zeilenende außerhalb der Hervorhebung:
+    ``- [ ] Kisten #keller`` → ``- [ ] ==Kisten== #keller``. Der markierte Text
+    bleibt bei jedem Stufenwechsel zeichengenau erhalten; beginnt er mit einem
+    Leerzeichen, schreibt Rot ein Trennzeichen mehr, damit das Lesen (das genau
+    ein Leerzeichen nach 🔴 schluckt) nichts verliert.
+
+    GRENZE(Ampel): Beginnt der Text selbst mit 🔴, liest Merkweiser Gelb als Rot
+    (``==🔴 Feuer==``); die Grammatik kann das nicht unterscheiden.
 
     Args:
         doc: Aktuelles Dokument.
         target: Zeile des Todos.
-        urgent: Gewünschter Zustand.
+        level: Gewünschte Stufe.
 
     Returns:
-        Neue Bytes (unverändert, wenn der Zustand schon stimmt).
+        Neue Bytes (unverändert, wenn die Stufe schon stimmt). Nur die Zeile des
+        Todos ändert sich; Zeilenenden bleiben.
 
     Raises:
         StaleTargetError: Ziel nicht eindeutig auffindbar.
         NotATodoError: kein Todo.
-        ValueError: Der Inhalt ist leer.
+        ValueError: Der Inhalt ist leer bzw. enthält selbst ``==`` (die
+            Markierung würde dort enden und später Text zerschneiden).
     """
     line_no, item = _todo_at(doc, target)
-    if item.urgent == urgent:
+    if item.urgency == level:
         return doc.source.to_bytes()
     text = doc.line_text(line_no)
-    start = item.body_start + len(leading_whitespace(text[item.body_start:]))
-    if urgent:
+    body_start = item.body_start
+    span = urgency_span(text[body_start:])
+    if span is None:
+        start = body_start + len(leading_whitespace(text[body_start:]))
         end = _content_end(text, start)
         if end <= start:
             raise ValueError("leerer Inhalt kann nicht dringend markiert werden")
-        new_text = text[:start] + "==" + text[start:end] + "==" + text[end:]
+        before, inner, after = text[:start], text[start:end], text[end:]
+        if MARK in inner:
+            raise ValueError("Text mit „==“ kann nicht dringend markiert werden")
     else:
-        close = text.find("==", start + 3)
-        new_text = text[:start] + text[start + 2:close] + text[close + 2:]
+        before = text[:body_start + span.start]
+        inner = text[body_start + span.inner_start:body_start + span.inner_end]
+        after = text[body_start + span.end:]
+    if level is Urgency.NONE:
+        new_text = before + inner + after
+    else:
+        red = RED_MARK + (" " if inner.startswith(" ") else "") if level is Urgency.ROT else ""
+        new_text = before + MARK + red + inner + MARK + after
     return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (new_text,))])
 
 

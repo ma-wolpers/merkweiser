@@ -9,7 +9,8 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getIntExtra(NotifyStore.EXTRA_ID, 0)
         NotifyStore.show(context, id, intent.getStringExtra(NotifyStore.EXTRA_TITLE) ?: "Merkweiser",
-            intent.getStringExtra(NotifyStore.EXTRA_BODY) ?: "", intent.getStringExtra(NotifyStore.EXTRA_LEVEL) ?: "normal")
+            intent.getStringExtra(NotifyStore.EXTRA_BODY) ?: "", intent.getStringExtra(NotifyStore.EXTRA_LEVEL) ?: "normal",
+            intent.getIntArrayExtra(NotifyStore.EXTRA_BOLD) ?: IntArray(0))
         NotifyStore.removeShown(context, id, intent.getLongExtra(NotifyStore.EXTRA_AT, 0L))
     }
 }

@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.notify_content import content_lines
+from ...app.notify_content import content
 from ...app.notify_plan import NotifySettings, plan
 from ..platform.notifications import NoNotifier, make_notifier
 from .date_pick import open_date_picker
@@ -60,7 +60,7 @@ class NotifyController:
         service = self.app.service
         if service is None or not self.notifier.available:
             return 0
-        planned = plan(service.clock.now(), self.settings(), lambda day: content_lines(service, day))
+        planned = plan(service.clock.now(), self.settings(), lambda day: content(service, day))
         await self.notifier.cancel_all()
         return await self.notifier.schedule([p.as_item() for p in planned]) if planned else 0
 

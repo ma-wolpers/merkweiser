@@ -7,7 +7,11 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Build
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.StyleSpan
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,20 +29,30 @@ object NotifyStore {
     const val EXTRA_BODY = "mw_body"
     const val EXTRA_LEVEL = "mw_level"
     const val EXTRA_AT = "mw_at"
+    const val EXTRA_BOLD = "mw_bold"
     private const val DELIVERED = "delivered"
     const val EXTRA_PAYLOAD = "merkweiser_notify_payload"
 
-    data class Item(val id: Int, val at: Long, val title: String, val body: String, val level: String) {
+    /**
+     * Ein geplanter Eintrag. [bold] = Indizes der fett gezeigten Zeilen von [body] (W7); fehlt das Feld
+     * (ältere App-Version, schon gespeicherte Alarme), ist die Liste leer und nichts wird fett.
+     */
+    data class Item(val id: Int, val at: Long, val title: String, val body: String, val level: String,
+                    val bold: List<Int> = emptyList()) {
         fun toJson(): JSONObject = JSONObject().put("id", id).put("at", at).put("title", title)
-            .put("body", body).put("level", level)
+            .put("body", body).put("level", level).put("bold", JSONArray(bold))
 
         companion object {
             fun from(map: Map<String, Any?>): Item = Item(
                 (map["id"] as Number).toInt(), (map["at"] as Number).toLong(),
-                map["title"]?.toString() ?: "", map["body"]?.toString() ?: "", map["level"]?.toString() ?: "normal")
+                map["title"]?.toString() ?: "", map["body"]?.toString() ?: "", map["level"]?.toString() ?: "normal",
+                (map["bold"] as? List<*>)?.mapNotNull { (it as? Number)?.toInt() } ?: emptyList())
 
-            fun fromJson(obj: JSONObject): Item = Item(obj.getInt("id"), obj.getLong("at"), obj.getString("title"),
-                obj.getString("body"), obj.optString("level", "normal"))
+            fun fromJson(obj: JSONObject): Item {
+                val bold = obj.optJSONArray("bold")
+                return Item(obj.getInt("id"), obj.getLong("at"), obj.getString("title"), obj.getString("body"),
+                    obj.optString("level", "normal"), (0 until (bold?.length() ?: 0)).map { bold!!.getInt(it) })
+            }
         }
     }
 
@@ -98,6 +112,7 @@ object NotifyStore {
         val intent = Intent(ctx, AlarmReceiver::class.java)
             .putExtra(EXTRA_ID, item.id).putExtra(EXTRA_TITLE, item.title)
             .putExtra(EXTRA_BODY, item.body).putExtra(EXTRA_LEVEL, item.level).putExtra(EXTRA_AT, item.at)
+            .putExtra(EXTRA_BOLD, item.bold.toIntArray())
         return PendingIntent.getBroadcast(ctx, item.id, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
@@ -128,9 +143,26 @@ object NotifyStore {
             NotificationManager.IMPORTANCE_HIGH))
     }
 
+    /**
+     * Text mit fetten Zeilen: [bold] sind Zeilenindizes in [body] (ungültige werden ignoriert).
+     * Farbe ist in Benachrichtigungen nicht verlässlich (GRENZE), Fettdruck schon.
+     */
+    fun styled(body: String, bold: IntArray): CharSequence {
+        if (bold.isEmpty()) return body
+        val text = SpannableStringBuilder(body)
+        var start = 0
+        body.split('\n').forEachIndexed { index, line ->
+            if (index in bold && line.isNotEmpty()) {
+                text.setSpan(StyleSpan(Typeface.BOLD), start, start + line.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            start += line.length + 1
+        }
+        return text
+    }
+
     /** Zeigt eine Benachrichtigung; Antippen öffnet die App mit Payload „heute“. */
     @Suppress("DEPRECATION")
-    fun show(ctx: Context, id: Int, title: String, body: String, level: String) {
+    fun show(ctx: Context, id: Int, title: String, body: String, level: String, bold: IntArray = IntArray(0)) {
         ensureChannels(ctx)
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -142,8 +174,9 @@ object NotifyStore {
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(ctx, channelFor(level))
         else Notification.Builder(ctx).setPriority(
             if (level == "normal") Notification.PRIORITY_DEFAULT else Notification.PRIORITY_HIGH)
-        builder.setSmallIcon(ctx.applicationInfo.icon).setContentTitle(title).setContentText(body)
-            .setStyle(Notification.BigTextStyle().bigText(body)).setAutoCancel(true)
+        val text = styled(body, bold)
+        builder.setSmallIcon(ctx.applicationInfo.icon).setContentTitle(title).setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text)).setAutoCancel(true)
         if (content != null) builder.setContentIntent(content)
         if (level == "maximal") builder.setCategory(Notification.CATEGORY_REMINDER)
         val manager = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

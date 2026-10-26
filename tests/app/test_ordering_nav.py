@@ -1,14 +1,16 @@
 """Tests für W1 (dringend zuerst), W2 (Tag-Stücke) und die Navigation je Tab (1.6)."""
 
 from merkweiser.app.nav import Nav, PageRef
-from merkweiser.app.ordering import is_pressing, stable_first, urgent_first
+from merkweiser.app.ordering import by_rank, rank, urgent_first
 from merkweiser.app.tag_spans import text_parts
 from merkweiser.app.views import Row
+from merkweiser.core.inline import Urgency
 
 
-def row(text: str, depth: int, urgent: bool = False, done: bool | None = False) -> Row:
+def row(text: str, depth: int, urgent: bool | Urgency = False, done: bool | None = False) -> Row:
     """Zeile mit Text, Tiefe und Todo-Zustand (``done=None``: kein Todo)."""
-    return Row("todo" if done is not None else "item", text, depth, done, urgent, (), None)
+    level = Urgency(int(urgent))
+    return Row("todo" if done is not None else "item", text, depth, done, level, (), None)
 
 
 def texts(rows) -> list[str]:
@@ -27,11 +29,12 @@ def test_sorting_is_stable_and_ignores_done_urgent() -> None:
     rows = [row("x", 0), row("erledigt", 0, urgent=True, done=True), row("y", 0, urgent=True),
             row("z", 0), row("w", 0, urgent=True)]
     assert texts(urgent_first(rows)) == ["y", "w", "x", "erledigt", "z"]
-    assert not is_pressing(row("erledigt", 0, urgent=True, done=True))
+    assert rank(row("erledigt", 0, urgent=True, done=True)) == 0
 
 
-def test_stable_first_keeps_relative_order() -> None:
-    assert stable_first([1, 2, 3, 4, 5], lambda x: x % 2 == 0) == [2, 4, 1, 3, 5]
+def test_by_rank_keeps_relative_order() -> None:
+    assert by_rank([1, 2, 3, 4, 5], lambda x: x % 2) == [1, 3, 5, 2, 4]
+    assert by_rank("abcd", lambda c: {"c": 2, "b": 1}.get(c, 0)) == ["c", "b", "a", "d"]
 
 
 def test_text_parts_marks_tags_like_the_parser() -> None:

@@ -54,6 +54,7 @@ Danach folgen Schritt 7 und Schritt 9.
 - In Bäumen wird **je Geschwistergruppe** sortiert; ein Teilbaum bleibt an seinem Elternpunkt.
 - In der Suche stehen Notizkarten mit einem dringenden Treffer zuerst, sonst gilt die bisherige Reihenfolge (neueste zuerst). Gleiches gilt für die Tag-Seite (W2).
 - In der Benachrichtigung (W5) stehen dringende Todos zuerst.
+- *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* Zwei Stufen (Gelb `==…==`, Rot `==🔴…==`); Karten und Notizen sortieren Rot vor Gelb vor dem Rest. Todo-Listen (Tab „Todos“, Benachrichtigung) sortieren nicht mehr über die ganze Liste, sondern: offene rote zuerst, dann Tagesgrenze (Zukunft, heute, vergangen), je Abschnitt Gelb vor dem Rest (`ordering.todo_groups`, siehe W7).
 
 ### W2 – Tag-Seite
 - Tags sind **überall antippbar**, wo sie im Notiztext stehen.
@@ -100,6 +101,7 @@ Danach folgen Schritt 7 und Schritt 9.
 - **Inhaltsbenachrichtigung:**
   - Nur für den **nächsten** Termin.
   - Inhalt: offene Todos der Tagesdatei **des Auslösetags** (verschobene Todos stehen seit `c356fee` ohne Kopfzeile direkt in der Zieldatei) plus offene dringende Todos **aller Tage**, dringende zuerst.
+    *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* 🔥 rote Todos bis zum Auslösetag → ⭐ gelbe des Tages → • übrige des Tages → ⭐ gelbe früherer Tage; **keine zukünftigen** und keine normalen früheren. Titel mit Anzahl, 🔥/⭐ fett, Kanal „hoch“ bei einem roten Todo (W7).
   - Stand ist der Moment der Planung.
   - Antippen öffnet den Tab **Tag** mit dem heutigen Datum.
   - **Ohne passende Todos keine Inhaltsbenachrichtigung.** Das sperrt **nicht** die neutralen Erinnerungen.

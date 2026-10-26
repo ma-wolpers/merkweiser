@@ -5,7 +5,8 @@ import difflib
 import pytest
 
 from merkweiser.core.document import parse_document
-from merkweiser.core.edits import NotATodoError, add_todo, set_done, set_project, set_urgent
+from merkweiser.core.edits import NotATodoError, add_todo, set_done, set_project, set_urgency
+from merkweiser.core.inline import Urgency
 from merkweiser.core.note_ops import NoteNotFoundError, append_note, delete_note, replace_note_text
 from merkweiser.core.patch import (
     BlockTarget, LineEdit, StaleTargetError, Target, UnsupportedEncodingError, apply_edits, resolve_block,
@@ -73,9 +74,9 @@ def test_not_a_todo() -> None:
 
 def test_set_urgent_wraps_content_before_trailing_tags_and_back() -> None:
     """Dringend: ``==…==`` um den Inhalt, Tags am Ende bleiben draußen; Aufheben stellt wieder her."""
-    urgent = set_urgent(doc(), tgt(1, "- [ ] Kisten packen #keller"), True)
+    urgent = set_urgency(doc(), tgt(1, "- [ ] Kisten packen #keller"), Urgency.GELB)
     assert b"- [ ] ==Kisten packen== #keller\r\n" in urgent
-    back = set_urgent(parse_document(urgent), tgt(1, "- [ ] ==Kisten packen== #keller"), False)
+    back = set_urgency(parse_document(urgent), tgt(1, "- [ ] ==Kisten packen== #keller"), Urgency.NONE)
     assert back == BASE.encode()
 
 

@@ -26,10 +26,11 @@ from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
 from ..core.doc_cache import DocumentCache
 from ..core.document import Document, ParsedNote, parse_document
-from ..core.edits import add_todo, set_done, set_project, set_urgent
+from ..core.edits import add_todo, set_done, set_project, set_urgency
 from ..core.fs_probe import GUARANTEE, VaultNotWritableError, probe_install_mode
 from ..core.fsops import FsOps
 from ..core.history import History
+from ..core.inline import Urgency
 from ..core.backups import recover_undos
 from ..core.duplicates import recover_duplicates
 from ..core.time_ops import recover_time_ops
@@ -354,9 +355,17 @@ class NotesService:
         return self._edit(target.relpath, lambda doc: set_done(doc, target, done))
 
     @_writes
-    def set_urgent(self, target: Target, urgent: bool) -> WriteResult:
-        """Todo als dringend markieren bzw. die Markierung entfernen."""
-        return self._edit(target.relpath, lambda doc: set_urgent(doc, target, urgent))
+    def set_urgency(self, target: Target, level: Urgency) -> WriteResult:
+        """Dringlichkeitsstufe eines Todos setzen (Zielzustand, ``edits.set_urgency``).
+
+        Args:
+            target: Zeile des Todos.
+            level: Gewünschte Stufe (farblos, Gelb, Rot).
+
+        Returns:
+            Ergebnis des Schreibvorgangs.
+        """
+        return self._edit(target.relpath, lambda doc: set_urgency(doc, target, level))
 
     @_writes
     def set_project(self, target: Target, name: str | None) -> WriteResult:

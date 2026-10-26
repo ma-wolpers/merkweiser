@@ -6,6 +6,8 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Tab Todos:** Oben stehen alle offenen roten Todos, dann die von heute, darunter die früheren Tage (je Abschnitt gelbe zuerst). Gelbe Todos früherer Tage stehen nicht mehr über den heutigen. Todos aus zukünftigen Tagen erscheinen nicht mehr.
+- **Morgen-Benachrichtigung:** Reihenfolge 🔥 rote Todos, dann die von heute (⭐ gelbe zuerst), dann gelbe früherer Tage; normale ältere und zukünftige Todos fehlen. Dringende sind fett, der Titel zählt sie, und bei einem roten Todo kommt die Benachrichtigung als Banner (wenn Android es zulässt).
 - **Signatur der Android-App:** Ab jetzt signieren alle Rechner mit demselben Schlüssel, Updates lassen sich also von jedem Rechner aus installieren. **Einmalig** muss die bisherige App dafür deinstalliert werden. Die Notizen bleiben erhalten; Einstellungen und Backups der App gehen dabei verloren.
 
 - **Notizformat – Frontmatter:** Merkweiser darf im Frontmatter künftig seine eigenen Zeiterfassungs-Schlüssel (`zeit_*`, `messung_*`) schreiben; alle anderen Eigenschaften bleiben unverändert. Ist der Kopfbereich nicht sicher lesbar, trägt Merkweiser nichts ein (Details in `docs/FORMAT.md`).
@@ -18,6 +20,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Ein Todo wie `x = 1 ==` verlor in der Anzeige seine Gleichheitszeichen am Rand; jetzt wird nur eine echte Dringlichkeits-Markierung ausgeblendet.
 - Wechselte man die Tätigkeit nach Mitternacht, während die Messung noch vom Vortag lief, wurde die alte Zeit zwar eingetragen, die neue Messung startete aber nicht (Hinweis „anderswo beendet“).
 - Bei einem Sync-Konflikt zweier Fassungen mit YAML-Kopf (Frontmatter) wurden unterschiedliche Eigenschaften bisher beide übernommen, sodass doppelte Schlüssel und damit ungültiges YAML entstanden – auch über „Zusammenführen“. Jetzt wird der Kopf je Eigenschaft zusammengeführt: Gleiches einmal, Einseitiges übernommen, Widersprüchliches als Frage im Konfliktdialog (Abschnitt „Kopfbereich“). Zeiterfassungs-Minuten nehmen automatisch den größeren Wert; zwei laufende Messungen oder eine nur auf einem Gerät laufende Messung werden immer nachgefragt.
 - Ein unvollständiges Verschieben, das länger als die Aufbewahrungszeit der Backups (Standard 30 Tage) offen blieb, konnte beim erneuten Versuch das Todo ein zweites Mal in den Zieltag schreiben.
@@ -34,6 +37,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Dringlichkeit als Ampel:** Der Stern am Todo schaltet jetzt farblos → gelb (dringend) → rot (sehr dringend) → farblos. Offene dringende Todos bekommen links eine farbige Leiste; Rot steht vor Gelb. In der Datei steht Rot als `==🔴Text==` (Obsidian hebt es hervor), Gelb wie bisher als `==Text==`.
 - **Wechsel nachtragen (Tab „Zeit“):** „Wechseln zu … …“ öffnet jetzt die Uhrzeit-Wahl (vorbelegt mit jetzt). So lässt sich ein vergessener Wechsel nachträglich eintragen – zu jeder Uhrzeit nach dem Beginn der laufenden Messung. Der kleine Knopf daneben wechselt wie bisher sofort. Eine Startzeit lässt sich bewusst nicht nachtragen.
 - **Morgen-Benachrichtigung (Android):** *Einstellungen → Benachrichtigungen* mit den offenen Todos des Tages und allen dringenden, Uhrzeit, Urlaub bis einschließlich, Vorplanung 7/14/30 Tage und abschaltbarer Eskalation der Folge-Erinnerungen; Anzeige der Android-Erlaubnis mit „Erlaubnis anfragen“. Antippen der Benachrichtigung öffnet den Tab „Tag“ mit heute.
 - **Arbeitszeit messen (Tab „Zeit“):** Start/Stopp für eine Tätigkeit, Wechseln während der Messung, Abbrechen mit Endzeit oder ohne Eintrag. Die Minuten landen abgerundet im YAML-Kopf der Tagesdatei (über Mitternacht auf beide Tage verteilt). Übersicht der letzten 7/14/30 Tage mit Tageszeilen und Summen. Tätigkeiten lassen sich hinzufügen, umbenennen (auch in allen früheren Einträgen, auf Wunsch zusammenführen) und löschen. Vergessene Messungen (über 24 Stunden) werden mit Hinweis verworfen; laufen auf zwei Geräten Messungen, fragt Merkweiser nach.

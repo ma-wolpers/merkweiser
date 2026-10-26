@@ -7,7 +7,7 @@ Kopfzeile hat immer einen Zurück-Knopf; Android-Zurück wirkt gleich
 Seiten:
 
 * ``tag`` – die Tag-Seite (W2): alle Notizen mit diesem Tag als ganze,
-  bedienbare Karten, neueste zuerst, Karten mit offenem dringendem Todo vorn.
+  bedienbare Karten, neueste zuerst, Karten mit offenem dringendem Todo vorn (Rot vor Gelb).
 * ``konflikte`` – unter Einstellungen (W4): unterbrochene Vorgänge, offene
   Sync-Konflikte und automatisch zusammengeführte Konflikte.
 * ``backups`` und ``backup_datei`` – unter Einstellungen (W4): Dateien mit
@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from ...app.nav import PageRef
-from ...app.ordering import note_is_pressing, stable_first
+from ...app.ordering import by_rank, note_rank
 from ...core.query import Filter
 from . import backup_view, conflict_view, time_view
 from .duplicate_view import duplicate_controls
@@ -64,7 +64,7 @@ def tag_page(app: "MobileApp", tag: str) -> list[ft.Control]:
         Kopfzeile und Notizkarten (mit Datum, das den Tab „Tag“ öffnet).
     """
     matches = list(reversed(app.service.search_notes(Filter(tags=(tag,)))))
-    ordered = stable_first(matches, lambda m: note_is_pressing(m.relpath, m.document, m.note))
+    ordered = by_rank(matches, lambda m: note_rank(m.relpath, m.document, m.note))
     cards = (note_card(app, m.relpath, m.document, m.note, date_button(app, m.day)) for m in ordered)
     controls: list[ft.Control] = [page_header(app, f"#{tag}")]
     controls += [card for card in cards if card is not None] or [ft.Text("Keine Notizen mit diesem Tag.")]

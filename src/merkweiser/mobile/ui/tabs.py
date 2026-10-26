@@ -16,7 +16,7 @@ import flet as ft
 from ...app.interrupted import open_issue_count
 from ...app.list_editing import INDENT_WIDTHS
 from ...app.nav import PageRef
-from ...app.ordering import is_pressing, note_is_pressing, stable_first
+from ...app.ordering import by_rank, note_rank, todo_groups
 from ...app.views import HitRow, day_label, hit_rows
 from ...core.query import Filter, StatusFilter, TagMode, TextMode, TextQuery
 from .date_pick import open_date_picker
@@ -141,7 +141,12 @@ def day_view(app: "MobileApp") -> list[ft.Control]:
 
 
 def todos_view(app: "MobileApp") -> list[ft.Control]:
-    """Todos aus allen Tagesdateien mit Status- und Tag-Filter; neueste zuerst, offene dringende vorn (W1)."""
+    """Todos bis heute mit Status- und Tag-Filter in der gemeinsamen Reihenfolge (``ordering.todo_groups``).
+
+    Offene rote Todos stehen oben, danach die von heute und die früheren Tage,
+    je Abschnitt gelbe vor dem Rest (W7; Filter-Knopf und Abschnitte folgen in
+    Phase 5). Zukünftige Tage erscheinen nicht.
+    """
     state = app.__dict__.setdefault("_todo_filter", {"status": "offen", "tags": "", "oder": False})
     status = ft.Dropdown(label="Status", value=state["status"], options=[
         ft.DropdownOption(key="offen", text="offen"), ft.DropdownOption(key="erledigt", text="erledigt"),
@@ -156,16 +161,18 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
     status.on_select = apply
     tags.on_submit = apply
     either.on_change = apply
-    criteria = Filter(nur_todos=True, status=StatusFilter(state["status"]),
+    today = app.service.clock.today()
+    criteria = Filter(nur_todos=True, status=StatusFilter(state["status"]), bis=today,
                       tags=tuple(state["tags"].split()), tag_modus=TagMode.ODER if state["oder"] else TagMode.UND)
-    rows = stable_first(list(reversed(hit_rows(app.service.search(criteria)))), is_pressing)
+    groups = todo_groups(hit_rows(app.service.search(criteria)), today)
+    rows = groups.red + groups.today + groups.past
     return [status, tags, either, *[_hit(app, r) for r in rows]] or [ft.Text("Keine Todos.")]
 
 
 def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
     """Ein Treffer mit Datum und Kontext; Todos sind abhakbar."""
     head = ft.Text(f"{row.day} · {row.context}" if row.context else row.day, size=11)
-    body = todo_line(app, row.text, row.done, row.urgent, row.target) if row.done is not None else ft.Text(row.text)
+    body = todo_line(app, row.text, row.done, row.urgency, row.target) if row.done is not None else ft.Text(row.text)
     return ft.Column([head, body], spacing=0)
 
 
@@ -174,7 +181,7 @@ def search_view(app: "MobileApp") -> list[ft.Control]:
 
     Jede Notiz mit Treffer erscheint einmal als Karte (bearbeitbar, abhakbar,
     verschiebbar wie im Tab „Tag“), neuestes Datum zuerst; Karten mit offenem
-    dringendem Todo stehen vorn (W1). Nach jeder Aktion
+    dringendem Todo stehen vorn, Rot vor Gelb (W1/W7). Nach jeder Aktion
     zeichnet ``render`` neu und rechnet die Treffer frisch über ``NotesService``.
     """
     state = app.__dict__.setdefault("_search", {"text": "", "regex": False})
@@ -195,7 +202,7 @@ def search_view(app: "MobileApp") -> list[ft.Control]:
         except ValueError as exc:
             controls.append(ft.Text(f"Ungültiger Ausdruck: {exc}", color=ft.Colors.ERROR))
             return controls
-        ordered = stable_first(list(reversed(matches)), lambda m: note_is_pressing(m.relpath, m.document, m.note))
+        ordered = by_rank(list(reversed(matches)), lambda m: note_rank(m.relpath, m.document, m.note))
         cards = (note_card(app, m.relpath, m.document, m.note, date_button(app, m.day)) for m in ordered)
         controls += [card for card in cards if card is not None] or [ft.Text("Nichts gefunden.")]
     return controls

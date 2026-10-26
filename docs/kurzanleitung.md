@@ -37,7 +37,8 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 
 - **Tabs:** Tag (Notizen eines Datums), Todos, Suche, Zeit, Einstellungen. Jeder Tab merkt sich die zuletzt geöffnete Unterseite; erneutes Antippen des aktiven Tabs führt zu seiner Startseite.
 - **Tags antippen** öffnet eine Seite mit allen Notizen dieses Tags. Zurück geht es mit dem Pfeil oben oder der Android-Zurück-Taste.
-- **Dringende Todos** (Stern) stehen in jeder Notiz und in den Listen oben.
+- **Dringlichkeit (Ampel):** Der Stern am Todo schaltet bei jedem Tipp weiter: farblos → **gelb** (dringend) → **rot** (sehr dringend) → farblos. Offene dringende Todos haben links eine farbige Leiste und stehen in jeder Notiz oben, Rot vor Gelb. In Obsidian erscheinen sie als Hervorhebung: `==Text==` bzw. `==🔴Text==`.
+- **Tab Todos:** oben alle offenen roten Todos, dann die von heute, darunter die früheren Tage – je Abschnitt gelbe zuerst. Ein gelbes Todo von gestern steht also unter den heutigen. Todos aus zukünftigen Tagen erscheinen hier nicht.
 - **Konflikte** findest du unter *Einstellungen → Konflikte*. Eine Zahl am Einstellungen-Symbol zeigt, wie viele offen sind. Dort stehen auch **unterbrochene Vorgänge**, z. B. ein Verschieben, bei dem sich die Quelle inzwischen geändert hat; Merkweiser ändert dann bewusst nichts weiter und lässt dich wählen.
 
 - **Doppelte Notizen** (gleiche Notiz in mehreren Tagesdateien) erscheinen ebenfalls unter *Konflikte*. Du wählst, welche bleibt (Schnellwahl „Neueste“/„Älteste“); die anderen werden gelöscht.
@@ -56,7 +57,7 @@ Merkweiser legt beim Schreiben kurzlebige Hilfsdateien `.NAME.mw-…` an. Syncth
 
 ## Morgen-Benachrichtigung (Android)
 
-*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste deiner offenen Todos von heute und aller dringenden (⭐). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Die Benachrichtigung kann ein paar Minuten später kommen (Android bündelt Alarme zum Akkusparen; im Test bis etwa 2 Minuten). Was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung.
+*Einstellungen → Benachrichtigungen*: einschalten (Android fragt einmal nach der Erlaubnis), Uhrzeit wählen (Standard 7:00). Morgens kommt eine Liste: zuerst alle roten Todos (🔥), dann die Todos von heute (gelbe ⭐ zuerst), dann gelbe Todos früherer Tage. Dringende sind fett, der Titel zählt sie (z. B. „· 🔥 2 · ⭐ 3“); gibt es ein rotes, erscheint die Benachrichtigung als Banner (sofern Android das für den Kanal „Erinnerung (wichtig)“ zulässt). Öffnest du die App danach nicht, erinnert Merkweiser an den Folgetagen neutral – auf Wunsch zunehmend dringlich. Im **Urlaub** (bis einschließlich dem gewählten Tag) kommt nichts. Die Benachrichtigung kann ein paar Minuten später kommen (Android bündelt Alarme zum Akkusparen; im Test bis etwa 2 Minuten). Was nach dem Schließen der App per Sync dazukommt, steht erst in der nächsten Benachrichtigung.
 
 ## Diagnosebericht
 

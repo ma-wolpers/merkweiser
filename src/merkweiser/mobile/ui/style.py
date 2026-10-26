@@ -20,3 +20,15 @@ DIFF_ADDED = ft.Colors.with_opacity(0.25, ft.Colors.GREEN)
 #: Schriftfarbe der Erläuterung unter einem Thema: deutlich schwächer als normaler
 #: Text, aber als Tönung der Themen-Schriftfarbe hell und dunkel lesbar.
 EXPLANATION = ft.Colors.with_opacity(0.5, ft.Colors.ON_SURFACE)
+
+#: Stern und Leiste je Dringlichkeitsstufe (``Urgency``-Wert → Symbol, Farbe, Tooltip).
+#: Farbe ``None`` = Themenfarbe (farblos). Gelb und Rot sind hell und dunkel lesbar;
+#: die Stufe steckt zusätzlich im Tooltip.
+URGENCY_STYLE = {
+    0: (ft.Icons.STAR_BORDER, None, "dringend markieren"),
+    1: (ft.Icons.STAR, ft.Colors.AMBER, "dringend – nochmal tippen: sehr dringend"),
+    2: (ft.Icons.STAR, ft.Colors.RED, "sehr dringend – nochmal tippen: nicht mehr dringend"),
+}
+
+#: Breite der farbigen Leiste links an offenen dringenden Todos.
+URGENCY_BAR = 4

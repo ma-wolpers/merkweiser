@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from merkweiser.app.notes_service import NotesService
-from merkweiser.app.notify_content import content_lines
+from merkweiser.app.notify_content import NotifyContent, content
 from merkweiser.app.notify_plan import NEUTRAL, NotifySettings, plan
 from merkweiser.app.settings import Settings
 from tests.fakes import FakeClock
@@ -22,8 +22,8 @@ def settings(**kw) -> NotifySettings:
     return NotifySettings(**{"enabled": True, "at": time(7, 0), **kw})
 
 
-def todos(_day: date) -> list[str]:
-    return ["• Elternbrief"]
+def todos(_day: date) -> NotifyContent:
+    return NotifyContent(("• Elternbrief",))
 
 
 def test_first_is_content_then_escalating_neutral() -> None:
@@ -35,7 +35,7 @@ def test_first_is_content_then_escalating_neutral() -> None:
 
 
 def test_no_todos_means_no_content_but_neutral_reminders() -> None:
-    result = plan(NOW, settings(horizon=3), lambda _d: [], BERLIN)
+    result = plan(NOW, settings(horizon=3), lambda _d: NotifyContent(), BERLIN)
     assert [p.id for p in result] == [2, 3] and all(p.title == "Merkweiser" for p in result)
 
 
@@ -59,27 +59,29 @@ def test_vacation_inclusive_pauses_counting_and_first_after_is_neutral() -> None
 def test_trigger_day_is_today_before_the_time_and_content_uses_trigger_day() -> None:
     seen = []
     morning = datetime(2026, 1, 15, 6, 0, tzinfo=BERLIN)
-    plan(morning, settings(horizon=1), lambda d: seen.append(d) or ["x"], BERLIN)
-    plan(NOW, settings(horizon=1), lambda d: seen.append(d) or ["x"], BERLIN)
+    plan(morning, settings(horizon=1), lambda d: seen.append(d) or NotifyContent(("x",)), BERLIN)
+    plan(NOW, settings(horizon=1), lambda d: seen.append(d) or NotifyContent(("x",)), BERLIN)
     assert seen == [date(2026, 1, 15), date(2026, 1, 16)]
 
 
 def test_local_time_across_dst_and_long_lists() -> None:
     result = plan(datetime(2026, 3, 28, 20, 0, tzinfo=BERLIN), settings(horizon=2),
-                  lambda _d: [f"• {i}" for i in range(12)], BERLIN)
+                  lambda _d: NotifyContent(tuple(f"• {i}" for i in range(12))), BERLIN)
     assert [p.at.utcoffset() for p in result] == [timedelta(hours=2), timedelta(hours=2)]  # nach der Umstellung 07:00 MESZ
     assert result[0].body.endswith("… und 4 weitere")
     assert result[0].as_item()["at"] == int(result[0].at.timestamp() * 1000)
 
 
-def test_content_lines_urgent_first_and_trigger_day_only(tmp_path: Path) -> None:
+def test_content_today_first_then_past_yellow(tmp_path: Path) -> None:
     root = tmp_path / "vault"
     root.mkdir()
     (root / "2026-01-10.md").write_bytes(b"Alt\n- [ ] ==Antrag==\n- [ ] alt normal\n")
     (root / "2026-01-16.md").write_bytes(b"Morgen\n- [ ] Elternbrief\n- [x] erledigt\n- [ ] ==Wichtig morgen==\n")
     svc = NotesService(root, tmp_path / "app", Settings(vault=str(root)), FakeClock())
     svc.start()
-    assert content_lines(svc, date(2026, 1, 16)) == ["⭐ Antrag (10.01.)", "⭐ Wichtig morgen (16.01.)", "• Elternbrief"]
+    found = content(svc, date(2026, 1, 16))
+    assert found.lines == ("⭐ Wichtig morgen", "• Elternbrief", "⭐ Antrag (10.01.)")  # W7: Tag vor Vergangenem
+    assert (found.red, found.yellow, found.bold) == (0, 2, (0, 2))
 
 
 def test_settings_validation() -> None:

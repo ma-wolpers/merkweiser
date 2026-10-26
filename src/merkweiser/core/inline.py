@@ -10,7 +10,9 @@ Regeln (``docs/FORMAT.md``):
 * Einrückung in Spalten mit Tabstopps bei Vielfachen von 4.
 * Checkbox direkt nach dem Marker: ``[ ]`` offen, ``[x]``/``[X]`` erledigt,
   anderes Zeichen → ``OTHER`` (GRENZE: gilt als normaler Punkt).
-* Dringend: Der Inhalt (nach der Checkbox) beginnt mit ``==…==``.
+* Dringlichkeit (Ampel, W7): Der Inhalt (nach der Checkbox) beginnt mit
+  ``==…==`` (Gelb) bzw. ``==🔴…==`` (Rot; beim Lesen ist **ein** Leerzeichen
+  nach 🔴 erlaubt). Einzige Quelle dafür ist ``urgency_span``.
 * Tag: ``#name`` am Wortanfang, nur in ``TEXT``-Tokens, nicht rein numerisch.
 * Projekt: Tag mit Präfix ``<prefix>/``, Vergleich ohne Groß-/Kleinschreibung.
 """
@@ -19,7 +21,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum
 
 from .lexer import text_spans
 
@@ -28,6 +30,36 @@ TAB_STOP = 4
 _LIST_RE = re.compile(r"^([ \t]*)([-*+]|\d{1,9}[.)])(?:[ \t]+|$)")
 _CHECKBOX_RE = re.compile(r"\[(.)\](?:[ \t]+|$)")
 _TAG_RE = re.compile(r"(?<!\S)#([\w/\-]+)")
+MARK = "=="
+RED_MARK = "🔴"
+
+
+class Urgency(IntEnum):
+    """Dringlichkeitsstufe eines Todos (Ampel ohne Grün: farblos, Gelb, Rot)."""
+
+    NONE = 0  # keine Markierung
+    GELB = 1  # ==…==
+    ROT = 2   # ==🔴…==
+
+
+@dataclass(frozen=True)
+class UrgencySpan:
+    """Lage einer erkannten Dringlichkeits-Markierung, Indizes relativ zum Inhalt.
+
+    Attributes:
+        level: ``GELB`` oder ``ROT``.
+        start: Index des öffnenden ``==`` (führender Leerraum liegt davor).
+        inner_start: Beginn des markierten Texts (hinter ``==`` bzw. ``==🔴`` und
+            dem einen optionalen Leerzeichen).
+        inner_end: Index des schließenden ``==``.
+        end: Index hinter dem schließenden ``==``.
+    """
+
+    level: Urgency
+    start: int
+    inner_start: int
+    inner_end: int
+    end: int
 
 
 class TodoStatus(Enum):
@@ -49,7 +81,7 @@ class ListItem:
         status: Todo-Status.
         status_col: Zeichenindex des Statuszeichens innerhalb ``[ ]`` oder ``None``.
         body_start: Zeichenindex, an dem der eigentliche Inhalt beginnt.
-        urgent: ``True``, wenn der Inhalt mit ``==…==`` beginnt.
+        urgency: Dringlichkeitsstufe des Inhalts (``urgency_span``).
     """
 
     indent: int
@@ -57,7 +89,12 @@ class ListItem:
     status: TodoStatus
     status_col: int | None
     body_start: int
-    urgent: bool
+    urgency: Urgency
+
+    @property
+    def urgent(self) -> bool:
+        """``True`` ab Stufe Gelb (``UrgentFilter.JA``)."""
+        return self.urgency >= Urgency.GELB
 
     @property
     def is_todo(self) -> bool:
@@ -125,21 +162,82 @@ def parse_list_item(text: str) -> ListItem | None:
         status = {" ": TodoStatus.OPEN, "x": TodoStatus.DONE, "X": TodoStatus.DONE}.get(char, TodoStatus.OTHER)
         status_col, body_start = content_start + 1, checkbox.end()
     return ListItem(indent=indent_columns(match.group(1)), marker=match.group(2), status=status,
-                    status_col=status_col, body_start=body_start, urgent=is_urgent(text[body_start:]))
+                    status_col=status_col, body_start=body_start, urgency=urgency(text[body_start:]))
 
 
-def is_urgent(body: str) -> bool:
-    """Prüft, ob ein Inhalt mit einer ``==…==``-Hervorhebung beginnt.
+def urgency_span(body: str) -> UrgencySpan | None:
+    """Erkennt die Dringlichkeits-Markierung am Inhaltsanfang (einzige Grammatik-Quelle).
+
+    Grammatik nach führendem Leerraum: ``==``, optional ``🔴`` mit optional
+    **einem** Leerzeichen, mindestens ein Zeichen Text, ``==``. Geschlossen wird
+    am ersten ``==`` nach dem Textbeginn. ``==🔴==`` (ohne weiteren Text) ist
+    Gelb mit dem Text „🔴“, damit nichts verloren geht. Alles andere ist keine
+    Markierung, z. B. ``a == b`` oder ein ``==`` ohne Schluss.
 
     Args:
         body: Inhalt nach Marker und Checkbox.
 
     Returns:
-        ``True``, wenn der Inhalt mit ``==`` beginnt und später ein schließendes
-        ``==`` mit mindestens einem Zeichen dazwischen folgt.
+        Lage und Stufe der Markierung oder ``None``.
     """
-    stripped = body.lstrip()
-    return stripped.startswith("==") and stripped.find("==", 3) != -1
+    start = len(body) - len(body.lstrip())
+    if not body.startswith(MARK, start):
+        return None
+    inner = start + len(MARK)
+    if body.startswith(RED_MARK, inner):
+        red_inner = inner + len(RED_MARK)
+        red_inner += body.startswith(" ", red_inner)
+        close = body.find(MARK, red_inner + 1)
+        if close != -1:
+            return UrgencySpan(Urgency.ROT, start, red_inner, close, close + len(MARK))
+    close = body.find(MARK, inner + 1)
+    if close == -1:
+        return None
+    return UrgencySpan(Urgency.GELB, start, inner, close, close + len(MARK))
+
+
+def urgency(body: str) -> Urgency:
+    """Dringlichkeitsstufe eines Inhalts (``NONE`` ohne Markierung).
+
+    Args:
+        body: Inhalt nach Marker und Checkbox.
+
+    Returns:
+        Die Stufe laut ``urgency_span``.
+    """
+    span = urgency_span(body)
+    return span.level if span else Urgency.NONE
+
+
+def is_urgent(body: str) -> bool:
+    """Dünner Wrapper: ``True`` ab Stufe Gelb.
+
+    Args:
+        body: Inhalt nach Marker und Checkbox.
+
+    Returns:
+        Ob eine gültige Markierung (Gelb oder Rot) am Inhaltsanfang steht.
+    """
+    return urgency(body) >= Urgency.GELB
+
+
+def strip_urgency(body: str) -> str:
+    """Inhalt ohne Dringlichkeits-Markierung, für die Anzeige.
+
+    Entfernt nur eine von ``urgency_span`` erkannte Markierung (öffnendes
+    ``==``, ggf. ``🔴`` mit dem einen Leerzeichen, schließendes ``==``); alle
+    anderen ``=`` und Formatierungen bleiben.
+
+    Args:
+        body: Inhalt nach Marker und Checkbox.
+
+    Returns:
+        Der Inhalt ohne Markierung bzw. unverändert.
+    """
+    span = urgency_span(body)
+    if span is None:
+        return body
+    return body[:span.start] + body[span.inner_start:span.inner_end] + body[span.end:]
 
 
 def find_tags(text: str) -> tuple[Tag, ...]:

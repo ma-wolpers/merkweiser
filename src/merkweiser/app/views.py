@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from typing import Callable
 
 from ..core.document import Document, ParsedNote
-from ..core.inline import TodoStatus, find_tags
+from ..core.inline import TodoStatus, Urgency, find_tags
 from ..core.outline import Node, NodeKind
 from ..core.patch import Target
 from ..core.move_plan import MoveContext
@@ -30,7 +30,7 @@ class Row:
         text: Anzeigetext der ersten Zeile (Marker und Checkbox entfernt).
         depth: Einrückungstiefe im Baum (0 = oberste Ebene).
         done: Erledigt-Status bei Todos, sonst ``None``.
-        urgent: Dringlichkeit.
+        urgency: Dringlichkeitsstufe (``Urgency``).
         tags: Effektive Tags (sortiert).
         target: Adresse der ersten Zeile (für Aktionen) oder ``None``.
         more: Weitere Zeilen des Knotens: beim Thema die Erläuterung, bei
@@ -45,7 +45,7 @@ class Row:
     text: str
     depth: int
     done: bool | None
-    urgent: bool
+    urgency: Urgency
     tags: tuple[str, ...]
     target: Target | None
     more: tuple[str, ...] = ()
@@ -77,7 +77,7 @@ def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
         rows.append(Row(kind="todo" if is_todo else node.kind.value,
                         text=empty_topic_text(line) if empty else display_text(line, node),
                         depth=_depth(note, node), done=(item.status is TodoStatus.DONE) if is_todo else None,
-                        urgent=bool(item and item.urgent), tags=tuple(sorted(note.tags[node.index].effective)),
+                        urgency=item.urgency if item else Urgency.NONE, tags=tuple(sorted(note.tags[node.index].effective)),
                         target=Target(relpath, node.lines[0], line), more=_more_lines(doc, node),
                         empty_topic=empty))
     return rows
@@ -139,13 +139,23 @@ def _depth(note: ParsedNote, node: Node) -> int:
 
 @dataclass(frozen=True)
 class HitRow:
-    """Ein Suchtreffer für Listen (Todos, Suche)."""
+    """Ein Suchtreffer für Listen (Todos, Suche).
+
+    Attributes:
+        day: Datum der Tagesdatei (ISO).
+        text: Inhalt ohne Marker und Checkbox (Dringlichkeits-Markierung noch
+            enthalten; die Anzeige nutzt ``inline.strip_urgency``).
+        context: Kontextpfad (Thema › Eltern-Punkte).
+        done: Erledigt-Status bei Todos, sonst ``None``.
+        urgency: Dringlichkeitsstufe.
+        target: Adresse der Zeile.
+    """
 
     day: str
     text: str
     context: str
     done: bool | None
-    urgent: bool
+    urgency: Urgency
     target: Target
 
 
@@ -167,7 +177,7 @@ def hit_rows(hits: list[Hit]) -> list[HitRow]:
         elif text[:2] in ("- ", "* ", "+ "):
             text = text[2:].strip()
         rows.append(HitRow(day=hit.day.isoformat(), text=text, context=" › ".join(hit.context),
-                           done=(hit.status is TodoStatus.DONE) if is_todo else None, urgent=hit.urgent,
+                           done=(hit.status is TodoStatus.DONE) if is_todo else None, urgency=hit.urgency,
                            target=Target(hit.relpath, hit.line_no, hit.text)))
     return rows
 
@@ -251,6 +261,21 @@ def tag_check(raw: str, project: bool, prefix: str, context: MoveContext,
         return TagCheck(None, conflict, False)
     hits = count(Filter(projekt=project_name) if project_name is not None else Filter(tags=(name,)))
     return TagCheck(name, f"#{name} gibt es schon ({hits} Einträge)." if hits else "", True)
+
+
+def next_urgency(level: Urgency) -> Urgency:
+    """Nächste Stufe beim Tipp auf den Stern: farblos → Gelb → Rot → farblos.
+
+    Der Zyklus gehört zur Oberfläche: Sie berechnet aus der **angezeigten**
+    Stufe den Zielzustand und schreibt ihn mit ``NotesService.set_urgency``.
+
+    Args:
+        level: Angezeigte Stufe.
+
+    Returns:
+        Die Zielstufe.
+    """
+    return Urgency((int(level) + 1) % 3)
 
 
 WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")

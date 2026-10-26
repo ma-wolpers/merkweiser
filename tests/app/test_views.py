@@ -21,7 +21,7 @@ def test_note_rows_strip_markers_and_track_depth() -> None:
     assert [(r.kind, r.text, r.depth, r.done) for r in rows] == [
         ("topic", "## Woche #w", 0, None), ("todo", "==eilig==", 1, False),
         ("item", "Unterpunkt", 2, None), ("todo", "fertig", 1, True)]
-    assert rows[1].urgent and rows[1].tags == ("t", "w") and rows[1].target.line_no == 2
+    assert rows[1].urgency == 1 and rows[1].tags == ("t", "w") and rows[1].target.line_no == 2
 
 
 def test_hit_rows_and_conflict_choices(tmp_path: Path) -> None:

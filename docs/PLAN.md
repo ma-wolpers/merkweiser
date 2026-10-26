@@ -41,7 +41,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 9 | Spike S5 Benachrichtigungen | **bestanden** (2026-10-26, Bericht `spikes/s5/bericht.md`): Zustellung ohne Exakt-Alarme, 10–122 s Verspätung |
 | 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest in der App offen (Antippen öffnet „heute“) |
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
-| 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | in Arbeit (Phase 0 erledigt) |
+| 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | in Arbeit (Phasen 0–1 erledigt) |
 
 ## Context
 
@@ -222,7 +222,7 @@ merkweiser/
 | `blocks.py` | Frontmatter, Codeblöcke (opak), Trenner, `NoteSpan(first, last)`. **Alleinige Instanz für Notizgrenzen.** |
 | `lexer.py` | Gemeinsame Inline-Tokens (`CODE`, `LINK_URL`, `WIKILINK`, `HIGHLIGHT`, `TEXT`) mit Spalten-Spans |
 | `outline.py` | Zeilenklassen nach der Grammatik und Baum. Knoten verweisen auf Zeilen-Spans. |
-| `inline.py` | Checkbox (`[ ]`/`[x]`/`[X]`; `[-]` u. a. bleiben erhalten und gelten als normaler Punkt, `GRENZE`), dringend (Inhalt beginnt mit `==…==`), Tags (nur in `TEXT`/`HIGHLIGHT`, nicht rein numerisch), Projekt-Tags über das Präfix |
+| `inline.py` | Checkbox (`[ ]`/`[x]`/`[X]`; `[-]` u. a. bleiben erhalten und gelten als normaler Punkt, `GRENZE`), dringend (Inhalt beginnt mit `==…==`; *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* zwei Stufen, `==…==` Gelb und `==🔴…==` Rot), Tags (nur in `TEXT`/`HIGHLIGHT`, nicht rein numerisch), Projekt-Tags über das Präfix |
 | `tags.py` | **Reine Auswertung:** effektiv = explizit ∪ Eltern-Punkt ∪ aktuelles Thema ∪ umschließende Überschriften |
 
 **Encoding (bewusst kleine Support-Menge):**
@@ -278,7 +278,7 @@ merkweiser/
   3. Kein oder mehrere Vorkommen → `StaleTargetError`. Es wird nie geraten.
 - **Ops:**
   - `toggle_done`: schreibt `[x]`, ändert ein vorhandenes `[X]` nicht.
-  - `toggle_urgent`.
+  - `toggle_urgent` (*Geändert am 2026-10-26 auf Nutzerwunsch (W7):* `set_urgency(level)` mit Zielzustand; den Stern-Zyklus farblos → Gelb → Rot berechnet die Oberfläche).
   - `set_project(name | None)`: entfernt alle expliziten `#projekt/…`-Tokens der Zeile (samt genau einem angrenzenden Leerzeichen) und hängt bei `name` ` #projekt/<name>` am Zeilenende an. Geerbte Projekte bleiben unberührt.
   - `add_todo`, `append_note`, `replace_note_text`, `delete_note` (Notiz-Spanne und genau ein angrenzender Trenner, Naht-Leerzeilen).
 - **`replace_note_text`-Auflösung:**

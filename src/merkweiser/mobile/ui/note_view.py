@@ -11,8 +11,8 @@ Layout (Nutzerwunsch vom 2026-10-21):
 Ein Tipp auf den Todo-Text hakt ab wie ein Tipp auf die Checkbox. „verschieben …“
 startet ``tag_dialog.show_move_flow`` (Tag-Dialog nur bei weiteren Todos der Notiz).
 
-W1/W2 (PLAN-SPAETERE-SCHRITTE.md): Offene dringende Todos stehen je
-Geschwistergruppe oben (``ordering.urgent_first``, nur Anzeige). Tags im Text
+W1/W2/W7 (PLAN-SPAETERE-SCHRITTE.md): Offene dringende Todos stehen je
+Geschwistergruppe oben, Rot vor Gelb (``ordering.urgent_first``, nur Anzeige). Tags im Text
 sind fett in der Primärfarbe und öffnen per Tipp die Tag-Seite
 (``MobileApp.open_tag``); ``rich_text`` nutzt dafür ``TextSpan.on_click``.
 """
@@ -25,11 +25,12 @@ import flet as ft
 
 from ...app.ordering import urgent_first
 from ...app.tag_spans import text_parts
-from ...app.views import Row, note_ref, note_rows
+from ...app.views import Row, next_urgency, note_ref, note_rows
 from ...core.document import Document, ParsedNote
+from ...core.inline import Urgency, strip_urgency
 from .note_dialogs import note_actions
 from .tag_dialog import show_move_flow
-from .style import EXPLANATION
+from .style import EXPLANATION, URGENCY_BAR, URGENCY_STYLE
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -82,7 +83,7 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
         lines += [rich_text(app, line, color=EXPLANATION) for line in row.more]
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":
-        head = todo_line(app, row.text, row.done, row.urgent, row.target)
+        head = todo_line(app, row.text, row.done, row.urgency, row.target)
     elif row.kind == "item":
         head = _marked(ft.Text("•", size=18), rich_text(app, row.text))
     else:
@@ -92,14 +93,18 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
     return ft.Container(content=ft.Column([head, *continuation], spacing=0), padding=pad)
 
 
-def todo_line(app: "MobileApp", text: str, done: bool | None, urgent: bool, target) -> ft.Control:
-    """Todo mit Checkbox, antippbarem Text und Schnellaktionen (dringend, verschieben).
+def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, target) -> ft.Control:
+    """Todo mit Checkbox, antippbarem Text und Schnellaktionen (Ampel-Stern, verschieben).
+
+    Der Stern zeigt die Stufe (farblos, gelb, rot; ``style.URGENCY_STYLE``) und
+    schaltet beim Tippen zur nächsten (``views.next_urgency``); geschrieben wird
+    der Zielzustand. Offene gelbe bzw. rote Todos haben links eine farbige Leiste.
 
     Args:
         app: Die laufende App.
-        text: Anzeigetext (ohne Checkbox).
+        text: Inhalt ohne Checkbox (Markierung wird für die Anzeige entfernt).
         done: Erledigt-Status.
-        urgent: Dringend markiert.
+        urgency: Angezeigte Dringlichkeitsstufe.
         target: Adresse des Todos.
 
     Returns:
@@ -114,18 +119,20 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgent: bool, targ
     async def tap(_e) -> None:
         await set_done(not done)
 
-    async def urgency(_e) -> None:
-        await app.act(lambda s: s.set_urgent(target, not urgent))
+    async def cycle(_e) -> None:
+        await app.act(lambda s: s.set_urgency(target, next_urgency(urgency)))
 
     async def move(_e) -> None:
         await show_move_flow(app, target)
 
-    label = text.strip("=") if urgent else text
+    icon, color, tooltip = URGENCY_STYLE[int(urgency)]
     checkbox = ft.Checkbox(value=bool(done), on_change=toggle, visual_density=ft.VisualDensity.COMPACT)
-    return _marked(checkbox, ft.GestureDetector(content=rich_text(app, label), on_tap=tap), [
-        ft.IconButton(icon=ft.Icons.STAR if urgent else ft.Icons.STAR_BORDER, on_click=urgency, tooltip="dringend"),
+    line = _marked(checkbox, ft.GestureDetector(content=rich_text(app, strip_urgency(text)), on_tap=tap), [
+        ft.IconButton(icon=icon, icon_color=color, on_click=cycle, tooltip=tooltip),
         ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
     ])
+    bar = color if urgency and done is False else None
+    return ft.Container(content=line, border=ft.Border.only(left=ft.BorderSide(URGENCY_BAR, bar)) if bar else None)
 
 
 def rich_text(app: "MobileApp", text: str, **style) -> ft.Text:

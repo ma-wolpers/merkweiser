@@ -4,9 +4,11 @@ Flet 0.86.5 kann kein Python im Hintergrund ausführen. Deshalb wird beim
 Verlassen der App alles für die nächsten Tage **vorgeplant**:
 
 * **Termin 1** (nächster Termin zur eingestellten Uhrzeit, nicht im Urlaub):
-  **Inhalt** = offene Todos der Tagesdatei des Auslösetags plus offene
-  dringende Todos aller Tage (dringende zuerst). Ohne passende Todos keine
-  Inhaltsbenachrichtigung – das sperrt die neutralen Erinnerungen nicht.
+  **Inhalt** laut ``notify_content`` (🔥 rote, dann die Todos des Auslösetags,
+  dann gelbe früherer Tage). Titel mit Anzahl (``· 🔥 n · ⭐ m``, gezählt vor
+  dem Kürzen), 🔥/⭐-Zeilen fett, Kanal ``hoch`` bei mindestens einem roten
+  Todo, sonst ``normal``. Ohne passende Todos keine Inhaltsbenachrichtigung –
+  das sperrt die neutralen Erinnerungen nicht.
 * **Folgetermine**: neutral („Öffne Merkweiser, um deine Todos zu sehen“).
   Mit Eskalation: 2. Termin ``normal``, 3. ``hoch``, ab dem 4. ``maximal``.
   Ohne Eskalation: alle ``normal`` mit gleichem Text, weiterhin täglich.
@@ -27,6 +29,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, tzinfo
 
+from ..core.inline import Urgency
+from .notify_content import SYMBOL, NotifyContent
+
 MAX_HORIZON = 30
 MAX_LINES = 8
 SCAN_LIMIT_DAYS = 400
@@ -46,18 +51,28 @@ class NotifySettings:
 
 @dataclass(frozen=True)
 class Planned:
-    """Eine geplante Benachrichtigung."""
+    """Eine geplante Benachrichtigung.
+
+    Attributes:
+        id: Termin-Nummer (1 = Inhalt).
+        at: Auslösezeitpunkt.
+        title: Titel.
+        body: Text (Zeilen mit Zeilenumbruch).
+        level: ``normal``, ``hoch`` oder ``maximal`` (Kanal).
+        bold: Indizes der fett gezeigten Zeilen von ``body`` (nach dem Kürzen).
+    """
 
     id: int
     at: datetime
     title: str
     body: str
     level: str
+    bold: tuple[int, ...] = ()
 
     def as_item(self) -> dict:
-        """Eintrag für ``MerkweiserNotify.schedule`` (Zeit in ms seit 1970)."""
+        """Eintrag für ``MerkweiserNotify.schedule`` (Zeit in ms seit 1970, ``bold`` als Liste ganzer Zahlen)."""
         return {"id": self.id, "at": int(self.at.timestamp() * 1000), "title": self.title, "body": self.body,
-                "level": self.level}
+                "level": self.level, "bold": list(self.bold)}
 
 
 def _moment(day: date, at: time, tz: tzinfo | None) -> datetime:
@@ -67,14 +82,14 @@ def _moment(day: date, at: time, tz: tzinfo | None) -> datetime:
     return datetime.combine(day, at, tzinfo=tz)
 
 
-def plan(now: datetime, settings: NotifySettings, content_for: Callable[[date], list[str]],
+def plan(now: datetime, settings: NotifySettings, content_for: Callable[[date], NotifyContent],
          tz: tzinfo | None = None) -> list[Planned]:
     """Alle Benachrichtigungen ab jetzt (siehe Moduldoku).
 
     Args:
         now: Jetzt (lokal, mit Offset).
         settings: Einstellungen.
-        content_for: Inhaltszeilen (offene Todos) für einen Auslösetag; leer = kein Inhalt.
+        content_for: Inhalt für einen Auslösetag (``notify_content.content``); ohne Zeilen kein Inhalt.
         tz: Zeitzone für die Termine oder ``None`` (Gerät).
 
     Returns:
@@ -97,20 +112,44 @@ def plan(now: datetime, settings: NotifySettings, content_for: Callable[[date], 
         ordinal += 1
         when = _moment(day, settings.at, tz)
         if ordinal == 1:
-            lines = content_for(day)
-            if lines:
-                planned.append(Planned(ordinal, when, f"Deine Todos am {day:%d.%m.}", _body(lines), "normal"))
+            found = content_for(day)
+            if found.lines:
+                body, bold = _body(found)
+                planned.append(Planned(ordinal, when, _title(day, found), body, "hoch" if found.red else "normal", bold))
             continue
         planned.append(Planned(ordinal, when, "Merkweiser", _neutral(ordinal, settings.escalate),
                                _level(ordinal, settings.escalate)))
     return planned
 
 
-def _body(lines: list[str]) -> str:
-    """Inhaltstext: höchstens ``MAX_LINES`` Zeilen, Rest als Anzahl."""
-    shown = lines[:MAX_LINES]
-    rest = len(lines) - len(shown)
-    return "\n".join(shown + ([f"… und {rest} weitere"] if rest else []))
+def _body(found: NotifyContent) -> tuple[str, tuple[int, ...]]:
+    """Inhaltstext und Fett-Indizes: höchstens ``MAX_LINES`` Zeilen, Rest als Anzahl.
+
+    Args:
+        found: Inhalt vor dem Kürzen.
+
+    Returns:
+        ``(Text, Indizes)``; die Indizes zeigen auf die tatsächlich angezeigten
+        Zeilen, die Zeile „… und n weitere“ ist nie fett.
+    """
+    shown = list(found.lines[:MAX_LINES])
+    rest = len(found.lines) - len(shown)
+    bold = tuple(i for i in found.bold if i < len(shown))
+    return "\n".join(shown + ([f"… und {rest} weitere"] if rest else [])), bold
+
+
+def _title(day: date, found: NotifyContent) -> str:
+    """Titel mit Anzahl roter und gelber Todos (Gesamtzahlen vor dem Kürzen; 0 entfällt).
+
+    Args:
+        day: Auslösetag.
+        found: Inhalt.
+
+    Returns:
+        z. B. ``Deine Todos am 27.10. · 🔥 2 · ⭐ 3``.
+    """
+    counts = [(SYMBOL[Urgency.ROT], found.red), (SYMBOL[Urgency.GELB], found.yellow)]
+    return f"Deine Todos am {day:%d.%m.}" + "".join(f" · {symbol} {n}" for symbol, n in counts if n)
 
 
 def _level(ordinal: int, escalate: bool) -> str:
