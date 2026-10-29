@@ -13,14 +13,25 @@ nur um Flet:
   wenn die Position mehrdeutig ist. GRENZE(Enter): Tastaturen, die beim Enter
   zugleich ein Wort autokorrigieren, liefern mehr als ein Zeichen auf einmal;
   dann bleibt es beim normalen Zeilenumbruch.
-* Nach einer Änderung: ``value`` **und** ``selection`` in einem ``update()``
-  (sonst setzt Flutter beim neuen Text den Caret kurz ans Ende), dann
-  ``await focus()`` und die Auswahl noch einmal (laut Flet-Doku gilt sie nur
-  bei fokussiertem Feld). Auswahl-Ereignisse ohne Nutzerursache (``cause``
-  ``None``/``UNKNOWN``) werden danach ``QUIET_SECONDS`` lang ignoriert: Es sind
-  Echos der eigenen Änderung, die sonst die gemerkte Position überschreiben
-  (Nutzerbefund 2026-10-22: Cursor sprang nach Checkbox/Liste/Einrücken).
-  BAUSTELLE(Caret): Wirksamkeit nur auf dem Gerät prüfbar.
+* Nach einer Änderung (``show``) gehen Text und Auswahl in **zwei** Updates
+  raus. Grund ist das Dart-``TextField`` von Flet 0.86.5 (``textfield.dart``,
+  ``build``): Ein neuer ``value`` setzt den Controller auf „Caret am Ende“, der
+  Controller-Listener schreibt dabei synchron ``selection = Ende`` in die
+  Eigenschaften, und erst danach liest der Build ``selection`` – eine im selben
+  Patch mitgeschickte Auswahl ist damit schon überschrieben (Nutzerbefund
+  2026-10-29: Caret sprang immer ans Ende der Notiz). Deshalb:
+
+  1. nur ``value`` senden; Dart meldet „Caret am Ende“ als Auswahl-Ereignis
+     (Echo). ``show`` wartet darauf höchstens ``ECHO_TIMEOUT`` (dann ist der
+     Build mit dem neuen Text sicher gelaufen und beide Patches landen nicht
+     im selben Frame) und verwirft das Echo, damit es die gemerkte Position
+     nicht überschreibt;
+  2. ``await focus()`` (laut Flet-Doku gilt eine Auswahl nur mit Fokus);
+  3. ``selection`` allein senden, vorher kurz auf ``None``: Flets ``Prop``
+     überspringt sonst Werte, die dem letzten bekannten gleichen.
+
+  Flet schickt beim Auswahl-Ereignis kein ``cause`` mit; Echos lassen sich
+  daher nur über diesen Ablauf erkennen. BAUSTELLE(Caret): Gerätetest steht aus.
 * **BAUSTELLE(Offsets):** Flutter zählt Positionen in UTF-16-Einheiten. Ob Flet
   0.86.5 sie umrechnet, ist ohne Gerät nicht prüfbar. Deshalb wird bei einer
   nicht leeren Auswahl gegen ``selected_text`` geprüft, welche Zählung passt;
@@ -29,7 +40,7 @@ nur um Flet:
 
 from __future__ import annotations
 
-import time
+import asyncio
 from collections.abc import Awaitable
 from typing import Callable
 
@@ -42,9 +53,8 @@ Tool = Callable[[str, int | None, int | None], tuple[str, int | None, int | None
 #: Öffnet den Tag-Picker: ``(Vorbelegung, on_pick)``; ``on_pick`` erhält den Namen ohne ``#``.
 TagPicker = Callable[[str, Callable[[str], Awaitable[None]]], object]
 
-# Auswahl-Ereignisse ohne Nutzerursache; kurz nach einer eigenen Änderung sind das Echos.
-PROGRAMMATIC = (None, ft.TextSelectionChangeCause.UNKNOWN)
-QUIET_SECONDS = 1.0
+#: Höchstwartezeit (s) auf das Echo „Caret am Ende“ nach einem neuen ``value`` (siehe Moduldokumentation).
+ECHO_TIMEOUT = 0.3
 
 
 def editor_toolbar(field: ft.TextField, indent_width: int = 4, tag_picker: TagPicker | None = None) -> ft.Row:
@@ -62,14 +72,16 @@ def editor_toolbar(field: ft.TextField, indent_width: int = 4, tag_picker: TagPi
     Returns:
         Eine Zeile mit fünf Symbolknöpfen.
     """
-    state: dict = {"start": None, "end": None, "utf16": True, "value": field.value or "", "quiet_until": 0.0}
+    state: dict = {"start": None, "end": None, "utf16": True, "value": field.value or "", "echo": None}
 
     def to_index(text: str, offset: int) -> int:
         return utf16_to_index(text, offset) if state["utf16"] else min(offset, len(text))
 
     async def remember(event) -> None:
-        if getattr(event, "cause", None) in PROGRAMMATIC and time.monotonic() < state["quiet_until"]:
-            return  # Echo unserer eigenen Änderung (z. B. Caret ans Textende nach neuem ``value``)
+        echo = state["echo"]
+        if echo is not None and not echo.is_set():
+            echo.set()  # Echo „Caret am Ende“ unseres neuen ``value``: verwerfen, ``show`` setzt die Auswahl
+            return
         text = field.value or ""
         selection = event.selection
         if selection is None or not selection.is_valid:
@@ -80,18 +92,26 @@ def editor_toolbar(field: ft.TextField, indent_width: int = 4, tag_picker: TagPi
         state["start"], state["end"] = to_index(text, selection.start), to_index(text, selection.end)
 
     async def show(new_text: str, start: int, end: int) -> None:
-        """Schreibt Text und Auswahl ins Feld (Reihenfolge siehe Moduldokumentation)."""
+        """Schreibt erst den Text, dann die Auswahl ins Feld (Ablauf und Grund: Moduldokumentation).
+
+        Args:
+            new_text: Neuer Feldinhalt.
+            start: Auswahlanfang (Python-Index).
+            end: Auswahlende (Python-Index).
+        """
         convert = (lambda i: index_to_utf16(new_text, i)) if state["utf16"] else (lambda i: i)
-
-        def selection() -> ft.TextSelection:
-            return ft.TextSelection(base_offset=convert(start), extent_offset=convert(end))
-
-        state.update(value=new_text, start=start, end=end, quiet_until=time.monotonic() + QUIET_SECONDS)
+        echo = asyncio.Event()
+        state.update(value=new_text, start=start, end=end, echo=echo)
         field.value = new_text
-        field.selection = selection()  # zusammen mit dem Text: kein Zwischenstand mit Caret am Ende
-        field.update()
-        await field.focus()
-        field.selection = selection()  # nach dem Fokus erneut, damit sie sichtbar gilt
+        field.update()  # 1. nur der Text – Dart setzt den Caret ans Ende und meldet das
+        try:
+            await asyncio.wait_for(echo.wait(), ECHO_TIMEOUT)
+        except TimeoutError:  # kein Echo (z. B. Caret stand schon dort): Build ist trotzdem durch
+            pass
+        state["echo"] = None
+        await field.focus()  # 2.
+        field.selection = None  # 3. erzwingt das Senden, auch bei gleichem Wert wie zuletzt
+        field.selection = ft.TextSelection(base_offset=convert(start), extent_offset=convert(end))
         field.update()
 
     async def changed(_e) -> None:

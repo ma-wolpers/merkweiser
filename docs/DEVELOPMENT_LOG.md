@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-29 – Editor-Caret: Ursache im Dart-TextField von Flet gefunden
+
+- Gerätebefund: Der Caret sprang nach Checkbox/Liste/Einrücken weiterhin ans Ende der Notiz. Der Fix vom 2026-10-22 (ein Update mit `value` und `selection`, `cause`-Filter) konnte nicht greifen.
+- Ursache laut `flet-0.86.5/lib/src/controls/textfield.dart` (`build`): Neuer `value` → `_controller.value = …collapsed(offset: value.length)` → der Listener `_handleControllerChange` schreibt synchron `updateProperties({"selection": Ende})` → danach liest der Build `selection` und bekommt schon „Ende“. Eine Auswahl im selben Patch geht so immer verloren. Außerdem schickt Flet beim Auswahl-Ereignis kein `cause`; der alte Filter hat 1 s lang **alle** Ereignisse verworfen.
+- Neu in `note_editor.show`: erst nur `value`, auf das Echo warten (max. `ECHO_TIMEOUT` = 0,3 s) und es verwerfen, `focus()`, dann nur `selection` (über `None`, weil `Prop.__set__` gleiche Werte überspringt). Patches mit Flets echtem `ObjectPatch.from_diff` geprüft, im Test mit simuliertem Dart-Echo.
+
 ## 2026-10-26 – W7 Phase 7: APK
 
 - Signierte APK über `tools/build_apk.py` gebaut (Signatur per `apksigner` geprüft) und nach `SyncSpike/` gelegt; Kotlin-Änderungen (Fettdruck) kompilieren. `GRENZE(Banner)` in `notify_plan` ergänzt.

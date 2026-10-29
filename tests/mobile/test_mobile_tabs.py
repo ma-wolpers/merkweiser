@@ -340,6 +340,13 @@ def test_new_note_button_opens_the_shared_editor_empty(tmp_path: Path) -> None:
     assert dialog.title is None and dialog.content.controls[1].value == ""
 
 
+@pytest.fixture(autouse=True)
+def _no_echo_wait(monkeypatch):
+    """Ohne Gerät kommt kein Echo von Dart: nicht jedes Mal ``ECHO_TIMEOUT`` abwarten."""
+    from merkweiser.mobile.ui import note_editor
+    monkeypatch.setattr(note_editor, "ECHO_TIMEOUT", 0.05)
+
+
 def _toolbar(text: str):
     """Hilfsfunktion: Feld mit Leiste, ohne Seite (``update``/``focus`` als Attrappen)."""
     from merkweiser.mobile.ui.note_editor import editor_toolbar
@@ -499,26 +506,67 @@ def test_list_button_and_indent_width(tmp_path: Path) -> None:
     assert field.value == "- a\n  - b"
 
 
-def test_programmatic_selection_echo_does_not_move_the_remembered_caret(tmp_path: Path) -> None:
-    """Nach einem Knopf: Text und Auswahl in einem Update; ein Echo ohne Nutzerursache (Caret ans Ende) wird
-    ignoriert, der nächste Knopf wirkt an derselben Stelle. Echte Nutzer-Ereignisse gelten weiter."""
+def test_text_and_selection_go_out_in_separate_patches_and_the_echo_is_dropped(tmp_path: Path) -> None:
+    """Wie das Dart-TextField von Flet 0.86.5: Ein neuer ``value`` setzt den Caret ans Ende und meldet das (Echo).
+    Deshalb erst nur der Text (echter Flet-Diff), Echo verwerfen, dann nur die Auswahl; der nächste Knopf wirkt
+    an derselben Stelle, spätere Nutzer-Ereignisse gelten wieder."""
     import asyncio
+
+    from flet.controls.base_control import BaseControl
+    from flet.controls.object_patch import ObjectPatch
+    from flet.utils.object_model import patch_dataclass
     field, bar = _toolbar("- a\n- b\n- c")
-    updates = []
-    field.update = lambda: updates.append((field.value, field.selection))
-    tap = ft.TextSelectionChangeCause.TAP
-    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(6, 6), selected_text="", cause=tap)))
+    sent = []
+
+    def update() -> None:  # Patch so, wie Flet ihn an Dart schicken würde
+        patch, *_ = ObjectPatch.from_diff(field, field, control_cls=BaseControl)
+        ops = {op[2]: op[3] for op in patch.to_message()[1:]}
+        sent.append(ops)
+        if "value" in ops:  # Dart: Caret ans Ende, Echo als Eigenschaft + Ereignis zurück
+            end = ft.TextSelection(len(ops["value"]), len(ops["value"]))
+            patch_dataclass(field, {"selection": {"base_offset": end.base_offset, "extent_offset": end.extent_offset}})
+            asyncio.get_running_loop().create_task(
+                field.on_selection_change(SimpleNamespace(selection=end, selected_text="")))
+
+    def select(at: int) -> None:
+        asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(at, at), selected_text="")))
+
+    ObjectPatch.from_diff(field, field, control_cls=BaseControl)  # Erstaufbau gilt als gesendet
+    field.update = update
+    select(6)
     asyncio.run(bar.controls[2].on_click(None))  # Einrücken „b“
     assert field.value == "- a\n    - b\n- c"
-    assert updates[0] == (field.value, ft.TextSelection(10, 10))  # Text und Caret im selben Update
-    echo = SimpleNamespace(selection=ft.TextSelection(15, 15), selected_text="", cause=ft.TextSelectionChangeCause.UNKNOWN)
-    asyncio.run(field.on_selection_change(echo))
-    asyncio.run(bar.controls[0].on_click(None))  # Checkbox wirkt weiter auf „b“, nicht auf „c“
-    assert field.value == "- a\n    - [ ] b\n- c"
-    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(19, 19), selected_text="",
-                                                          cause=tap)))
+    assert sent == [{"value": "- a\n    - b\n- c"}, {"selection": ft.TextSelection(10, 10)}]
+    asyncio.run(bar.controls[0].on_click(None))  # Checkbox wirkt weiter auf „b“ (Echo „Ende“ verworfen)
+    assert field.value == "- a\n    - [ ] b\n- c" and sent[-1] == {"selection": ft.TextSelection(14, 14)}
+    select(len(field.value))
     asyncio.run(bar.controls[0].on_click(None))
     assert field.value == "- a\n    - [ ] b\n- [ ] c"
+
+
+def test_selection_is_resent_even_if_it_equals_the_last_known_value(tmp_path: Path) -> None:
+    """Bleibt der Caret-Index gleich (Änderung hinter dem Caret), wird die Auswahl trotzdem gesendet."""
+    import asyncio
+
+    from flet.controls.base_control import BaseControl
+    from flet.controls.object_patch import ObjectPatch
+    field, bar = _toolbar("a\n- b")
+    sent = []
+
+    def update() -> None:
+        patch, *_ = ObjectPatch.from_diff(field, field, control_cls=BaseControl)
+        sent.append({op[2]: op[3] for op in patch.to_message()[1:]})
+
+    field.update = update
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(1, 1), selected_text="")))
+    field.selection = ft.TextSelection(1, 1)  # zuletzt bekannter Wert = Ziel
+    sent.clear()
+    asyncio.run(bar.controls[0].on_click(None))  # Checkbox in Zeile „a“: Caret 1 → 7
+    asyncio.run(field.on_selection_change(SimpleNamespace(selection=ft.TextSelection(7, 7), selected_text="")))
+    field.selection = ft.TextSelection(7, 7)
+    sent.clear()
+    asyncio.run(bar.controls[1].on_click(None))  # Listenpunkt: „- [ ] a“ → „- a“, Caret 7 → 3
+    assert sent[-1] == {"selection": ft.TextSelection(3, 3)}
 
 
 def _spans(controls) -> list:
