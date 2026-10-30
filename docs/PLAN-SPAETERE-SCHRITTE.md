@@ -131,7 +131,7 @@ Danach folgen Schritt 7 und Schritt 9.
   - **Dauer:** wird aus den Zeitstempeln berechnet und **immer abgerundet**.
   - **Über Mitternacht:** wird je Tagesanteil abgerundet und der jeweiligen Tagesdatei zugerechnet. Die Tagesgrenze richtet sich nach der **lokalen Zeitzone des Geräts** (1.3).
   - **Tätigkeit wechseln:** Die laufende Messung endet jetzt, die neue beginnt jetzt.
-  - **„Messung abbrechen“:** Endzeit wählen (mit Verbuchung) oder „Keine Zeit eintragen“ (nur der Stempel wird gelöscht).
+  - **„Messung abbrechen“:** Endzeit wählen (mit Verbuchung) oder „Keine Zeit eintragen“ (nur der Stempel wird gelöscht). *Geändert am 2026-10-30 auf Nutzerwunsch:* Der Knopf heißt „Messung beenden“; direkt dahinter steht der Stopp-Knopf als reines Symbol, ein eigener Knopf „Stopp“ entfällt.
 - **Tätigkeiten:**
   - Die Liste ist app-intern, Standard „Orga“.
   - Namen, die nur in Dateien vorkommen, erscheinen in der Übersicht.
@@ -733,7 +733,7 @@ Gerätetests nach Spike-Prüfliste (Y10).
 
 **Tests:** Wechsel in der Vergangenheit bucht die alte Tätigkeit bis `t` und startet die neue um `t`; `t` ≤ Beginn und `t` in der Zukunft werden abgelehnt; `t` vor Mitternacht bei jetzt nach Mitternacht (neuer Stempel in der gestrigen Datei, Minuten geteilt); Absturz vor jedem Schritt → genau einmal gebucht; Dialog Jetzt/Uhrzeit in der Oberfläche.
 
-**Entschieden (2026-10-25):** Bedienung mit Dialog-Knopf und Mini-Knopf (siehe UI). **Bewusst kein „Start nachtragen“:** Das Starten der Zeitmessung soll immer Teil der Arbeitsstart-Routine sein (Nutzerentscheidung) – also bitte auch später nicht nachrüsten. Nur Wechseln bekommt die Uhrzeit-Wahl; Stoppen mit Uhrzeit gibt es schon über „Messung abbrechen → Endzeit wählen“.
+**Entschieden (2026-10-25):** Bedienung mit Dialog-Knopf und Mini-Knopf (siehe UI). *Geändert am 2026-10-30 auf Nutzerwunsch:* Der Knopf heißt „Wechseln zu „X““, ohne „…“. **Bewusst kein „Start nachtragen“:** Das Starten der Zeitmessung soll immer Teil der Arbeitsstart-Routine sein (Nutzerentscheidung) – also bitte auch später nicht nachrüsten. Nur Wechseln bekommt die Uhrzeit-Wahl; Stoppen mit Uhrzeit gibt es schon über „Messung abbrechen → Endzeit wählen“.
 
 **Umgesetzt (2026-10-25).** Dabei gefunden und behoben: Beim Wechsel in eine **andere** Tagesdatei (z. B. Start 22:00, Wechsel nach Mitternacht – auch beim Sofort-Wechsel) hielt die Zeitbuchung den im eigenen Stempel-Schritt entfernten Stempel für „anderswo beendet“ und setzte den neuen Stempel nicht.
 

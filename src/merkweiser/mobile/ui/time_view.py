@@ -1,10 +1,11 @@
 """Tab „Zeit“: Arbeitszeit messen und ansehen (W6, PLAN-SPAETERE-SCHRITTE.md).
 
 Aufbau von oben: laufende Messung („Orga läuft seit 08:15 (1:23)“),
-Tätigkeit (Dropdown, sortiert nach 7-Tage-Summe), **ein** Start/Stopp-Knopf,
-„Wechseln zu … …“ (wenn eine andere Tätigkeit gewählt ist; öffnet immer die
-Uhrzeit-Wahl, vorbelegt mit jetzt) mit Mini-Knopf „Sofort wechseln“ daneben (W6a),
-„Messung abbrechen …“;
+Tätigkeit (Dropdown, sortiert nach 7-Tage-Summe), ohne Messung „Start“, sonst
+„Messung beenden“ (Endzeit wählen oder keine Zeit eintragen) mit Schnellknopf
+„Sofort stoppen“ (nur Symbol) und „Wechseln zu …“ (wenn eine andere Tätigkeit
+gewählt ist; öffnet immer die Uhrzeit-Wahl, vorbelegt mit jetzt) mit Schnellknopf
+„Sofort wechseln“ (W6a);
 darunter Hinweise (veraltet verworfen, beschädigt, nicht lesbar, Umbenennung
 unklar, mehrere laufende Messungen), dann die Übersicht (7/14/30 Tage, je Tag
 eine Zeile, Summen) und „Tätigkeiten verwalten“ (Unterseite ``taetigkeiten``).
@@ -82,18 +83,32 @@ def _measure(app: "MobileApp", scan: ScanResult, state: dict) -> list[ft.Control
                            options=[ft.DropdownOption(key=n, text=n) for n in selectable])
     controls.append(dropdown)
     if run:
-        controls.append(ft.Button("Stopp", icon=ft.Icons.STOP, on_click=_action(app, lambda s: ts.stop(s))))
+        controls.append(_with_quick(
+            ft.Button("Messung beenden", on_click=lambda _e: show_abort_dialog(app, run.stamp.start)),
+            ft.Icons.STOP, "Sofort stoppen", _action(app, lambda s: ts.stop(s))))
         if chosen != run.stamp.activity:
-            controls.append(ft.Row([
-                ft.Button(f"Wechseln zu „{chosen}“ …", icon=ft.Icons.SWAP_HORIZ,
+            controls.append(_with_quick(
+                ft.Button(f"Wechseln zu „{chosen}“", icon=ft.Icons.SWAP_HORIZ,
                           on_click=lambda _e: show_switch_dialog(app, chosen, run.stamp.start)),
-                ft.IconButton(icon=ft.Icons.FAST_FORWARD, tooltip="Sofort wechseln",
-                              on_click=_action(app, lambda s: ts.switch(s, chosen)))], spacing=4))
-        controls.append(ft.TextButton("Messung abbrechen …",
-                                      on_click=lambda _e: show_abort_dialog(app, run.stamp.start)))
+                ft.Icons.FAST_FORWARD, "Sofort wechseln", _action(app, lambda s: ts.switch(s, chosen))))
     elif not scan.running:
         controls.append(ft.Button("Start", icon=ft.Icons.PLAY_ARROW, on_click=_action(app, lambda s: ts.start(s, chosen))))
     return controls
+
+
+def _with_quick(button: ft.Control, icon: str, tooltip: str, on_quick) -> ft.Row:
+    """Knopf, der einen Dialog öffnet, mit Schnellknopf (nur Symbol) direkt dahinter.
+
+    Args:
+        button: Der beschriftete Knopf (öffnet die Uhrzeit- bzw. Endzeit-Wahl).
+        icon: Symbol des Schnellknopfs.
+        tooltip: Erklärung des Schnellknopfs.
+        on_quick: Aktion des Schnellknopfs (wirkt sofort, ohne Dialog).
+
+    Returns:
+        Die Zeile aus beiden Knöpfen.
+    """
+    return ft.Row([button, ft.IconButton(icon=icon, tooltip=tooltip, on_click=on_quick)], spacing=4)
 
 
 def _notes(app: "MobileApp", scan: ScanResult) -> list[ft.Control]:

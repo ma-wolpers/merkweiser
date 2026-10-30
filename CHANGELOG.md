@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Tab Zeit:** „Messung abbrechen“ heißt jetzt „Messung beenden“ und bekommt direkt dahinter den Stopp-Knopf als reines Symbol; der große Knopf „Stopp“ entfällt. „Wechseln zu „X““ steht ohne „…“. Beide Zeilen sind gleich aufgebaut: Knopf mit Uhrzeit-Wahl, daneben der Schnellknopf.
 - **Tab Todos aufgeräumt:** Alle Filter (Status, Zeitraum, Tags, UND/ODER) liegen hinter einem Filter-Knopf; eine Zahl daran zeigt, wie viele vom Standard abweichen, daneben steht eine kurze Zusammenfassung. Neu ist der Zeitraum: *bis heute* (Standard), *ab morgen* oder *alle Tage*. Die Liste ist in Abschnitte mit Anzahl geteilt: „Sehr dringend“, „Zukünftig“, „Heute“, „Frühere Tage“. Der Filter gilt bis zum Schließen der App.
 - **Verschieben ohne Tag-Frage, wenn schon ein Tag da ist:** Erbt das Todo einen Tag von Thema oder Überpunkt, geht es direkt zur Datumswahl; der Tag wandert explizit mit. Der Knopf „Mit bestehendem Tag verschieben“ erscheint nur noch, wenn das Todo das gemeinsame Projekt selbst trägt.
 - **Tab Todos:** Oben stehen alle offenen roten Todos, dann die von heute, darunter die früheren Tage (je Abschnitt gelbe zuerst). Gelbe Todos früherer Tage stehen nicht mehr über den heutigen. Todos aus zukünftigen Tagen erscheinen nicht mehr.

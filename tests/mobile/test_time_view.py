@@ -85,6 +85,12 @@ def by_label(controls, label: str):
     return next(b for b in buttons(controls) if b.content == label)
 
 
+def quick_row(controls, tooltip: str) -> ft.Row:
+    """Die Zeile aus beschriftetem Knopf und Schnellknopf mit diesem Tooltip."""
+    return next(c for c in controls if isinstance(c, ft.Row) and isinstance(c.controls[-1], ft.IconButton)
+                and c.controls[-1].tooltip == tooltip)
+
+
 def test_start_then_stop_from_the_tab(tmp_path: Path) -> None:
     app, said, _dialogs, _pages = fake_app(tmp_path)
     controls = time_view.time_view(app)
@@ -95,7 +101,10 @@ def test_start_then_stop_from_the_tab(tmp_path: Path) -> None:
     app.service.clock.advance(25 * 60)
     controls = time_view.time_view(app)
     assert controls[0].value.startswith("„Kurs“ läuft seit 10:00 (0:25)") and app.time_tick is not None
-    asyncio.run(by_label(controls, "Stopp").on_click(None))
+    button, stop = quick_row(controls, "Sofort stoppen").controls
+    assert button.content == "Messung beenden" and stop.icon == ft.Icons.STOP
+    assert not [b for b in buttons(controls) if b.content == "Stopp"]
+    asyncio.run(stop.on_click(None))
     app.service.clock.advance(121)
     app.service.writer.finish_due()
     head = parse_bytes((app.service.root / "2026-01-15.md").read_bytes())
@@ -106,7 +115,8 @@ def test_abort_dialog_without_time_and_overview_ranges(tmp_path: Path) -> None:
     app, said, dialogs, pages = fake_app(tmp_path)
     asyncio.run(by_label(time_view.time_view(app), "Start").on_click(None))
     controls = time_view.time_view(app)
-    by_label(controls, "Messung abbrechen …").on_click(None)
+    by_label(controls, "Messung beenden").on_click(None)
+    assert dialogs[-1].title.value == "Messung beenden"
     asyncio.run(dialogs[-1].actions[1].on_click(None))  # „Keine Zeit eintragen“
     assert any("verworfen" in s for s in said)
     controls = time_view.time_view(app)
@@ -164,15 +174,14 @@ def test_mobile_app_runs_ticker_only_while_time_tab_is_visible(tmp_path: Path) -
 
 
 def test_switch_button_opens_time_picker_and_mini_button_switches_now(tmp_path: Path) -> None:
-    """W6a: „Wechseln zu … …“ öffnet die Uhrzeit-Wahl (vorbelegt jetzt); der Mini-Knopf wechselt sofort."""
+    """W6a: „Wechseln zu …“ öffnet die Uhrzeit-Wahl (vorbelegt jetzt); der Mini-Knopf wechselt sofort."""
     app, said, dialogs, _pages = fake_app(tmp_path)
     asyncio.run(by_label(time_view.time_view(app), "Start").on_click(None))  # Kurs ab 10:00
     app._time["activity"] = "Orga"
     app.service.clock.advance(60 * 60)  # 11:00
     controls = time_view.time_view(app)
-    [row] = [c for c in controls if isinstance(c, ft.Row) and isinstance(c.controls[-1], ft.IconButton)]
-    dialog_button, mini = row.controls
-    assert dialog_button.content == "Wechseln zu „Orga“ …" and mini.tooltip == "Sofort wechseln"
+    dialog_button, mini = quick_row(controls, "Sofort wechseln").controls
+    assert dialog_button.content == "Wechseln zu „Orga“"
     dialog_button.on_click(None)
     picker = dialogs[-1]
     assert isinstance(picker, ft.TimePicker) and picker.value.hour == 11
@@ -183,6 +192,6 @@ def test_switch_button_opens_time_picker_and_mini_button_switches_now(tmp_path: 
     head = parse_bytes((app.service.root / "2026-01-15.md").read_bytes())
     assert minutes(head)[0] == {"Kurs": 20}
     app._time["activity"] = "Kurs"
-    row = next(c for c in time_view.time_view(app) if isinstance(c, ft.Row) and isinstance(c.controls[-1], ft.IconButton))
+    row = quick_row(time_view.time_view(app), "Sofort wechseln")
     asyncio.run(row.controls[1].on_click(None))
     assert any("„Kurs“ läuft seit" in s for s in said)

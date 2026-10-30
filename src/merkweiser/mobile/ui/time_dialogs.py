@@ -1,4 +1,4 @@
-"""Dialoge des Zeit-Tabs: Wechseln mit Uhrzeit, Messung abbrechen (Endzeit oder keine Zeit), Tätigkeit umbenennen (W6).
+"""Dialoge des Zeit-Tabs: Wechseln mit Uhrzeit, Messung beenden (Endzeit oder keine Zeit), Tätigkeit umbenennen (W6).
 
 Alle Aktionen laufen über ``app.act`` (Fehler werden angezeigt, danach wird
 neu gezeichnet). ``end_from_time`` macht aus einer gewählten Uhrzeit einen
@@ -58,7 +58,7 @@ def show_switch_dialog(app: "MobileApp", activity: str, start: datetime) -> None
 
 
 def show_abort_dialog(app: "MobileApp", start: datetime) -> None:
-    """„Messung abbrechen“: Endzeit wählen oder keine Zeit eintragen.
+    """„Messung beenden“: Endzeit wählen oder keine Zeit eintragen.
 
     Args:
         app: Die laufende App.
@@ -82,7 +82,7 @@ def show_abort_dialog(app: "MobileApp", start: datetime) -> None:
                                            confirm_text="Eintragen", cancel_text="Abbrechen", on_change=picked))
 
     app.page.show_dialog(ft.AlertDialog(
-        title=ft.Text("Messung abbrechen"),
+        title=ft.Text("Messung beenden"),
         content=ft.Text(f"Die Messung läuft seit {start:%H:%M}. Welche Zeit soll eingetragen werden?"),
         actions=[ft.TextButton("Endzeit wählen …", on_click=choose_end),
                  ft.TextButton("Keine Zeit eintragen", on_click=no_time),

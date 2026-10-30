@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-10-30 – Tab Zeit: „Messung beenden“ mit Schnellknopf
+
+- Nutzerwunsch: „Messung abbrechen …“ → „Messung beenden“ (auch im Dialogtitel), Stopp nur noch als Symbol direkt dahinter, „Wechseln zu „X““ ohne „…“. Interne Namen (`ts.abort`, `show_abort_dialog`) bleiben.
+- Beide Zeilen teilen `time_view._with_quick`. Die Beenden-Zeile steht dort, wo vorher „Stopp“ stand, also über „Wechseln zu“.
+
 ## 2026-10-29 – Editor-Caret: Ursache im Dart-TextField von Flet gefunden
 
 - Gerätebefund: Der Caret sprang nach Checkbox/Liste/Einrücken weiterhin ans Ende der Notiz. Der Fix vom 2026-10-22 (ein Update mit `value` und `selection`, `cause`-Filter) konnte nicht greifen.

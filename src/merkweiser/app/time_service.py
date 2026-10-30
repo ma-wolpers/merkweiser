@@ -105,7 +105,7 @@ def stop(service: "NotesService", end: datetime | None = None) -> str:
 
 
 def abort(service: "NotesService", end: datetime | None) -> str:
-    """„Messung abbrechen“: mit Endzeit buchen oder (``None``) keine Zeit eintragen."""
+    """„Messung beenden“: mit Endzeit buchen oder (``None``) keine Zeit eintragen."""
     if end is not None:
         return stop(service, end)
     service.check_writable()
