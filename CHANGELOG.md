@@ -23,6 +23,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Konflikte mit dem Hinweis „Entscheidung unterbrochen – bitte erneut entscheiden“ ließen sich nicht entscheiden: Jeder Knopf brach mit einem Fehler ab. Jetzt wird die Entscheidung normal angewendet.
 - Im Tab Todos erschien „Keine Todos.“ nie, auch wenn nichts passte.
 - Ein Todo wie `x = 1 ==` verlor in der Anzeige seine Gleichheitszeichen am Rand; jetzt wird nur eine echte Dringlichkeits-Markierung ausgeblendet.
 - Wechselte man die Tätigkeit nach Mitternacht, während die Messung noch vom Vortag lief, wurde die alte Zeit zwar eingetragen, die neue Messung startete aber nicht (Hinweis „anderswo beendet“).

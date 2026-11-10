@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-10 – Schon markierte Konfliktdateien entscheiden
+
+- Befund bei der Planung von W8: `resolve.marked_name` assertete `not parsed.decided`. Jeder Fall „Entscheidung unterbrochen“ (Konfliktdatei heißt schon `…MWENTSCHIEDEN`, z. B. nach Fall f/g/h/k) brach beim Entscheiden mit `AssertionError` ab.
+- Jetzt bleibt ein markierter Pfad unverändert (`marker == konflikt`), `_from_mark` prüft nur den Inhalt gegen `C0` und benennt nichts um. Die Wiederherstellung brauchte keine Änderung (`cm == c0` → Fall b/d), `_unmark` ist bei gleichem Pfad wirkungslos.
+- Test `test_resolving_already_marked_conflict_completes` (direkt sowie Absturz nach PREPARED und nach MAIN_WRITTEN).
+
 ## 2026-10-30 – Tab Zeit: „Messung beenden“ mit Schnellknopf
 
 - Nutzerwunsch: „Messung abbrechen …“ → „Messung beenden“ (auch im Dialogtitel), Stopp nur noch als Symbol direkt dahinter, „Wechseln zu „X““ ohne „…“. Interne Namen (`ts.abort`, `show_abort_dialog`) bleiben.

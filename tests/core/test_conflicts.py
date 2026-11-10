@@ -145,6 +145,30 @@ def test_manual_resolution_with_marker_completes(tmp_path: Path) -> None:
     assert [p.name for p in env.root.iterdir()] == [MAIN]
 
 
+@pytest.mark.parametrize("point", [None, "resolve:prepared", "resolve:main_written"])
+def test_resolving_already_marked_conflict_completes(tmp_path: Path, point: str | None) -> None:
+    """Fall „Entscheidung unterbrochen“: eine schon markierte Konfliktdatei lässt sich (auch nach Absturz) entscheiden."""
+    marked = "2026-01-01.sync-conflict-20260101-120000-ABCDEFGMWENTSCHIEDEN.md"
+    env = Env(tmp_path, crash=point)
+    env.put(MAIN, b"A\n")
+    env.put(marked, b"B\n")
+    [case] = env.cases()
+    assert case.kind is CaseKind.MANUAL and case.conflict.decided
+    if point is None:
+        outcome = resolve(env.writer, env.store, MAIN, b"A\n", marked, b"B\n", b"A\nB\n", "Beide")
+        assert outcome.state == "DONE"
+    else:
+        with pytest.raises(SimulatedCrash):
+            resolve(env.writer, env.store, MAIN, b"A\n", marked, b"B\n", b"A\nB\n", "Beide")
+        env.die()
+        env = Env(tmp_path)
+        recover(env.writer)
+        recover_resolves(env.writer, env.store)
+    env.settle()
+    assert env.get(MAIN) == b"A\nB\n"
+    assert [p.name for p in env.root.iterdir()] == [MAIN]
+
+
 @pytest.mark.parametrize("point", ["resolve:prepared", "resolve:marked", "resolve:main_written"])
 def test_crash_during_resolution_never_undoes_choice(tmp_path: Path, point: str) -> None:
     """Wahl „nur A“, Absturz → Wiederherstellung setzt fort; B wird nie wieder eingefügt."""

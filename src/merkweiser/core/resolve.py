@@ -39,14 +39,19 @@ class ResolveOutcome:
 def marked_name(conflict_relpath: str) -> str:
     """Pfad der Konfliktdatei mit Marker ``…MWENTSCHIEDEN`` an der Gerätekennung.
 
+    Ist die Datei schon markiert (Fall „Entscheidung unterbrochen“), bleibt der
+    Pfad unverändert; ``_from_mark`` prüft dann nur den Inhalt.
+
     Args:
-        conflict_relpath: Konfliktdatei ohne Marker.
+        conflict_relpath: Konfliktdatei mit oder ohne Marker.
 
     Returns:
         Pfad mit Marker (Hauptdatei-Zuordnung bleibt gleich).
     """
     parsed = parse_conflict_name(conflict_relpath)
-    assert parsed is not None and not parsed.decided
+    assert parsed is not None
+    if parsed.decided:
+        return conflict_relpath
     head = conflict_relpath[: -len(".md")]
     return f"{head}{DECIDED_SUFFIX}.md"
 
@@ -80,15 +85,21 @@ def resolve(writer: Writer, store: OpStore, main_rel: str, main_before: bytes | 
 
 
 def _from_mark(writer: Writer, op: Op) -> ResolveOutcome:
-    """Schritt 3: Marker setzen und prüfen, dann weiter mit Schritt 4."""
+    """Schritt 3: Marker setzen und prüfen, dann weiter mit Schritt 4.
+
+    War die Konfliktdatei schon markiert (``konflikt == marker``), entfällt die
+    Umbenennung; geprüft wird nur, dass ihr Inhalt noch ``C0`` ist.
+    """
     m = op.manifest
     conflict, marked = writer.root / m["konflikt"], writer.root / m["marker"]
     c0 = op.blob("konflikt", m["blobs"]["konflikt"])
     if not (conflict.exists() and conflict.read_bytes() == c0):
         return _interrupt(op, "Konfliktdatei hat sich geändert oder fehlt")
-    writer.fs.rename_no_replace(conflict, marked)
+    if conflict != marked:
+        writer.fs.rename_no_replace(conflict, marked)
     if marked.read_bytes() != c0:
-        writer.fs.rename_no_replace(marked, conflict)
+        if conflict != marked:
+            writer.fs.rename_no_replace(marked, conflict)
         return _interrupt(op, "Konfliktdatei hat sich während der Markierung geändert")
     op.set_state("MARKED")
     writer.fs.point("resolve:marked")
