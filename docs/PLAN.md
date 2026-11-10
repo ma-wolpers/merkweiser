@@ -42,6 +42,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest in der App offen (Antippen öffnet „heute“) |
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
 | 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | umgesetzt (Phasen 0–7, signierte APK 2026-10-26); Gerätetest offen |
+| 13 | W8 Konflikte notizweise, Todo-Häkchen direkt, Versionen verwerfen, leere Versionen automatisch (Plan: `PLAN-SPAETERE-SCHRITTE.md` W8) | in Arbeit (C0–C1 erledigt) |
 
 ## Context
 
@@ -537,6 +538,7 @@ merkweiser/
   - Der Nutzer wählt **genau eine** als Wiederherstellungsgrundlage oder „alle verwerfen“ (alle ins Backup).
   - Nach der Wiederherstellung werden die übrigen zu normalen Konflikten gegen die neue Hauptdatei, aber **nur manuell** (Feld `nur_manuell` der Resolve-Op).
   - Es werden **nie** automatisch mehrere Konfliktstände zusammengefasst.
+  - *Geändert am 2026-11-10 auf Nutzerwunsch (W8, `PLAN-SPAETERE-SCHRITTE.md`):* Die gewählte Version kann **notizweise** wiederhergestellt werden; jede Version lässt sich **einzeln verwerfen** (Resolve-Op mit `verwerfen`, siehe Auflösungsprotokoll). **Leere** Versionen (nur Leerraum/`---`, ggf. BOM) werden beim Start automatisch verworfen (Backup, Hinweis) – die einzige Ausnahme von „nie automatisch“, weil sie keinen Inhalt tragen.
 - **Sichtbarkeit:**
   - Der Konflikt-Zähler ist immer sichtbar; betroffene Dateien zeigen ein Banner.
   - Konfliktdateien werden nicht in die Todo-Übersicht gemischt.
@@ -545,6 +547,11 @@ merkweiser/
   - A, B, Bearbeitet (vorbefüllt mit dem Vorschlag).
   - **Beide** = rohe Textverkettung A, dann B, nur wenn beide Seiten nicht leer und verschieden sind.
   - Bei Löschung gegen Änderung gibt es nur A, B oder Bearbeitet. Identische Seiten sind kein Hunk. Benachbarte Hunks sind bereits verschmolzen.
+- **Notiz-Optionen** (*geändert am 2026-11-10 auf Nutzerwunsch, W8; ersetzt die Hunk-Optionen in der Oberfläche*):
+  - Entschieden wird **je Notiz** (Zuordnung `core/merge/notes.py`): Hauptdatei, Konfliktversion, Beide, Bearbeitet; einseitige Notizen behalten/übernehmen oder weglassen.
+  - **Beide** = Gemeinsames einmal, abweichende Zeilen A, dann B (wie Union), nicht mehr rohe Verkettung.
+  - Zeilenpaare, die sich nur im Häkchen unterscheiden, werden **direkt** als erledigt/offen entschieden, **ohne Vorauswahl**. Notizen mit Hunk-Überlappung haben ebenfalls keine Vorauswahl; sonst ist der Merge-Vorschlag vorausgewählt.
+  - Die Ganz-Datei-Knöpfe setzen nur alle Wahlen (Schnellwahl); angewendet wird gemeinsam mit „Auswahl übernehmen“.
 
 ### Auflösungsprotokoll: Resolve-Op mit Vault-Marker (Garantien 4 und 5)
 
@@ -560,7 +567,7 @@ merkweiser/
 
 **Ablauf:**
 
-1. **Planen:** Hauptdatei-Snapshot `M0` (oder ABSENT), Konfliktdatei `C` mit Snapshot `C0`, Nutzerwahl je Hunk → Ergebnis `R`.
+1. **Planen:** Hauptdatei-Snapshot `M0` (oder ABSENT), Konfliktdatei `C` mit Snapshot `C0`, Nutzerwahl je Hunk (seit 2026-11-10: je Notiz) → Ergebnis `R`.
 2. **Resolve-Op PREPARED** (Write-Ahead):
    - Manifest `{art: resolve, haupt, konflikt C, marker Cm, haupt_sha1_vorher, konflikt_sha1, ergebnis_sha1, entscheidung je Hunk, nur_manuell: […]}`.
    - Die Bytes `M0`, `C0` und `R` werden persistiert und geprüft. Ab hier existiert die Entscheidung dauerhaft in den App-Daten.
@@ -595,6 +602,7 @@ merkweiser/
 - **Resolve-Ops verfallen nicht wegen eines abweichenden Hashes.** Sie bleiben INTERRUPTED und dokumentieren die frühere Entscheidung, bis der Konflikt manuell gelöst ist **oder** der Nutzer den Hinweis bestätigt. Erst dann gelten sie als „geklärt“ und unterliegen der normalen Aufbewahrung.
 - Technische Metadaten werden nur bei geklärtem Zustand entfernt (DONE, ABORTED oder bestätigt INTERRUPTED).
 - **`MAIN_DELETED`:** Die Wiederherstellung aus Version k ist eine Resolve-Op mit `M0 = ABSENT`. Die übrigen Konfliktversionen werden in `nur_manuell` aufgenommen.
+- **Verwerfen** (*ergänzt am 2026-11-10, W8*): Resolve-Op mit `verwerfen: true` und ohne Ergebnis `R`. Ablauf PREPARED → MARKED → Entfernen (`safe_remove(Cm, C0)`, Bytes im Backup) → DONE; die Hauptdatei wird **nie** geschrieben, `nur_manuell` bleibt leer (Geschwister bleiben `MAIN_DELETED`). Wiederherstellung: Hauptdatei ≠ `M0` → INTERRUPTED (erneut fragen); `Cm = C0` → Entfernen fortsetzen; `C = C0` unmarkiert → ab Schritt 3; weder `C` noch `Cm` → DONE (Ziel erreicht); sonst (Inhalt ≠ `C0`) → INTERRUPTED, nichts gelöscht.
 
 ### Beobachtungs-Historie (`history.py`)
 

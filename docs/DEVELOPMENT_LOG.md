@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-10 – W8 geplant: Konflikte notizweise
+
+- Plan in `PLAN-SPAETERE-SCHRITTE.md` (Abschnitt W8) mit den Nutzerentscheidungen vom 2026-11-10. `PLAN.md`: datierte Änderungen bei `MAIN_DELETED` (notizweise, verwerfen, leere Versionen automatisch), neue „Notiz-Optionen“ (ersetzen die Hunk-Optionen in der Oberfläche, „Beide“ jetzt wie Union), Verwerfen im Auflösungsprotokoll, Fortschrittszeile 13.
+
 ## 2026-11-10 – Schon markierte Konfliktdateien entscheiden
 
 - Befund bei der Planung von W8: `resolve.marked_name` assertete `not parsed.decided`. Jeder Fall „Entscheidung unterbrochen“ (Konfliktdatei heißt schon `…MWENTSCHIEDEN`, z. B. nach Fall f/g/h/k) brach beim Entscheiden mit `AssertionError` ab.

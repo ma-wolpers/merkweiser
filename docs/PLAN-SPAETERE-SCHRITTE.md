@@ -1039,3 +1039,51 @@ Schon geprüft: `show_dialog`/`pop_dialog` als Stapel.
   - Aus früheren Runden: Antippen öffnet „heute“ in Merkweiser, Navigation/Zurück, Zeit-Tab, Editor-Caret (`BAUSTELLE(Caret)`, `BAUSTELLE(Offsets)`).
 - **Zurückgestellt:** Schritt 7 (Desktop), Schritt 9 (Abschluss).
 - **Kleinere BAUSTELLEN:** Vorschläge, A2-Identität, Dart-Pins.
+
+## W8 – Konflikte notizweise entscheiden (Planung 2026-11-10, freigegeben)
+
+### Context
+
+Nutzerwünsche zur Seite *Einstellungen → Konflikte*:
+
+1. Notizweise entscheiden statt für die ganze Datei.
+2. Todos, die nur in einer Fassung abgehakt sind, direkt als „erledigt“ oder „offen“ entscheiden, nicht über rote/grüne Vergleichszeilen.
+3. Fall „Hauptdatei fehlt“ mit „Beide Fassungen sind inhaltlich gleich“ und nur „Diese Version wiederherstellen“: unklar, ob das ein Konflikt ist, und nicht wegklickbar.
+
+Ursachen: Entscheidungen gab es nur für die ganze Datei bzw. je diff3-Hunk. Zu 3 war die Konfliktversion leer (`line_diff(None, b"")` ist leer, die Anzeige hielt das für „gleich“); „alle verwerfen“ (`PLAN.md`, `MAIN_DELETED`) fehlte; die Kopfzeile lautete doppelt „Hauptdatei fehlt: Hauptdatei fehlt“.
+
+### Verbindliche Nutzerentscheidungen (2026-11-10)
+
+- Ganz-Datei-Knöpfe („Hauptdatei behalten“, „Konfliktversion übernehmen“, „Zusammenführen“) sind nur noch **Schnellwahl**: Sie setzen alle Notiz-Wahlen; angewendet wird erst mit einem gemeinsamen „Auswahl übernehmen“.
+- Die abschnittsweise Auswahl (Hunks) wird durch die Notiz-Auswahl **ersetzt**.
+- Todos, die sich nur im Häkchen unterscheiden: **keine Vorauswahl**, jedes muss entschieden werden. Ebenso keine Vorauswahl bei Notizen mit echtem Widerspruch (Überlappung mit einem Hunk). Notizen mit eindeutigem Merge-Vorschlag bleiben vorausgewählt.
+- „Beide“ für eine Notiz: Gemeinsames einmal, abweichende Zeilen erst aus der Hauptdatei, dann aus der Konfliktversion (wie der Union-Merge).
+- Fehlende Hauptdatei und **leere** Konfliktversion → beim Start automatisch verworfen (Backup, Hinweis). Ausdrückliche Ausnahme von „`MAIN_DELETED` nie automatisch“.
+- Jede Version einer fehlenden Hauptdatei lässt sich verwerfen (ins Backup) oder notizweise wiederherstellen.
+- Altfehler (C0, erledigt): Schon markierte Konfliktdateien ließen sich nicht entscheiden.
+
+### Design
+
+- **Notiz-Zuordnung (`core/merge/notes.py`):** Rumpf nach `merge.frontmatter.split`, Notizgrenzen allein aus `blocks.py`. Paarung deterministisch und je Seite monoton über `align`: (L0) identische Notizen als Anker, (L1) nur Häkchen verschieden, (L2) gleiche Themenzeile (Häkchen maskiert), (L3) übrig bleibende 1×1-Lücke mit gemeinsamer Zeile. Sonst „nur in der Hauptdatei“ bzw. „nur in der Konfliktversion“. Die Paarung gruppiert nur die Anzeige; angewendet wird ausschließlich die Wahl.
+- **Arten je Notiz:** gleich (eingeklappt), nur Häkchen verschieden (nur Todo-Wahl), geändert (Hauptdatei/Konfliktversion/Beide/Bearbeitet), nur Hauptdatei (Behalten/Entfernen/Bearbeitet), nur Konfliktversion (Übernehmen bzw. Wiederherstellen/Weglassen/Bearbeitet). Todo-Wahl erledigt/offen auch innerhalb geänderter Notizen (außer bei „Bearbeitet“).
+- **Schnellwahl:** „Hauptdatei behalten“ ergibt byte-genau die Hauptdatei, „Konfliktversion übernehmen“ byte-genau die Konfliktversion, „Zusammenführen“ setzt geänderte Notizen auf „Beide“, einseitige auf behalten/übernehmen und Todos auf erledigt (Regel R1); Kopf-Fragen (YAML) bleiben Pflicht.
+- **Zusammensetzen:** Lücke zwischen zwei Notizen aus der Hauptdatei, wenn sie dort benachbart sind, sonst aus der Konfliktversion, sonst eine Leerzeile; Zeilenende-Stil, BOM und Schluss-Umbruch wie die Hauptdatei (`conflicts.render`). Offener Kopf oder nicht unterstütztes Encoding → nur ganze Fassungen.
+- **Verwerfen:** Variante der Resolve-Op (`verwerfen: true`, kein Ergebnis): PREPARED → MARKED → Entfernen per `safe_remove`; die Hauptdatei wird nie geschrieben. Wiederherstellung: Hauptdatei inzwischen vorhanden/geändert → unterbrochen, erneut fragen; beide Konfliktpfade fehlen → erledigt.
+- **Leere Versionen:** `cleanup.is_empty_version` (BOM entfernt, sonst dieselbe Regel wie leere Tagesdateien). Beim Start nach dem Aufräumen leerer Tagesdateien und vor dem Auto-Merge; nicht bei „in Bearbeitung“, markierten oder „nur manuell“-Versionen und nicht im Schreibschutz-Modus.
+- `GRENZE(Notizwahl)`: Eine verschobene Notiz erscheint als „nur Hauptdatei“ plus „nur Konfliktversion“ (mit Hinweis) und steht nach „Zusammenführen“ ggf. doppelt; eine übernommene Notiz mit offenem Codeblock kann Folgenotizen schlucken (nichts geht verloren).
+
+### Commits
+
+| # | Inhalt | Stand |
+|---|---|---|
+| C0 | Schon markierte Konfliktdateien entscheiden | erledigt |
+| C1 | Dieser Plan, Änderungen in `PLAN.md` | erledigt |
+| C2 | `resolve.discard` mit Wiederherstellung, `NotesService.discard` | offen |
+| C3 | Leere Versionen beim Start verwerfen | offen |
+| C4 | Notiz-Zuordnung `core/merge/notes.py` | offen |
+| C5 | Anzeigemodell `app/note_conflicts.py`, `case_headline` | offen |
+| C6 | Mobile-Oberfläche, Hunk-Auswahl entfernen | offen |
+
+### Flet 0.86.5 – vor der Nutzung im Paket prüfen
+
+`Button(disabled=…)`, `RadioGroup(value=None)` ohne Vorauswahl.
