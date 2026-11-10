@@ -46,6 +46,8 @@ def start_hint(report, guarantee: str = "voll", open_issues: int = 0) -> str:
         parts.append("Ein Verschieben ist unvollständig – siehe Einstellungen → Konflikte.")
     if report.removed_empty:
         parts.append(f"{len(report.removed_empty)} leere Datumsdatei(en) entfernt.")
+    if report.discarded_empty:
+        parts.append(f"{len(report.discarded_empty)} leere Konfliktversion(en) verworfen (Hauptdatei fehlte).")
     if report.automerges:
         parts.append(f"{len(report.automerges)} Sync-Konflikt(e) automatisch zusammengeführt.")
     if open_issues:

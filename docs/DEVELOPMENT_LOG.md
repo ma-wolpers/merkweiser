@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-10 – W8 C3: leere Versionen fehlender Hauptdateien beim Start verwerfen
+
+- `cleanup.is_empty_version` (eine Definition mit `is_empty_day_text`, BOM vorher entfernt) und `empty_deleted_versions`; `NotesService._discard_empty_versions` nach dem Entfernen leerer Tagesdateien und vor dem Auto-Merge, über `resolve.discard` mit `EMPTY_VERSION_DECISION`.
+- `NotesService._manual_paths` bündelt `manual_only_paths | undone_manual_paths` (vorher nur in `conflicts`); `_discard_empty_versions` nutzt `self.discard` statt die Fall→Op-Zuordnung zu wiederholen.
+- SSOT-Nachtrag zu C2: Die Verwerfen-Hinweise stehen einmal als `_DISCARD_MAIN_CHANGED`/`_DISCARD_CONFLICT_CHANGED`; `_recover_discard` prüft die Hauptdatei über `_main_unchanged` statt über einen eigenen Vergleich.
+- `StartReport.discarded_empty`, Start-Hinweis in `tabs.start_hint`, Diagnosezeile `leer_verworfen=…`.
+- Umgebung: Auf diesem Rechner `.venv` neu angelegt (`pytest`, `flet==0.86.5`, `tzdata`); ohne `tzdata` scheitern `test_notify_plan`/`test_todo_order` mit `ZoneInfoNotFoundError`.
+
 ## 2026-11-10 – W8 C2: Konfliktversion verwerfen (Core und Service)
 
 - `resolve.discard`: Resolve-Op mit `verwerfen: true` und ohne Ergebnis-Blob; nach MARKED direkt `_from_remove`, das beim Verwerfen vorher `_main_unchanged` prüft und bei geänderter Haupt- oder Konfliktdatei `INTERRUPTED` liefert (bei normaler Auflösung bleibt es bei `DONE` mit Hinweis, Fall f).

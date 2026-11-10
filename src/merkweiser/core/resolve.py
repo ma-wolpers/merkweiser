@@ -25,6 +25,10 @@ from .safe_write import ChangedBeforeWriteError, Writer
 from .vault import DECIDED_SUFFIX, parse_conflict_name
 
 
+#: Hinweise einer Verwerfen-Op, bei der nichts entfernt wurde (laufend und bei der Wiederherstellung).
+_DISCARD_MAIN_CHANGED = "Hauptdatei ist inzwischen vorhanden oder geändert – nicht verworfen, bitte erneut entscheiden"
+_DISCARD_CONFLICT_CHANGED = "Konfliktdatei wurde geändert – nicht verworfen"
+
 @dataclass(frozen=True)
 class ResolveOutcome:
     """Ergebnis einer Auflösung.
@@ -169,14 +173,14 @@ def _from_remove(writer: Writer, op: Op) -> ResolveOutcome:
     marked = writer.root / m["marker"]
     changed = "Konfliktdatei wurde nach deiner Entscheidung geändert – bleibt als Konflikt"
     if m.get("verwerfen") and not _main_unchanged(writer, op):
-        return _interrupt(op, "Hauptdatei ist inzwischen vorhanden oder geändert – nicht verworfen, bitte erneut entscheiden")
+        return _interrupt(op, _DISCARD_MAIN_CHANGED)
     if marked.exists():
         try:
             removed = writer.remove(m["marker"], c0, parent=op.id)
         except ChangedBeforeWriteError:
             removed = None
         if removed is None or removed.state == "CONFLICTED":
-            return _interrupt(op, "Konfliktdatei wurde geändert – nicht verworfen") if m.get("verwerfen") \
+            return _interrupt(op, _DISCARD_CONFLICT_CHANGED) if m.get("verwerfen") \
                 else _done(op, changed)
     return _done(op, "")
 
@@ -236,7 +240,7 @@ def _recover_one(writer: Writer, op: Op) -> ResolveOutcome:
         op.release()
         return ResolveOutcome(op.id, "ABORTED")
     if m.get("verwerfen"):
-        return _recover_discard(writer, op, p == m0, c0, c, cm)
+        return _recover_discard(writer, op, c0, c, cm)
     r = op.blob("ergebnis", m["blobs"]["ergebnis"])
     if p == r:
         if cm == c0:
@@ -255,14 +259,12 @@ def _recover_one(writer: Writer, op: Op) -> ResolveOutcome:
     return _interrupt(op, "Hauptdatei wurde extern geändert – deine frühere Wahl ist vorausgewählt")    # h/j
 
 
-def _recover_discard(writer: Writer, op: Op, main_same: bool, c0: bytes, c: bytes | None,
-                     cm: bytes | None) -> ResolveOutcome:
+def _recover_discard(writer: Writer, op: Op, c0: bytes, c: bytes | None, cm: bytes | None) -> ResolveOutcome:
     """Wiederherstellung einer unvollständigen Verwerfen-Op (PLAN.md, „Verwerfen“).
 
     Args:
         writer: Writer.
         op: Die Resolve-Op mit ``verwerfen``.
-        main_same: Hauptdatei entspricht noch ``M0`` (bzw. fehlt weiterhin).
         c0: Inhalt der Konfliktdatei zum Zeitpunkt der Entscheidung.
         c: Jetziger Inhalt unter dem Namen ohne Marker oder ``None``.
         cm: Jetziger Inhalt unter dem Namen mit Marker oder ``None``.
@@ -270,15 +272,15 @@ def _recover_discard(writer: Writer, op: Op, main_same: bool, c0: bytes, c: byte
     Returns:
         Ergebnis; nichts wird entfernt, wenn sich etwas geändert hat.
     """
-    if not main_same:
-        return _interrupt(op, "Hauptdatei ist inzwischen vorhanden oder geändert – nicht verworfen, bitte erneut entscheiden")
+    if not _main_unchanged(writer, op):
+        return _interrupt(op, _DISCARD_MAIN_CHANGED)
     if cm == c0:
         return _from_remove(writer, op)
     if c == c0 and cm is None:
         return _from_mark(writer, op)
     if c is None and cm is None:
         return _done(op, "")  # Ziel erreicht; die Bytes liegen im Op-Verzeichnis
-    return _interrupt(op, "Konfliktdatei wurde geändert – nicht verworfen")
+    return _interrupt(op, _DISCARD_CONFLICT_CHANGED)
 
 
 def _unmark(writer: Writer, op: Op) -> None:

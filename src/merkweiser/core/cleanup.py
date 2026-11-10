@@ -12,12 +12,18 @@ stehen, insbesondere:
 
 Dieses Modul **entscheidet nur**; gelöscht wird über ``Writer.remove``
 (Tausch-Protokoll mit Backup und erneuter Inhaltsprüfung unmittelbar davor).
+
+Seit W8 (Nutzerentscheidung 2026-11-10) außerdem: **leere Konfliktversionen
+einer fehlenden Hauptdatei** (``MAIN_DELETED``) werden beim Start verworfen
+(``empty_deleted_versions``; verworfen wird im Service über ``resolve.discard``).
+Hier zählt eine BOM nicht als Inhalt, denn verworfene Bytes bleiben im Backup.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from .conflicts import CaseKind, ConflictCase
 from .vault import VaultIndex
 
 
@@ -37,6 +43,40 @@ def is_empty_day_text(raw: bytes) -> bool:
     except UnicodeDecodeError:
         return False
     return all(line.strip() in ("", "---") for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+
+
+def is_empty_version(raw: bytes) -> bool:
+    """``True``, wenn eine Konfliktversion keinen Inhalt trägt (wie ``is_empty_day_text``, BOM erlaubt).
+
+    Args:
+        raw: Inhalt der Konfliktdatei.
+
+    Returns:
+        Ob die Version als leer gilt (0 Byte, nur BOM, nur Leerraum und ``---``).
+    """
+    return is_empty_day_text(raw.removeprefix(b"\xef\xbb\xbf"))
+
+
+def empty_deleted_versions(cases: list[ConflictCase], busy: set[str], manual: set[str]) -> list[ConflictCase]:
+    """Leere Versionen fehlender Hauptdateien, die beim Start verworfen werden dürfen.
+
+    Ausgenommen sind Versionen mit Marker (Entscheidung auf einem Gerät in
+    Arbeit), „nur manuell“-Versionen und alles, was eine andere Instanz gerade
+    bearbeitet (``classify`` prüft das bei ``MAIN_DELETED`` nicht).
+
+    Args:
+        cases: Aktuelle Konfliktfälle.
+        busy: Pfade, die eine andere Instanz gerade bearbeitet.
+        manual: Konfliktdateien, die nur manuell entschieden werden dürfen.
+
+    Returns:
+        Die zu verwerfenden Fälle.
+    """
+    return [case for case in cases
+            if case.kind is CaseKind.MAIN_DELETED and not case.conflict.decided
+            and case.conflict.relpath not in manual
+            and not {case.conflict.relpath, case.conflict.main_relpath} & busy
+            and is_empty_version(case.conflict_bytes)]
 
 
 def empty_day_files(root: Path, index: VaultIndex, busy: set[str]) -> list[tuple[str, bytes]]:

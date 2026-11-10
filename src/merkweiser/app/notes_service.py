@@ -20,7 +20,7 @@ from typing import Callable
 
 from ..core import conflict_files as cf
 from ..core.appdata import open_vault_data
-from ..core.cleanup import empty_day_files
+from ..core.cleanup import empty_day_files, empty_deleted_versions
 from ..core.automerge_log import AutoMergeEntry, automerge_log, hide_automerges, undone_manual_paths
 from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
@@ -54,6 +54,8 @@ from .views import NoteRef
 
 MAX_REPLANS = 3
 READ_ONLY_GUARANTEE = "keine (schreibgeschützt)"
+#: Entscheidungstext beim automatischen Verwerfen leerer Versionen (Backups, Op-Manifest).
+EMPTY_VERSION_DECISION = "Leere Konfliktversion automatisch verworfen (Hauptdatei fehlte)"
 
 
 class ReadOnlyVaultError(PermissionError):
@@ -110,6 +112,7 @@ class StartReport:
     time_ops: list[str] = field(default_factory=list)
     automerges: list[str] = field(default_factory=list)
     removed_empty: list[str] = field(default_factory=list)
+    discarded_empty: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -203,6 +206,7 @@ class NotesService:
         prune_ops(self.root, self.data, self.store, self.clock, self.settings.retention_days)
         self.rescan()
         report.removed_empty = self._remove_empty_day_files()
+        report.discarded_empty = self._discard_empty_versions()
         report.automerges = self.auto_merge_all()
         self._watch = observe(self.root)
         return report
@@ -282,9 +286,12 @@ class NotesService:
 
     def conflicts(self) -> list[ConflictCase]:
         """Aktuelle Konfliktfälle."""
-        manual = manual_only_paths(self.store) | undone_manual_paths(self.store)
         renames = load_state(self.data).rename_pairs()  # Tätigkeits-Umbenennungen dieses Geräts (S2)
-        return classify(self.root, self.writer, self.index, self.busy, manual, renames)
+        return classify(self.root, self.writer, self.index, self.busy, self._manual_paths(), renames)
+
+    def _manual_paths(self) -> set[str]:
+        """Konfliktdateien, die nie automatisch behandelt werden (Resolve-Ops und rückgängig gemachte Auto-Merges)."""
+        return manual_only_paths(self.store) | undone_manual_paths(self.store)
 
     @_writes
     def auto_merge_all(self) -> list[str]:
@@ -606,6 +613,19 @@ class NotesService:
         if removed:
             self.rescan()
         return removed
+
+    def _discard_empty_versions(self) -> list[str]:
+        """Verwirft leere Versionen fehlender Hauptdateien (W8, Nutzerentscheidung 2026-11-10).
+
+        Über ``self.discard`` (Backup, Marker, Inhaltsprüfung); eine Version,
+        die sich inzwischen geändert hat, bleibt als Fall stehen.
+
+        Returns:
+            Verworfene Konfliktdateien (relativ zum Vault).
+        """
+        return [case.conflict.relpath
+                for case in empty_deleted_versions(self.conflicts(), self.busy, self._manual_paths())
+                if self.discard(case, EMPTY_VERSION_DECISION).state == "DONE"]
 
     def _parse(self, raw: bytes) -> Document:
         """Liest Bytes mit dem eingestellten Projekt-Präfix ein."""

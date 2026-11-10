@@ -10,7 +10,8 @@ Fallarten:
   Basis; diff3 mit gültigem Sidecar).
 * ``MANUAL``: diff3-Hunks, verschachtelte (``nested``) oder schon entschiedene
   (``…MWENTSCHIEDEN``) Konfliktdateien, nicht unterstütztes Encoding.
-* ``MAIN_DELETED``: Hauptdatei fehlt (nie automatisch).
+* ``MAIN_DELETED``: Hauptdatei fehlt (nie automatisch zusammengeführt; leere
+  Versionen verwirft der Start, Nutzerentscheidung 2026-11-10, ``cleanup``).
 * ``BUSY``: eine andere Instanz arbeitet an der Datei.
 
 Auto-Merges laufen als Op ``automerge`` (Backup von Haupt- und Konfliktdatei
