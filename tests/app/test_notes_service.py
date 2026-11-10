@@ -39,6 +39,17 @@ def test_start_auto_merges_syncthing_conflict(tmp_path: Path) -> None:
     assert svc.conflicts() == []
 
 
+def test_discard_main_deleted_version_via_service(tmp_path: Path) -> None:
+    """„Version verwerfen“: Konfliktversion weg, keine Hauptdatei, keine offenen Konflikte."""
+    svc = service(tmp_path)
+    (svc.root / "2026-01-01.sync-conflict-20260101-120000-ABCDEFG.md").write_bytes(b"Notiz\n- [ ] A\n")
+    svc.start()
+    [case] = svc.conflicts()
+    assert svc.discard(case).state == "DONE"
+    settle(svc)
+    assert svc.conflicts() == [] and list(svc.root.iterdir()) == []
+
+
 def test_append_note_creates_today_and_then_appends(tmp_path: Path) -> None:
     """Neue Notiz: Tagesdatei wird angelegt; zweite Notiz mit Trenner angehängt."""
     svc = service(tmp_path)

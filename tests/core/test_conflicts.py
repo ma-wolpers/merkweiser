@@ -7,11 +7,12 @@ import pytest
 
 from merkweiser.core.appdata import open_vault_data
 from merkweiser.core.automerge_log import automerge_log, undo_automerge, undone_manual_paths
+from merkweiser.core.backups import changes, load, undo_change
 from merkweiser.core.conflicts import CaseKind, auto_merge, classify
 from merkweiser.core.fsops import FsOps, SimulatedCrash
 from merkweiser.core.ops import OpStore
 from merkweiser.core.recovery import recover
-from merkweiser.core.resolve import manual_only_paths, recover_resolves, resolve
+from merkweiser.core.resolve import discard, manual_only_paths, recover_resolves, resolve
 from merkweiser.core.safe_write import ChangedBeforeWriteError, Writer
 from merkweiser.core.vault import DayPattern, scan
 from tests.fakes import FakeClock
@@ -247,6 +248,98 @@ def test_main_deleted_restore_one_version_rest_manual(tmp_path: Path) -> None:
     assert env.get(MAIN) == b"Version A\n"
     [case] = env.cases()
     assert case.conflict.relpath == other and case.kind is CaseKind.MANUAL
+
+
+OTHER = "2026-01-01.sync-conflict-20260102-120000-BBBBBBB.md"
+
+
+def _discard_env(tmp_path: Path, crash: str | None = None) -> Env:
+    """Hauptdatei fehlt, zwei Versionen (CONF, OTHER)."""
+    env = Env(tmp_path, crash)
+    env.put(CONF, b"Version A\n")
+    env.put(OTHER, b"Version B\n")
+    return env
+
+
+def _recovered(tmp_path: Path, env: Env) -> tuple[Env, list]:
+    """Prozessende simulieren, dann Tausch-Ebene und Resolve-Ops wiederherstellen."""
+    env.die()
+    fresh = Env(tmp_path)
+    recover(fresh.writer)
+    outcomes = recover_resolves(fresh.writer, fresh.store)
+    fresh.settle()
+    return fresh, outcomes
+
+
+def test_discard_removes_one_version_keeps_main_absent_and_siblings(tmp_path: Path) -> None:
+    """Verwerfen: Version weg (Bytes im Op), Hauptdatei bleibt fehlend, Geschwister bleibt MAIN_DELETED."""
+    env = _discard_env(tmp_path)
+    outcome = discard(env.writer, env.store, MAIN, None, CONF, b"Version A\n", "Version verworfen")
+    env.settle()
+    assert outcome.state == "DONE" and env.get(MAIN) is None and env.get(CONF) is None
+    [case] = env.cases()
+    assert case.conflict.relpath == OTHER and case.kind is CaseKind.MAIN_DELETED
+    manifest, state = env.store.read(outcome.op_id)
+    assert manifest["verwerfen"] and "ergebnis" not in manifest["blobs"] and state["zustand"] == "DONE"
+    removal = next(c for c in changes(env.store) if c.kind == "gelöscht")
+    assert load(env.store, removal.before) == b"Version A\n"
+    undo_change(env.writer, env.store, removal)
+    env.settle()
+    assert env.get(CONF) == b"Version A\n" and env.get(MAIN) is None
+
+
+@pytest.mark.parametrize("point", ["resolve:prepared", "resolve:marked"])
+def test_crash_during_discard_finishes_without_creating_main(tmp_path: Path, point: str) -> None:
+    """Absturz beim Verwerfen → Wiederherstellung setzt fort; die Hauptdatei entsteht nie."""
+    env = _discard_env(tmp_path, crash=point)
+    with pytest.raises(SimulatedCrash):
+        discard(env.writer, env.store, MAIN, None, CONF, b"Version A\n", "Version verworfen")
+    fresh, [outcome] = _recovered(tmp_path, env)
+    assert outcome.state == "DONE" and fresh.get(MAIN) is None
+    assert sorted(p.name for p in fresh.root.iterdir()) == [OTHER]
+
+
+def test_discard_interrupted_when_main_reappears(tmp_path: Path) -> None:
+    """Hauptdatei taucht nach der Entscheidung auf → nichts verworfen, Version bleibt nur manuell."""
+    env = _discard_env(tmp_path, crash="resolve:marked")
+    with pytest.raises(SimulatedCrash):
+        discard(env.writer, env.store, MAIN, None, CONF, b"Version A\n", "Version verworfen")
+    env.put(MAIN, b"neu\n")
+    fresh, [outcome] = _recovered(tmp_path, env)
+    assert outcome.state == "INTERRUPTED" and "nicht verworfen" in outcome.hint
+    assert any("MWENTSCHIEDEN" in p.name for p in fresh.root.iterdir())
+    assert all(case.kind is CaseKind.MANUAL for case in fresh.cases())
+
+
+def test_discard_interrupted_when_conflict_changed(tmp_path: Path) -> None:
+    """Konfliktdatei nach der Entscheidung geändert → nie gelöscht."""
+    env = _discard_env(tmp_path, crash="resolve:marked")
+    with pytest.raises(SimulatedCrash):
+        discard(env.writer, env.store, MAIN, None, CONF, b"Version A\n", "Version verworfen")
+    marked = next(p for p in env.root.iterdir() if "MWENTSCHIEDEN" in p.name)
+    marked.write_bytes(b"Version A neu\n")
+    fresh, [outcome] = _recovered(tmp_path, env)
+    assert outcome.state == "INTERRUPTED" and marked.read_bytes() == b"Version A neu\n"
+
+
+def test_discard_done_when_conflict_removed_externally(tmp_path: Path) -> None:
+    """Konfliktdatei extern entfernt → Ziel erreicht (DONE), nichts angelegt."""
+    env = _discard_env(tmp_path, crash="resolve:prepared")
+    with pytest.raises(SimulatedCrash):
+        discard(env.writer, env.store, MAIN, None, CONF, b"Version A\n", "Version verworfen")
+    (env.root / CONF).unlink()
+    fresh, [outcome] = _recovered(tmp_path, env)
+    assert outcome.state == "DONE" and fresh.get(MAIN) is None
+
+
+def test_discard_of_already_marked_version(tmp_path: Path) -> None:
+    """Auch eine schon markierte Version lässt sich verwerfen."""
+    marked = "2026-01-01.sync-conflict-20260101-120000-ABCDEFGMWENTSCHIEDEN.md"
+    env = Env(tmp_path)
+    env.put(marked, b"x\n")
+    assert discard(env.writer, env.store, MAIN, None, marked, b"x\n", "Version verworfen").state == "DONE"
+    env.settle()
+    assert list(env.root.iterdir()) == []
 
 
 def _merged(env: Env) -> str:

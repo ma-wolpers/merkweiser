@@ -42,7 +42,7 @@ from ..core.ops import OpStore
 from ..core.patch import StaleTargetError, Target, resolve_line
 from ..core.query import Filter, Hit, search
 from ..core.recovery import RecoveryReport, recover
-from ..core.resolve import ResolveOutcome, manual_only_paths, recover_resolves, resolve
+from ..core.resolve import ResolveOutcome, discard, manual_only_paths, recover_resolves, resolve
 from ..core.retention import prune_ops, prune_sidecars
 from ..core.safe_write import ChangedBeforeWriteError, WriteResult, Writer
 from ..core.vault import DayPattern, VaultIndex, scan, write_target
@@ -345,6 +345,22 @@ class NotesService:
         """Wendet eine explizite Konfliktentscheidung an (Resolve-Op mit Marker)."""
         outcome = resolve(self.writer, self.store, case.conflict.main_relpath, case.main_bytes,
                           case.conflict.relpath, case.conflict_bytes, result, decision, manual_only)
+        self.rescan()
+        return outcome
+
+    @_writes
+    def discard(self, case: ConflictCase, decision: str = "Version verworfen") -> ResolveOutcome:
+        """Verwirft eine Konfliktversion (ins Backup), ohne die Hauptdatei zu schreiben.
+
+        Args:
+            case: Der Fall (üblich: ``MAIN_DELETED``).
+            decision: Lesbare Beschreibung für Op und Backups.
+
+        Returns:
+            Ergebnis der Verwerfen-Op (``INTERRUPTED``: nichts entfernt, neu anzeigen).
+        """
+        outcome = discard(self.writer, self.store, case.conflict.main_relpath, case.main_bytes,
+                          case.conflict.relpath, case.conflict_bytes, decision)
         self.rescan()
         return outcome
 

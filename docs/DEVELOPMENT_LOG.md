@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-10 – W8 C2: Konfliktversion verwerfen (Core und Service)
+
+- `resolve.discard`: Resolve-Op mit `verwerfen: true` und ohne Ergebnis-Blob; nach MARKED direkt `_from_remove`, das beim Verwerfen vorher `_main_unchanged` prüft und bei geänderter Haupt- oder Konfliktdatei `INTERRUPTED` liefert (bei normaler Auflösung bleibt es bei `DONE` mit Hinweis, Fall f).
+- `_recover_one` zweigt vor dem Lesen des Ergebnis-Blobs nach `_recover_discard` ab. Backups zeigen das Verwerfen als „Konflikt entschieden“; Rückgängig stellt die Version unter ihrem ursprünglichen Namen wieder her (`restore_path`, unverändert).
+- `NotesService.discard(case)`. Noch ohne Oberfläche (kommt mit C6).
+- Tests: Verwerfen inkl. Backup und Rückgängig, Absturz nach PREPARED/MARKED, Hauptdatei taucht auf, Konfliktdatei geändert, extern entfernt, schon markierte Version, Service.
+
 ## 2026-11-10 – W8 geplant: Konflikte notizweise
 
 - Plan in `PLAN-SPAETERE-SCHRITTE.md` (Abschnitt W8) mit den Nutzerentscheidungen vom 2026-11-10. `PLAN.md`: datierte Änderungen bei `MAIN_DELETED` (notizweise, verwerfen, leere Versionen automatisch), neue „Notiz-Optionen“ (ersetzen die Hunk-Optionen in der Oberfläche, „Beide“ jetzt wie Union), Verwerfen im Auflösungsprotokoll, Fortschrittszeile 13.
