@@ -145,6 +145,19 @@ CASE_KIND_LABELS = {
     CaseKind.BUSY: "Wird gerade von einer anderen Merkweiser-Instanz bearbeitet",
 }
 
+def case_headline(case: ConflictCase) -> str:
+    """Kopfzeile eines Falls: Fallart, dahinter die Begründung nur, wenn sie etwas hinzufügt.
+
+    Args:
+        case: Konfliktfall.
+
+    Returns:
+        z. B. „Hauptdatei fehlt“ oder „Entscheidung nötig: verschachtelte Konfliktdatei“.
+    """
+    label = CASE_KIND_LABELS[case.kind]
+    return f"{label}: {case.reason}" if case.reason and case.reason != label else label
+
+
 #: Anzeigenamen der Hunk-Wahl (Reihenfolge = Reihenfolge der Auswahl).
 HUNK_PICK_LABELS = ((HunkPick.HAUPT, "Hauptdatei"), (HunkPick.KONFLIKT, "Konfliktversion"),
                     (HunkPick.BEIDE, "Beide"), (HunkPick.BEARBEITET, "Bearbeitet"))

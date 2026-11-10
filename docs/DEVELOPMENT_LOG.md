@@ -2,6 +2,13 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-10 – W8 C5: Anzeigemodell und Ergebnis der Notiz-Auswahl
+
+- Neu `app/note_plan.py` (Modell, Vorschläge, `render_entry`) und `app/note_conflicts.py` (Wahl, Schnellwahl, `missing`, `note_result`). Fachlich getrennt, weil eine Datei knapp an die 300-Zeilen-Grenze kam.
+- Byte-Genauigkeit der Schnellwahl ohne Sonderfälle: `note_result` vergleicht die gewählten Zeilen mit den Zeilen beider Fassungen und gibt bei Gleichheit deren Original-Bytes zurück (BOM, CRLF, fehlender Schluss-Umbruch bleiben). Deshalb folgen Lücken bei Notizen aus der Konfliktversion deren Lücken (`_between`).
+- `conflict_views.case_headline` gegen „Hauptdatei fehlt: Hauptdatei fehlt“. `BAUSTELLE(Vorschläge)` steht jetzt in `note_plan` (in `hunk_view` bis C6).
+- Tests `tests/app/test_note_conflicts.py` (16): Schnellwahl byte-genau, Zusammenführen, Todo ohne Vorauswahl inkl. `[X]`, Todo in geänderter Notiz, Lücken je Fassung, Leerzeile zwischen fremden Notizen, Bearbeitet, Vorbefüllung, diff3-Vorschlag vs. Hunk, Kopf einseitig, Ganzdatei-Modus, `MAIN_DELETED` teilweise, gleiche Inhalte mit anderen Zeilenenden, `entry_diff`, Verschiebe-Hinweis, Kopfzeile.
+
 ## 2026-11-10 – W8 C4: Notiz-Zuordnung
 
 - Neu `core/merge/notes.py` (`body_notes`, `status_key`, `pair_notes`, `note_rows`); wiederverwendet `blocks.analyze`, `align` und `status_rule`, keine eigene Grenz- oder Statuslogik. Ein vorangestellter Leer-`Line` verhindert, dass ein `---` am Rumpfanfang als Frontmatter gilt.
