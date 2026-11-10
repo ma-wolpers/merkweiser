@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-10 – W8 C4: Notiz-Zuordnung
+
+- Neu `core/merge/notes.py` (`body_notes`, `status_key`, `pair_notes`, `note_rows`); wiederverwendet `blocks.analyze`, `align` und `status_rule`, keine eigene Grenz- oder Statuslogik. Ein vorangestellter Leer-`Line` verhindert, dass ein `---` am Rumpfanfang als Frontmatter gilt.
+- Tests `tests/core/test_note_pairing.py`: Spannen/Lücken, Maske (auch nicht in Code, `[-]` bleibt Inhalt), L0–L3, Duplikate, verschobene Notiz, Vollständigkeit/Monotonie/Determinismus, Zeilenabschnitte R1/R2/Lücke.
+- Zeilengrenze ab jetzt mit dem gemeinsamen Prüfer `python -m bw_gui.testing.line_limits` (Ersatz von `tools/code_lines.py` folgt nach W8 in eigenem Commit, Nutzerentscheidung 2026-11-10).
+
 ## 2026-11-10 – W8 C3: leere Versionen fehlender Hauptdateien beim Start verwerfen
 
 - `cleanup.is_empty_version` (eine Definition mit `is_empty_day_text`, BOM vorher entfernt) und `empty_deleted_versions`; `NotesService._discard_empty_versions` nach dem Entfernen leerer Tagesdateien und vor dem Auto-Merge, über `resolve.discard` mit `EMPTY_VERSION_DECISION`.
