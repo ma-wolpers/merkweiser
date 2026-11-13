@@ -26,21 +26,25 @@ import flet as ft
 from ...app.conflict_views import Choice, DiffRow, conflict_diff
 from ...app.note_conflicts import NoteChoices, edit_prefill, entry_diff, entry_problems, head_problems, \
     initial_choices, missing, note_result, quick_select
-from ...app.note_plan import KIND_LABELS, Kind, NotePlan, Pick, head_labels, note_plan, pick_labels
+from ...app.note_plan import KIND_LABELS, Kind, NotePlan, Pick, head_labels, note_plan, pick_labels, sides_meaning
 from ...core import conflict_files as cf
 from ...core.conflicts import CaseKind
-from .diff_box import diff_box
+from .diff_box import diff_box, side_chips
 from .frontmatter_choices import frontmatter_controls
 from .style import EXPLANATION, card
 
 if TYPE_CHECKING:
     from .app import MobileApp
 
-#: Schnellwahl: (Wahl, Kurztext, Erklärung im Tooltip).
-QUICK = ((Choice.HAUPTDATEI, "Haupt", "Hauptdatei behalten"),
-         (Choice.KONFLIKTVERSION, "Konflikt", "Konfliktversion übernehmen"),
-         (Choice.BEIDE, "Beide", "Zusammenführen"))
-_TODO_OPTIONS = (("erledigt", "Erledigt"), ("offen", "Offen"))
+#: Schnellwahl: (Wahl, Farbfelder wie im Vergleich, Erklärung im Tooltip).
+QUICK = ((Choice.HAUPTDATEI, ("haupt",), "Hauptdatei behalten"),
+         (Choice.KONFLIKTVERSION, ("konflikt",), "Konfliktversion übernehmen"),
+         (Choice.BEIDE, ("haupt", "konflikt"), "Zusammenführen"))
+#: Welche Fassung(en) eine Wahl zeigt, wenn sie wörtlich „diese Fassung“ heißt (``sides_meaning``).
+_PICK_SIDES = {Pick.HAUPT: ("haupt",), Pick.KONFLIKT: ("konflikt",), Pick.BEIDE: ("haupt", "konflikt")}
+#: Todo-Wahl: (Wert, Symbol, Tooltip).
+_TODO_OPTIONS = (("erledigt", "☑", "Erledigt"), ("offen", "☐", "Offen"))
+_BOX = {True: "☑", False: "☐"}
 _TITLE_LENGTH = 40
 
 
@@ -99,8 +103,9 @@ def _quick_row(app: "MobileApp", plan: NotePlan, choices: NoteChoices, siblings)
             buttons.append(_discard_button(app, f"Alle {len(siblings)} verwerfen", siblings))
         return ft.Row(buttons, wrap=True, spacing=0)
     offered = [q for q in QUICK if not (plan.whole_only and q[0] is Choice.BEIDE)]
-    return ft.Row([ft.Text("Alle:", size=12)] + [ft.TextButton(short, tooltip=long, on_click=quick(choice))
-                                                 for choice, short, long in offered], wrap=True, spacing=0)
+    return ft.Row([ft.Text("Alle:", size=12)] + [ft.TextButton(content=side_chips(sides), tooltip=long,
+                                                               on_click=quick(choice))
+                                                 for choice, sides, long in offered], wrap=True, spacing=0)
 
 
 def _discard_button(app: "MobileApp", label: str, targets) -> ft.Control:
@@ -122,14 +127,25 @@ def _discard_button(app: "MobileApp", label: str, targets) -> ft.Control:
     return ft.TextButton(label, on_click=click)
 
 
-def _segments(options, value: str | None, on_pick) -> ft.SegmentedButton:
+def _segments(segments: list[ft.Segment], value: str | None, on_pick) -> ft.SegmentedButton:
     """Einzeilige Umschaltleiste; ``value=None``: nichts vorausgewählt (erneutes Antippen hebt die Wahl auf)."""
     def changed(e) -> None:
         on_pick(e.control.selected[0] if e.control.selected else None)
 
-    return ft.SegmentedButton(
-        segments=[ft.Segment(value=v, label=ft.Text(label, size=12)) for v, label in options],
-        selected=[value] if value else [], allow_empty_selection=True, show_selected_icon=False, on_change=changed)
+    return ft.SegmentedButton(segments=segments, selected=[value] if value else [], allow_empty_selection=True,
+                              show_selected_icon=False, on_change=changed)
+
+
+def _pick_segments(options, colored: bool) -> list[ft.Segment]:
+    """Segmente einer Wahl: Farbfelder, wenn die Wahl „diese Fassung“ heißt, „✎“ für Bearbeitet, sonst das Wort.
+
+    Der Anzeigetext steht immer im Tooltip.
+    """
+    def content(pick: Pick, label: str) -> ft.Control:
+        if pick is Pick.BEARBEITET:
+            return ft.Text("✎", size=12)
+        return side_chips(_PICK_SIDES[pick]) if colored else ft.Text(label, size=12)
+    return [ft.Segment(value=pick.value, label=content(pick, label), tooltip=label) for pick, label in options]
 
 
 def _title_row(title: str, problems: list[str]) -> ft.Control:
@@ -149,7 +165,7 @@ def _head_card(app: "MobileApp", plan: NotePlan, choices: NoteChoices) -> ft.Con
     rows = [DiffRow("haupt", line) for line in plan.head.main] + [DiffRow("konflikt", line) for line in plan.head.other]
     controls: list[ft.Control] = [
         _title_row("Kopfbereich (YAML)", head_problems(plan, choices)), diff_box(rows, None, framed=False),
-        _segments([(p.value, label) for p, label in head_labels(plan, short=True)],
+        _segments(_pick_segments(head_labels(plan), sides_meaning(plan, None)),
                   choices.head.value if choices.head else None, picked)]
     if choices.head is Pick.BEIDE:
         controls += frontmatter_controls(plan.head.fm, choices.fm, app.render)
@@ -173,7 +189,7 @@ def _entry_card(app: "MobileApp", plan: NotePlan, choices: NoteChoices, index: i
             if choices.picks[index] is Pick.BEARBEITET and index not in choices.texts:
                 choices.texts[index] = edit_prefill(entry, choices, index)
             app.render()
-        controls.append(_segments([(p.value, label) for p, label in pick_labels(plan, entry, short=True)],
+        controls.append(_segments(_pick_segments(pick_labels(plan, entry), sides_meaning(plan, entry)),
                                   pick.value if pick else None, picked))
     if pick is Pick.BEARBEITET:
         def edited(e) -> None:
@@ -186,7 +202,7 @@ def _entry_card(app: "MobileApp", plan: NotePlan, choices: NoteChoices, index: i
 
 
 def _todo_row(app: "MobileApp", choices: NoteChoices, index: int, todo) -> ft.Control:
-    """Eine Zeile je Todo: Text, Stand je Fassung (H/K) und „Erledigt | Offen“ ohne Vorauswahl."""
+    """Eine Zeile je Todo: Text, Stand je Fassung als Farbfeld (rot/grün wie im Vergleich), dann ☑ | ☐ ohne Vorauswahl."""
     def picked(value: str | None) -> None:
         if value is None:
             choices.todos.pop((index, todo.row), None)
@@ -195,11 +211,11 @@ def _todo_row(app: "MobileApp", choices: NoteChoices, index: int, todo) -> ft.Co
         app.render()
 
     state = choices.todos.get((index, todo.row))
-    box = {True: "☑", False: "☐"}
-    sides = f"H {box[todo.main_done]} · K {box[not todo.main_done]}"
-    return ft.Row([ft.Text(todo.text, size=12, expand=True),
-                   ft.Text(sides, size=11, color=EXPLANATION, tooltip="Stand in Hauptdatei (H) und Konfliktversion (K)"),
-                   _segments(_TODO_OPTIONS, None if state is None else ("erledigt" if state else "offen"), picked)],
+    sides = ft.Row([side_chips(("haupt",), _BOX[todo.main_done]), side_chips(("konflikt",), _BOX[not todo.main_done])],
+                   spacing=2, tight=True, tooltip="Stand in Hauptdatei (rot) und Konfliktversion (grün)")
+    options = [ft.Segment(value=value, label=ft.Text(symbol, size=12), tooltip=tip) for value, symbol, tip in _TODO_OPTIONS]
+    return ft.Row([ft.Text(todo.text, size=12, expand=True), sides,
+                   _segments(options, None if state is None else ("erledigt" if state else "offen"), picked)],
                   vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
 

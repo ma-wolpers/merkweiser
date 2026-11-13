@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-13 – W8: Farben statt Wörter in der Konfliktauswahl
+
+- Nutzerwunsch: wo möglich die Farben der Vergleichszeilen statt „Hauptdatei/Konfliktversion/Beide“. `diff_box.side_chips` baut Farbfelder aus derselben `_SIDE_STYLE`-Tabelle wie die Zeilen (mit −/+ als Zeichen, also auch ohne Farbe lesbar). Verwendet für die Schnellwahl, die Umschaltleiste geänderter Notizen und des Kopfs sowie den Todo-Stand je Fassung (rot/grün ☐/☑); die Todo-Wahl ist ☑ | ☐.
+- Wo die Wahl nicht „diese Fassung“ bedeutet (einseitige Notizen: behalten/entfernen, übernehmen/weglassen), bleiben Wörter; die Regel steht einmal in `note_plan.sides_meaning`. Das Wort jeder Option steht als Tooltip am Segment.
+- Die Kurztext-Spalte aus dem vorigen Eintrag ist wieder entfernt (würde nicht mehr gebraucht): `_LABELS` hat nur noch (Wahl, Text); „Bearbeitet“ zeigt die Oberfläche als ✎.
+
 ## 2026-11-13 – W8: Konfliktdialog kompakt (Karten statt vieler Kästen)
 
 - Nutzerbefund nach der Sichtprüfung: zu viele Kästen und Texte für wenig Information. Gewählt (Variante „kompakte Karten“): je Notiz eine `style.card` mit Kopfzeile „Thema · Art“, Vergleich ohne eigenen Kasten (`diff_box(…, framed=False)`), `SegmentedButton` mit Kurztexten statt RadioGroup; Todos einzeilig mit „H ☐ · K ☑“; Fallkopf zweizeilig; Schnellwahl als eine Zeile „Alle:“; „Übernehmen (n offen)“ statt „Noch offen: …“ + „Auswahl übernehmen“.

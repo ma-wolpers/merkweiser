@@ -153,48 +153,48 @@ class NotePlan:
 
 
 
-#: Optionen je Art: (Wahl, Anzeigetext, Kurztext für die Umschaltleiste). Einzige Quelle der Texte.
+#: Optionen je Art: (Wahl, Anzeigetext). Einzige Quelle der Texte (Tooltip, Entscheidung, Hinweise);
+#: die Oberfläche zeigt „Hauptdatei“/„Konfliktversion“/„Beide“ als Farbe, „Bearbeitet“ als Symbol.
 _LABELS = {
-    Kind.GEAENDERT: ((Pick.HAUPT, "Hauptdatei", "Haupt"), (Pick.KONFLIKT, "Konfliktversion", "Konflikt"),
-                     (Pick.BEIDE, "Beide", "Beide"), (Pick.BEARBEITET, "Bearbeitet", "✎")),
-    Kind.NUR_HAUPT: ((Pick.HAUPT, "Behalten", "Behalten"), (Pick.KONFLIKT, "Entfernen", "Entfernen"),
-                     (Pick.BEARBEITET, "Bearbeitet", "✎")),
-    Kind.NUR_KONFLIKT: ((Pick.KONFLIKT, "Übernehmen", "Übernehmen"), (Pick.HAUPT, "Weglassen", "Weglassen"),
-                        (Pick.BEARBEITET, "Bearbeitet", "✎")),
+    Kind.GEAENDERT: ((Pick.HAUPT, "Hauptdatei"), (Pick.KONFLIKT, "Konfliktversion"), (Pick.BEIDE, "Beide"),
+                     (Pick.BEARBEITET, "Bearbeitet")),
+    Kind.NUR_HAUPT: ((Pick.HAUPT, "Behalten"), (Pick.KONFLIKT, "Entfernen"), (Pick.BEARBEITET, "Bearbeitet")),
+    Kind.NUR_KONFLIKT: ((Pick.KONFLIKT, "Übernehmen"), (Pick.HAUPT, "Weglassen"), (Pick.BEARBEITET, "Bearbeitet")),
 }
-_RESTORE = (Pick.KONFLIKT, "Wiederherstellen", "Wiederherstellen")
-_HEAD = ((Pick.HAUPT, "Hauptdatei", "Haupt"), (Pick.KONFLIKT, "Konfliktversion", "Konflikt"),
-         (Pick.BEIDE, "Beide (je Eigenschaft)", "Beide"))
+_RESTORE = (Pick.KONFLIKT, "Wiederherstellen")
+_HEAD = ((Pick.HAUPT, "Hauptdatei"), (Pick.KONFLIKT, "Konfliktversion"), (Pick.BEIDE, "Beide (je Eigenschaft)"))
 
 #: Kurze Anzeigetexte der Arten (Kopfzeile einer Notiz-Karte).
 KIND_LABELS = {Kind.GLEICH: "gleich", Kind.STATUS: "nur Häkchen", Kind.GEAENDERT: "geändert",
                Kind.NUR_HAUPT: "nur Hauptdatei", Kind.NUR_KONFLIKT: "nur Konfliktversion"}
 
 
-def _pairs(labels, short: bool) -> tuple[tuple[Pick, str], ...]:
-    """``(Wahl, Text)`` aus der Tabelle, lang oder kurz."""
-    return tuple((pick, brief if short else text) for pick, text, brief in labels)
-
-
-def pick_labels(plan: NotePlan, entry: NoteEntry, short: bool = False) -> tuple[tuple[Pick, str], ...]:
+def pick_labels(plan: NotePlan, entry: NoteEntry) -> tuple[tuple[Pick, str], ...]:
     """Wählbare Optionen eines Eintrags mit Anzeigetext (leer bei ``GLEICH``/``STATUS``).
 
-    Args:
-        plan: Plan (bei fehlender Hauptdatei heißt „Übernehmen“ „Wiederherstellen“).
-        entry: Eintrag.
-        short: Kurztexte für die Umschaltleiste statt der Texte für Entscheidung und Hinweise.
+    Bei fehlender Hauptdatei heißt „Übernehmen“ „Wiederherstellen“.
     """
     labels = _LABELS.get(entry.kind, ())
     if plan.main_missing and entry.kind is Kind.NUR_KONFLIKT:
-        labels = (_RESTORE,) + labels[1:]
-    return _pairs(labels, short)
+        return (_RESTORE,) + labels[1:]
+    return labels
 
 
-def head_labels(plan: NotePlan, short: bool = False) -> tuple[tuple[Pick, str], ...]:
+def sides_meaning(plan: NotePlan, entry: NoteEntry | None) -> bool:
+    """``True``, wenn Hauptdatei/Konfliktversion/Beide hier wörtlich „diese Fassung“ heißen.
+
+    Dann darf die Oberfläche sie als Farbe der Vergleichszeilen zeigen: bei
+    geänderten Notizen und beim Kopf (``entry=None``) mit vorhandener Hauptdatei,
+    nicht bei einseitigen Notizen (dort heißen dieselben Wahlen behalten/entfernen).
+    """
+    return not plan.main_missing and (entry is None or entry.kind is Kind.GEAENDERT)
+
+
+def head_labels(plan: NotePlan) -> tuple[tuple[Pick, str], ...]:
     """Optionen für den Kopf (ohne „Beide“, wenn die Hauptdatei fehlt)."""
     if plan.main_missing:
-        return _pairs((_RESTORE, _LABELS[Kind.NUR_KONFLIKT][1]), short)
-    return _pairs(_HEAD, short)
+        return _RESTORE, _LABELS[Kind.NUR_KONFLIKT][1]
+    return _HEAD
 
 
 # --- Plan ------------------------------------------------------------------------------
@@ -306,7 +306,7 @@ def _suggestions(entries: list[NoteEntry], a: BodyNotes | None, b: BodyNotes,
 
 def _matching_pick(entry: NoteEntry, output: list[str]) -> Pick | None:
     """Erste Wahl, deren Ergebnis (Häkchen maskiert) dem Merge-Vorschlag entspricht."""
-    for pick, _label, _short in _LABELS[entry.kind]:
+    for pick, _label in _LABELS[entry.kind]:
         if pick is not Pick.BEARBEITET and [status_key(l) for l in render_entry(entry, pick, {})] == output:
             return pick
     return None

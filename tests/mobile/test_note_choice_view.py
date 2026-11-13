@@ -85,9 +85,14 @@ def test_todo_and_note_choices_then_apply(tmp_path: Path) -> None:
     apply = apply_button(controls)
     assert apply.disabled and apply.content == "Übernehmen (2 offen)" and "Milch" in apply.tooltip
     shown = texts(controls)
-    assert "Einkauf · nur Häkchen" in shown and "Arbeit · geändert" in shown and "H ☐ · K ☑" in shown
+    assert "Einkauf · nur Häkchen" in shown and "Arbeit · geändert" in shown
     todo = bar(controls, "erledigt")
     assert todo.selected == [] and todo.allow_empty_selection  # keine Vorauswahl
+    assert [(s.label.value, s.tooltip) for s in todo.segments] == [("☑", "Erledigt"), ("☐", "Offen")]
+    changed = bar(controls, "haupt")  # geänderte Notiz: Farbfelder statt Wörter, Wort im Tooltip
+    assert [s.tooltip for s in changed.segments] == ["Hauptdatei", "Konfliktversion", "Beide", "Bearbeitet"]
+    assert isinstance(changed.segments[0].label, ft.Container) and changed.segments[0].label.content.value == "−"
+    assert isinstance(changed.segments[2].label, ft.Row)  # „Beide“: rot und grün nebeneinander
     choose(todo, "erledigt")
     choose(bar(view(app), "haupt"), "beide")
     controls = view(app)
@@ -109,8 +114,8 @@ def test_deselecting_reopens_the_choice(tmp_path: Path) -> None:
 def test_quick_select_only_sets_choices(tmp_path: Path) -> None:
     """Schnellwahl schreibt nichts; erst „Übernehmen“ wendet an."""
     root, service, app, _said = setup(tmp_path, {MAIN: b"A\n- [ ] a\n", NESTED: b"A\n- [x] a\n- b\n"})
-    quick = button(view(app), "Konflikt")
-    assert quick.tooltip == "Konfliktversion übernehmen"
+    quick = next(c for c in view(app) if isinstance(c, ft.TextButton) and c.tooltip == "Konfliktversion übernehmen")
+    assert quick.content.content.value == "+"  # grünes Feld wie die Zeilen der Konfliktversion
     quick.on_click(None)
     assert (root / MAIN).read_bytes() == b"A\n- [ ] a\n" and len(service.conflicts()) == 1
     asyncio.run(apply_button(view(app)).on_click(None))
@@ -143,7 +148,7 @@ def test_main_deleted_restore_one_note(tmp_path: Path) -> None:
     root, _service, app, _said = setup(tmp_path, {CONF: b"A\n\nB\n"})
     first, second = bars(view(app))
     assert [first.selected, second.selected] == [[], []]
-    assert [s.label.value for s in first.segments] == ["Wiederherstellen", "Weglassen", "✎"]
+    assert [s.label.value for s in first.segments] == ["Wiederherstellen", "Weglassen", "✎"]  # einseitig: Wörter
     choose(first, "haupt")  # „Weglassen“
     choose(bars(view(app))[1], "konflikt")  # „Wiederherstellen“
     asyncio.run(apply_button(view(app)).on_click(None))
