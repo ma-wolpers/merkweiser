@@ -1,11 +1,12 @@
-"""Seite „Konflikte“ (Einstellungen → Konflikte): Hauptdatei und Konfliktversion im Vergleich, Entscheidung per Knopf.
+"""Seite „Konflikte“ (Einstellungen → Konflikte): Fälle mit notizweiser Entscheidung, darunter die Auto-Merges.
 
 Jeder Fall zeigt:
 
 * welche Datei betroffen ist und woher die Konfliktversion stammt,
-* einen Zeilenvergleich (``conflict_diff``): rot = nur in der Hauptdatei,
-  grün = nur in der Konfliktversion, ohne Farbe = in beiden gleich,
-* Knöpfe mit einer Zeile Erklärung, was danach im Ordner steht.
+* bei fehlender Hauptdatei eine Erklärung (und ob die Version leer ist),
+* die notizweise Auswahl (``note_choice_view``, W8); bei ``BUSY`` nur den
+  Zeilenvergleich: rot = nur in der Hauptdatei, grün = nur in der
+  Konfliktversion, ohne Farbe = in beiden gleich.
 """
 
 from __future__ import annotations
@@ -14,29 +15,18 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from ...app.conflict_views import CASE_KIND_LABELS, Choice, DiffRow, conflict_diff, conflict_origin, conflict_result, line_diff
+from ...app.conflict_views import case_headline, conflict_diff, conflict_origin, line_diff
+from ...core.cleanup import is_empty_version
 from ...core.conflicts import CaseKind
-from .frontmatter_choices import fm_decisions, frontmatter_controls
-from .hunk_view import hunk_controls
-from .style import DIFF_ADDED, DIFF_REMOVED
+from .diff_box import diff_box
+from .note_choice_view import note_choice_controls
 
 if TYPE_CHECKING:
     from .app import MobileApp
 
-#: Darstellung je Vergleichsseite: (Präfix, Hintergrund).
-_SIDE_STYLE = {
-    "haupt": ("− ", DIFF_REMOVED),
-    "konflikt": ("+ ", DIFF_ADDED),
-    "beide": ("  ", None),
-    "ausgelassen": ("", None),
-}
-
-#: Knöpfe der einfachen Entscheidung: (Wahl, Beschriftung, Erklärung).
-_CHOICES = (
-    (Choice.HAUPTDATEI, "Hauptdatei behalten", "Rote Zeilen bleiben, grüne werden verworfen."),
-    (Choice.KONFLIKTVERSION, "Konfliktversion übernehmen", "Grüne Zeilen ersetzen die roten."),
-    (Choice.BEIDE, "Zusammenführen", "Alle Zeilen aus beiden Fassungen landen in der Hauptdatei."),
-)
+#: Erklärung bei fehlender Hauptdatei (Fallart „Hauptdatei fehlt“).
+MAIN_DELETED_HINT = ("Die Hauptdatei fehlt (gelöscht oder umbenannt). Wähle, welche Notizen dieser Version "
+                     "wiederhergestellt werden, oder verwirf die Version – Verworfenes bleibt unter Backups.")
 
 
 def conflicts_view(app: "MobileApp") -> list[ft.Control]:
@@ -120,7 +110,7 @@ def _entry_actions(app: "MobileApp", entry) -> ft.Control:
 
 
 def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
-    """Kopf, Vergleich und Entscheidungen eines Falls.
+    """Kopf und Entscheidungsteil eines Falls.
 
     Args:
         app: Die laufende App.
@@ -133,67 +123,12 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     controls: list[ft.Control] = [
         ft.Text(case.conflict.main_relpath, weight=ft.FontWeight.BOLD),
         ft.Text(f"Konfliktversion {conflict_origin(case)}", size=12),
-        ft.Text(f"{CASE_KIND_LABELS[case.kind]}: {case.reason}" if case.reason else CASE_KIND_LABELS[case.kind],
-                size=12),
+        ft.Text(case_headline(case), size=12),
     ]
     if case.main_bytes is None:
-        controls.append(ft.Text("Die Hauptdatei fehlt; unten steht nur die Konfliktversion.", size=12))
-    controls.append(diff_box(conflict_diff(case)))
-    if case.kind is CaseKind.MANUAL:
-        controls += frontmatter_controls(app, case)
-    if case.kind is not CaseKind.BUSY:
-        controls += _choices(app, case, cases)
-    if case.kind is CaseKind.MANUAL:
-        controls += hunk_controls(app, case)
-    return controls
-
-
-def diff_box(rows: list[DiffRow]) -> ft.Control:
-    """Zeilenvergleich als Kasten mit farbig hinterlegten Abweichungen.
-
-    Args:
-        rows: Vergleichszeilen (``conflict_diff`` bzw. ``line_diff`` aus ``app.conflict_views``).
-
-    Returns:
-        Ein Container mit einer Zeile je ``DiffRow``.
-    """
-    if all(row.side in ("beide", "ausgelassen") for row in rows):
-        rows_controls = [ft.Text("Beide Fassungen sind inhaltlich gleich.", size=12, italic=True)]
-    else:
-        rows_controls = []
-        for row in rows:
-            prefix, color = _SIDE_STYLE[row.side]
-            italic = row.side == "ausgelassen"
-            rows_controls.append(ft.Container(content=ft.Text(prefix + row.text, size=12, italic=italic,
-                                                              font_family="monospace"), bgcolor=color))
-    return ft.Container(content=ft.Column(rows_controls, spacing=0), padding=6,
-                        bgcolor=ft.Colors.SURFACE_CONTAINER)
-
-
-def _choices(app: "MobileApp", case, cases) -> list[ft.Control]:
-    """Entscheidungsknöpfe mit Erklärung; bei fehlender Hauptdatei nur „wiederherstellen“.
-
-    Args:
-        app: Die laufende App.
-        case: Der Konfliktfall.
-        cases: Alle Fälle (bei fehlender Hauptdatei bleiben Geschwister manuell).
-
-    Returns:
-        Knöpfe samt Erklärzeilen.
-    """
-    others = tuple(c.conflict.relpath for c in cases
-                   if c.conflict.main_relpath == case.conflict.main_relpath and c is not case)
-
-    def button(label: str, choice: Choice) -> ft.Control:
-        async def decide(_e) -> None:
-            manual = others if case.kind is CaseKind.MAIN_DELETED else ()
-            decisions = dict(fm_decisions(app, case))
-            await app.act(lambda s: s.resolve(case, conflict_result(case, choice, decisions), label, manual))
-        return ft.Button(label, on_click=decide)
-
-    if case.kind is CaseKind.MAIN_DELETED:
-        return [button("Diese Version wiederherstellen", Choice.KONFLIKTVERSION)]
-    controls: list[ft.Control] = []
-    for choice, label, hint in _CHOICES:
-        controls.append(ft.Row([button(label, choice), ft.Text(hint, size=11, expand=True)]))
-    return controls
+        controls.append(ft.Text(MAIN_DELETED_HINT, size=12))
+        if is_empty_version(case.conflict_bytes):
+            controls.append(ft.Text("Diese Konfliktversion ist leer.", size=12, italic=True))
+    if case.kind is CaseKind.BUSY:
+        return controls + [diff_box(conflict_diff(case))]
+    return controls + note_choice_controls(app, case, cases)

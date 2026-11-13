@@ -43,11 +43,17 @@ def test_stamp_decision_then_merge_writes_one_clean_head(tmp_path: Path) -> None
             said.append(str(exc))
 
     app = SimpleNamespace(service=service, act=act, say=said.append, render=lambda: None)
-    controls = conflict_view.conflicts_view(app)
-    [group] = [c for c in walk(controls) if isinstance(c, ft.RadioGroup) and c.content.controls[0].value == "weiter"]
-    merge = next(c for c in walk(controls) if isinstance(c, ft.Button) and c.content == "Zusammenführen")
-    asyncio.run(merge.on_click(None))
-    assert said and "Entscheidung" in said[0]  # ohne Wahl: Hinweis, nichts geschrieben
+    view = lambda: list(walk(conflict_view.conflicts_view(app)))  # noqa: E731 – nach jeder Wahl neu bauen
+    merge = next(c for c in view() if isinstance(c, ft.OutlinedButton) and c.content == "Zusammenführen")
+    merge.on_click(None)  # Schnellwahl: setzt nur die Wahl
+    controls = view()
+    apply = next(c for c in controls if isinstance(c, ft.Button) and c.content == "Auswahl übernehmen")
+    assert apply.disabled and "Kopfbereich: Entscheidung je Eigenschaft fehlt" in " ".join(
+        c.value for c in controls if isinstance(c, ft.Text) and c.value)
+    [group] = [c for c in controls if isinstance(c, ft.RadioGroup) and c.content.controls[0].value == "weiter"]
     group.on_change(SimpleNamespace(control=SimpleNamespace(value="verwerfen")))
-    asyncio.run(merge.on_click(None))
+    apply = next(c for c in view() if isinstance(c, ft.Button) and c.content == "Auswahl übernehmen")
+    assert not apply.disabled
+    asyncio.run(apply.on_click(None))
+    assert not said
     assert (root / MAIN).read_bytes() == b"---\nzeit_Orga: 40\n---\nThema\n- [ ] a\n- [ ] b\n"

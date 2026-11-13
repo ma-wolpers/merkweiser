@@ -2,11 +2,12 @@
 
 from pathlib import Path
 
-from merkweiser.app.conflict_views import Choice, conflict_result
+from merkweiser.app.conflict_views import Choice
 from merkweiser.core import conflict_files as cf
 from merkweiser.core.conflicts import CaseKind, auto_merge
 from merkweiser.core.merge.frontmatter import StampConflict, merge_frontmatter, split
 from merkweiser.core.undo_merge import plan_undo
+from tests.app.test_note_conflicts import quick_result
 from tests.core.test_conflicts import CONF, MAIN, Env
 
 S1 = b"messung_start: 2026-01-01T08:00:00+01:00\nmessung_taetigkeit: Orga\n"
@@ -48,7 +49,7 @@ def test_foreign_keys_merge_per_key_and_bodies_union(tmp_path: Path) -> None:
 def test_different_foreign_values_need_a_decision(tmp_path: Path) -> None:
     _env, found = case(tmp_path, fm(b"tags: [a]\n"), fm(b"tags: [b]\n"))
     assert found.kind is CaseKind.MANUAL and found.reason == "unterschiedliche Eigenschaften"
-    assert conflict_result(found, Choice.BEIDE, {0: "b"}) == fm(b"tags: [b]\n")
+    assert quick_result(found, Choice.BEIDE, {0: "b"}) == fm(b"tags: [b]\n")
 
 
 def test_one_sided_stamp_always_asks(tmp_path: Path) -> None:
@@ -100,7 +101,7 @@ def test_own_conflict_with_base_resolves_stamp_by_diff3(tmp_path: Path) -> None:
 def test_opaque_head_is_a_block_and_open_head_is_whole_file_only(tmp_path: Path) -> None:
     _env, found = case(tmp_path, b"---\n# k\na: 1\n---\n" + BODY, b"---\n# k\na: 2\n---\n" + BODY)
     assert found.reason == "Kopfbereich unterschiedlich"
-    assert conflict_result(found, Choice.BEIDE, {0: "a"}).startswith(b"---\n# k\na: 1\n---\n")
+    assert quick_result(found, Choice.BEIDE, {0: "a"}).startswith(b"---\n# k\na: 1\n---\n")
     (tmp_path / "x").mkdir()
     _env2, opened = case(tmp_path / "x", b"---\nzeit_Orga: 1\n" + BODY, b"---\nzeit_Orga: 2\n" + BODY)
     assert opened.kind is CaseKind.MANUAL and "schließendes" in opened.reason and opened.merge is None

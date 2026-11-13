@@ -1,9 +1,9 @@
 """UI-neutrale Anzeigemodelle für Konflikte (Desktop und Mobile; keine Flet-/Tk-Abhängigkeit).
 
-Einfache Entscheidungen (``Choice``/``conflict_result``), abschnittsweise
-Entscheidungen (``hunk_result``), Zeilenvergleich (``conflict_diff``,
-``line_diff``), Herkunft der Konfliktversion und deutsche Anzeigetexte der
-Fallarten. Die Oberflächen rendern nur noch.
+Schnellwahl (``Choice``; die notizweise Entscheidung steht in ``note_plan``
+und ``note_conflicts``), Zeilenvergleich (``conflict_diff``, ``line_diff``),
+Herkunft der Konfliktversion und deutsche Anzeigetexte der Fallarten
+(``case_headline``). Die Oberflächen rendern nur noch.
 """
 
 from __future__ import annotations
@@ -12,51 +12,18 @@ import difflib
 from dataclasses import dataclass
 from enum import Enum
 
-from ..core.conflicts import CaseKind, ConflictCase, HunkPick, apply_hunk_picks, merged_lines, render
-from ..core.merge.frontmatter import OPEN, split
-from ..core.merge.union import merge2
+from ..core.conflicts import CaseKind, ConflictCase
 from ..core.source import SourceText
 
 
 class Choice(Enum):
-    """Einfache Konfliktentscheidung für Fälle ohne Hunk-Auswahl."""
+    """Schnellwahl für alle Notizen eines Falls (``note_conflicts.quick_select``)."""
 
     HAUPTDATEI = "hauptdatei"
     KONFLIKTVERSION = "konfliktversion"
     BEIDE = "beide"
 
 
-def conflict_result(case: ConflictCase, choice: Choice, decisions: dict[int, str] | None = None) -> bytes:
-    """Ergebnis-Bytes einer einfachen Konfliktentscheidung.
-
-    ``BEIDE`` vereinigt verlustfrei (Union, Hauptdatei zuerst) im Zeilenende-Stil
-    der Hauptdatei bzw. der Konfliktversion, falls die Hauptdatei fehlt. Hat
-    der Fall einen YAML-Kopf, wird nur der Rumpf vereinigt und der Kopf über
-    ``decisions`` aufgelöst (nie doppelte Schlüssel).
-
-    Args:
-        case: Konfliktfall.
-        choice: Wahl.
-        decisions: Entscheidungen je Kopf-Konflikt (nur bei ``BEIDE`` mit Kopf).
-
-    Returns:
-        Bytes für ``NotesService.resolve``.
-
-    Raises:
-        ValueError: Für den Kopf fehlt eine Entscheidung, oder er ist offen.
-    """
-    if choice is Choice.HAUPTDATEI and case.main_bytes is not None:
-        return case.main_bytes
-    if choice is Choice.KONFLIKTVERSION or case.main_bytes is None:
-        return case.conflict_bytes
-    (head_a, a), (head_b, b) = split(case.main_bytes), split(case.conflict_bytes)
-    if OPEN in (head_a.state, head_b.state):
-        raise ValueError("Kopfbereich ohne schließendes --- – bitte eine ganze Fassung wählen")
-    if getattr(case, "frontmatter", None) is None:
-        if head_a.lines or head_b.lines:
-            raise ValueError("Kopfbereich nicht zusammenführbar – bitte eine ganze Fassung wählen")
-        return render(merge2(a, b).lines(), case.main_bytes)
-    return render(merged_lines(case, decisions, merge2(a, b).lines()), case.main_bytes)
 
 
 @dataclass(frozen=True)
@@ -156,31 +123,3 @@ def case_headline(case: ConflictCase) -> str:
     """
     label = CASE_KIND_LABELS[case.kind]
     return f"{label}: {case.reason}" if case.reason and case.reason != label else label
-
-
-#: Anzeigenamen der Hunk-Wahl (Reihenfolge = Reihenfolge der Auswahl).
-HUNK_PICK_LABELS = ((HunkPick.HAUPT, "Hauptdatei"), (HunkPick.KONFLIKT, "Konfliktversion"),
-                    (HunkPick.BEIDE, "Beide"), (HunkPick.BEARBEITET, "Bearbeitet"))
-
-
-def hunk_result(case: ConflictCase, picks: list[tuple[HunkPick, str]],
-                decisions: dict[int, str] | None = None) -> tuple[bytes, str]:
-    """Ergebnis-Bytes und lesbare Entscheidung einer abschnittsweisen Konfliktauflösung.
-
-    Args:
-        case: Konfliktfall mit Merge (``case.merge`` hat Hunks) und vorhandener Hauptdatei.
-        picks: Je Hunk ``(Wahl, Text)`` (siehe ``apply_hunk_picks``).
-        decisions: Entscheidungen je Kopf-Konflikt, falls der Fall einen YAML-Kopf hat.
-
-    Returns:
-        ``(Bytes für NotesService.resolve, Entscheidung wie „Abschnitt 1: Beide, 2: Hauptdatei“)``.
-
-    Raises:
-        ValueError: kein Merge bzw. keine Hauptdatei, oder ungültige Wahl.
-    """
-    if case.merge is None or case.main_bytes is None:
-        raise ValueError("Dieser Konflikt hat keine Abschnitte")
-    lines = merged_lines(case, decisions, apply_hunk_picks(case.merge, picks))
-    names = dict(HUNK_PICK_LABELS)
-    decision = "Abschnitt " + ", ".join(f"{i}: {names[pick]}" for i, (pick, _text) in enumerate(picks, 1))
-    return render(lines, case.main_bytes), decision

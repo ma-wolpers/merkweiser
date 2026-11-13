@@ -7,10 +7,11 @@ import pytest
 
 from merkweiser.app.notes_service import NotesService
 from merkweiser.app.settings import Settings
-from merkweiser.app.conflict_views import Choice, conflict_result
+from merkweiser.app.conflict_views import Choice
 from merkweiser.app.views import hit_rows, note_rows
 from merkweiser.core.document import parse_document
 from merkweiser.core.query import Filter
+from tests.app.test_note_conflicts import quick_result
 from tests.fakes import FakeClock
 
 
@@ -35,10 +36,10 @@ def test_hit_rows_and_conflict_choices(tmp_path: Path) -> None:
     svc.start()
     [row] = hit_rows(svc.search(Filter(nur_todos=True)))
     assert (row.day, row.text, row.context, row.done) == ("2026-01-01", "Lernen", "Uni #uni", False)
-    [case] = svc.conflicts()  # verschachtelt → manuell
-    assert conflict_result(case, Choice.HAUPTDATEI) == case.main_bytes
-    assert conflict_result(case, Choice.KONFLIKTVERSION) == case.conflict_bytes
-    assert conflict_result(case, Choice.BEIDE) == b"Uni #uni\n- [ ] Lernen\n- [ ] Lesen\n"
+    [case] = svc.conflicts()  # verschachtelt → manuell (ohne Merge: Schnellwahl ist der Ein-Klick-Weg)
+    assert quick_result(case, Choice.HAUPTDATEI) == case.main_bytes
+    assert quick_result(case, Choice.KONFLIKTVERSION) == case.conflict_bytes
+    assert quick_result(case, Choice.BEIDE) == b"Uni #uni\n- [ ] Lernen\n- [ ] Lesen\n"
     assert date(2026, 1, 1).isoformat() == row.day
 
 
@@ -104,21 +105,6 @@ def test_move_choices(today: date, expected: list[date]) -> None:
     choices = move_choices(today)
     assert [day for _label, day in choices] == expected
     assert choices[0][0] == f"Morgen ({['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][expected[0].weekday()]}, {expected[0]:%d.%m.})"
-
-
-def test_hunk_result_renders_like_main_and_names_decision() -> None:
-    """Ergebnis übernimmt den Zeilenende-Stil der Hauptdatei; die Entscheidung ist lesbar."""
-    from types import SimpleNamespace
-
-    from merkweiser.app.conflict_views import hunk_result
-    from merkweiser.core.conflicts import HunkPick
-    from merkweiser.core.merge.diff3 import merge3
-    merge = merge3(["T", "a", "Ende"], ["T", "a A", "Ende"], ["T", "a B", "Ende"])
-    case = SimpleNamespace(merge=merge, main_bytes=b"T\r\na A\r\nEnde\r\n")
-    result, decision = hunk_result(case, [(HunkPick.BEIDE, "")])
-    assert result == b"T\r\na A\r\na B\r\nEnde\r\n" and decision == "Abschnitt 1: Beide"
-    with pytest.raises(ValueError):
-        hunk_result(SimpleNamespace(merge=None, main_bytes=b""), [])
 
 
 def test_note_rows_carry_explanation_and_continuation_lines() -> None:

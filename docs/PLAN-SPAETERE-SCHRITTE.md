@@ -1078,12 +1078,16 @@ Ursachen: Entscheidungen gab es nur für die ganze Datei bzw. je diff3-Hunk. Zu 
 |---|---|---|
 | C0 | Schon markierte Konfliktdateien entscheiden | erledigt |
 | C1 | Dieser Plan, Änderungen in `PLAN.md` | erledigt |
-| C2 | `resolve.discard` mit Wiederherstellung, `NotesService.discard` | offen |
-| C3 | Leere Versionen beim Start verwerfen | offen |
-| C4 | Notiz-Zuordnung `core/merge/notes.py` | offen |
-| C5 | Anzeigemodell `app/note_conflicts.py`, `case_headline` | offen |
-| C6 | Mobile-Oberfläche, Hunk-Auswahl entfernen | offen |
+| C2 | `resolve.discard` mit Wiederherstellung, `NotesService.discard` | erledigt |
+| C3 | Leere Versionen beim Start verwerfen | erledigt |
+| C4 | Notiz-Zuordnung `core/merge/notes.py` | erledigt |
+| C5 | Anzeigemodell `app/note_plan.py` und `app/note_conflicts.py`, `case_headline` | erledigt |
+| C6 | Mobile-Oberfläche, Hunk-Auswahl entfernen | erledigt |
 
 ### Flet 0.86.5 – vor der Nutzung im Paket prüfen
 
-`Button(disabled=…)`, `RadioGroup(value=None)` ohne Vorauswahl.
+`Button(disabled=…)`, `RadioGroup(value=None)` ohne Vorauswahl. Geprüft am 2026-11-13 im Paket: `RadioGroup.value: Optional[str] = None`, `Control.disabled: bool = False`.
+
+### Abweichung bei der Umsetzung (C6)
+
+Statt einzelne Controls per `refresh` nachzuzeichnen, zeichnet jede Wahl die Seite per `app.render()` neu; die Wahl liegt je Fall (Pfad + Inhalt beider Fassungen) in der App. So können „Noch offen“ und der Übernehmen-Knopf nicht auseinanderlaufen. Tippen im Bearbeiten-Feld zeichnet nicht neu (Fokus bleibt).

@@ -25,6 +25,15 @@ def start(main: bytes | None, conflict: bytes, **kwargs):
     return plan, initial_choices(plan)
 
 
+def quick_result(found: ConflictCase, choice: Choice, fm: dict[int, str] | None = None) -> bytes:
+    """Ergebnis-Bytes einer Schnellwahl für einen Fall (auch von anderen Testmodulen genutzt)."""
+    plan = note_plan(found)
+    choices = initial_choices(plan)
+    quick_select(plan, choices, choice)
+    choices.fm.update(fm or {})
+    return note_result(plan, choices)[0]
+
+
 def test_quick_select_sides_are_byte_exact_even_with_bom_and_crlf() -> None:
     """„Hauptdatei behalten“/„Konfliktversion übernehmen“ liefern exakt die Bytes der Fassung."""
     main = b"\xef\xbb\xbfA\r\n- [ ] a\r\n\r\n---\r\n\r\nB\r\n"

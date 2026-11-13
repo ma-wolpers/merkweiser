@@ -42,7 +42,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 10 | W5 Benachrichtigungen | umgesetzt, Erweiterung seit 2026-10-25 in der App-APK; Gerätetest in der App offen (Antippen öffnet „heute“) |
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
 | 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | umgesetzt (Phasen 0–7, signierte APK 2026-10-26); Gerätetest offen |
-| 13 | W8 Konflikte notizweise, Todo-Häkchen direkt, Versionen verwerfen, leere Versionen automatisch (Plan: `PLAN-SPAETERE-SCHRITTE.md` W8) | in Arbeit (C0–C1 erledigt) |
+| 13 | W8 Konflikte notizweise, Todo-Häkchen direkt, Versionen verwerfen, leere Versionen automatisch (Plan: `PLAN-SPAETERE-SCHRITTE.md` W8) | umgesetzt (C0–C6, 2026-11-13); Gerätetest offen |
 
 ## Context
 

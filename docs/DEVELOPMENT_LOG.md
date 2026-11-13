@@ -2,6 +2,14 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-13 – W8 C6: Mobile-Oberfläche notizweise, Hunk-Auswahl entfernt
+
+- Neu `mobile/ui/note_choice_view.py` (Schnellwahl, Verwerfen mit Bestätigung, Kopf, Notizen, Todos, „Noch offen“ und „Auswahl übernehmen“) und `mobile/ui/diff_box.py` (aus `conflict_view` verschoben; `same_text=None` für Notizen mit nur `[?]`). `conflict_view` zeigt `case_headline`, `MAIN_DELETED_HINT`, „Diese Konfliktversion ist leer.“ (über `cleanup.is_empty_version`) und sonst nur noch die Notiz-Auswahl (`BUSY`: Vergleich).
+- `frontmatter_choices.frontmatter_controls(fm, chosen, on_change)`; `fm_decisions` und `app._fm_decisions` entfallen (Zustand in `NoteChoices.fm`).
+- Entfernt: `mobile/ui/hunk_view.py`, `conflict_views.conflict_result`/`hunk_result`/`HUNK_PICK_LABELS`, `core.conflicts.HunkPick`/`apply_hunk_picks` samt Tests. Tests, die `conflict_result` nutzten, laufen über den Helfer `tests.app.test_note_conflicts.quick_result` (gleiche Erwartungen).
+- Abweichung vom Plan: Neuzeichnen per `app.render()` statt `refresh` je Control (eine Zeichenquelle; im W8-Abschnitt vermerkt). Flet-Annahmen im Paket 0.86.5 geprüft.
+- Tests `tests/mobile/test_note_choice_view.py` (6, echter Service auf synthetischem Vault, kein Fenster); `test_frontmatter_choices` auf Schnellwahl → Stempelfrage → „Auswahl übernehmen“ umgestellt.
+
 ## 2026-11-10 – W8 C5: Anzeigemodell und Ergebnis der Notiz-Auswahl
 
 - Neu `app/note_plan.py` (Modell, Vorschläge, `render_entry`) und `app/note_conflicts.py` (Wahl, Schnellwahl, `missing`, `note_result`). Fachlich getrennt, weil eine Datei knapp an die 300-Zeilen-Grenze kam.

@@ -6,6 +6,9 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Konflikte notizweise entscheiden:** Unter *Einstellungen → Konflikte* wählst du jetzt je Notiz: Hauptdatei, Konfliktversion, Beide oder selbst bearbeiten; Notizen, die nur in einer Fassung stehen, behältst bzw. übernimmst du oder lässt sie weg. Gleiche Notizen werden nur gezählt. Die Knöpfe „Hauptdatei behalten“, „Konfliktversion übernehmen“ und „Zusammenführen“ setzen alle Notizen auf einmal; geschrieben wird erst mit „Auswahl übernehmen“. Darüber steht, was noch fehlt. Die bisherige abschnittsweise Auswahl entfällt.
+- **Todos mit verschiedenem Häkchen** (in einer Fassung erledigt, in der anderen offen) entscheidest du direkt mit „Erledigt“ oder „Offen“; nichts ist vorausgewählt.
+- **Hauptdatei fehlt:** Eine Erklärung sagt, was los ist. Du kannst einzelne Notizen der Version wiederherstellen oder die Version verwerfen (nach Rückfrage; sie bleibt unter *Backups*). Bei mehreren Versionen gibt es „Alle verwerfen“.
 - **Leere Konfliktversionen:** Fehlt die Hauptdatei und ist die Konfliktversion leer, verwirft Merkweiser sie beim Start automatisch (mit Backup) und meldet das im Start-Hinweis. Solche Fälle stehen nicht mehr unter *Einstellungen → Konflikte*.
 
 - **Tab Zeit:** „Messung abbrechen“ heißt jetzt „Messung beenden“ und bekommt direkt dahinter den Stopp-Knopf als reines Symbol; der große Knopf „Stopp“ entfällt. „Wechseln zu „X““ steht ohne „…“. Beide Zeilen sind gleich aufgebaut: Knopf mit Uhrzeit-Wahl, daneben der Schnellknopf.
@@ -25,6 +28,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Fixed
 
+- Bei fehlender Hauptdatei stand „Hauptdatei fehlt: Hauptdatei fehlt“, und eine leere Konfliktversion wurde als „Beide Fassungen sind inhaltlich gleich“ angezeigt, ohne dass man den Fall wegklicken konnte.
 - Konflikte mit dem Hinweis „Entscheidung unterbrochen – bitte erneut entscheiden“ ließen sich nicht entscheiden: Jeder Knopf brach mit einem Fehler ab. Jetzt wird die Entscheidung normal angewendet.
 - Im Tab Todos erschien „Keine Todos.“ nie, auch wenn nichts passte.
 - Ein Todo wie `x = 1 ==` verlor in der Anzeige seine Gleichheitszeichen am Rand; jetzt wird nur eine echte Dringlichkeits-Markierung ausgeblendet.

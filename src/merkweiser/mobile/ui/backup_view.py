@@ -13,7 +13,7 @@ import flet as ft
 
 from ...app.backup_views import ChangeView, file_changes, file_entries, undo, undo_group
 from ...app.nav import PageRef
-from .conflict_view import diff_box
+from .diff_box import diff_box
 
 if TYPE_CHECKING:
     from .app import MobileApp
