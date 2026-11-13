@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-13 – W8: APK
+
+- Signierte APK aus `ebe9efe` über `tools/build_apk.py` gebaut (Fingerabdruck per `apksigner` geprüft, `ANDROID_HOME` = `~/Android/sdk`) und nach `SyncSpike/merkweiser.apk` gelegt. Ein früherer Build während der Farbänderung wurde abgebrochen, damit keine halb bearbeiteten Dateien eingepackt werden.
+- Sichtprüfung vorher am Desktop mit synthetischem Vault und isolierten App-Daten (Startskript außerhalb des Repos); Stand: 740 Tests bestanden, 1 übersprungen.
+
 ## 2026-11-13 – W8: Farben statt Wörter in der Konfliktauswahl
 
 - Nutzerwunsch: wo möglich die Farben der Vergleichszeilen statt „Hauptdatei/Konfliktversion/Beide“. `diff_box.side_chips` baut Farbfelder aus derselben `_SIDE_STYLE`-Tabelle wie die Zeilen (mit −/+ als Zeichen, also auch ohne Farbe lesbar). Verwendet für die Schnellwahl, die Umschaltleiste geänderter Notizen und des Kopfs sowie den Todo-Stand je Fassung (rot/grün ☐/☑); die Todo-Wahl ist ☑ | ☐.
