@@ -50,7 +50,7 @@ Pipeline wie in PLAN.md: `Datei → SourceText → Blocks → Note → Outline �
 
 Fixtures: `tests/fixtures/*.md` sind synthetisch und byte-genau (CRLF/gemischt, BOM, ohne Schluss-Newline, Fences, Setext, Tabellen, Embeds); `.gitattributes` schützt sie vor `autocrlf`.
 
-Werkzeug: `tools/code_lines.py` zählt ausführbare Code-Zeilen (ohne Docstrings, Kommentare und Imports) gegen den Richtwert 300.
+Werkzeug: Die 300-Zeilen-Grenze (ausführbare Zeilen ohne Docstrings, Kommentare und Imports) prüft der gemeinsame Prüfer `bw_gui.testing.line_limits` aus dem Geschwister-Repo bw-gui (Aufruf in `AGENTS.md`); ein eigener Zähler existiert nicht mehr. Ausnahmen stünden unter einer Überschrift „Ausnahmen 300-Zeilen-Regel“; derzeit gibt es keine.
 
 ## Core: Edit-Planung (Schritt 3, ohne Schreibprotokoll)
 

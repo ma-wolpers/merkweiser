@@ -2,6 +2,11 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-13 – Zeilengrenze nur noch mit dem gemeinsamen Prüfer
+
+- `tools/code_lines.py` entfernt: Er duplizierte `bw_gui.testing.line_limits` (gemeinsamer Prüfer aller Repos der Familie; Nutzerentscheidung 2026-11-10). Vorher auf allen Dateien in `src/` und `tools/` laufen lassen: bestanden, also kein Unterschied im Ergebnis.
+- `AGENTS.md` nennt den Aufruf und die Überschrift „Ausnahmen 300-Zeilen-Regel“ für benannte Ausnahmen; `ARCHITEKTUR.md` entsprechend. Ältere Einträge und abgeschlossene Phasenlisten, die `tools/code_lines.py` nennen, bleiben als Verlauf stehen.
+
 ## 2026-11-13 – W8 C6: Mobile-Oberfläche notizweise, Hunk-Auswahl entfernt
 
 - Neu `mobile/ui/note_choice_view.py` (Schnellwahl, Verwerfen mit Bestätigung, Kopf, Notizen, Todos, „Noch offen“ und „Auswahl übernehmen“) und `mobile/ui/diff_box.py` (aus `conflict_view` verschoben; `same_text=None` für Notizen mit nur `[?]`). `conflict_view` zeigt `case_headline`, `MAIN_DELETED_HINT`, „Diese Konfliktversion ist leer.“ (über `cleanup.is_empty_version`) und sonst nur noch die Notiz-Auswahl (`BUSY`: Vergleich).

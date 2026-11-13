@@ -18,7 +18,8 @@ Diese Regeln gelten für alle Änderungen an Merkweiser, egal ob durch Menschen 
   - `desktop/` nutzt ausschließlich bw-gui; es gibt keine eigenen Tk-Widgets und kein `bind_all`.
   - `mobile/platform/` ist der **einzige** Ort, der Flet- oder Android-APIs benennt.
   - Jede Framework-Annahme wird gegen die gepinnte Version (Flet 0.86.5) geprüft, bevor sie in Code oder Doku landet.
-- **Dateigröße:** ~300 Zeilen **ausführbarer Code** pro Datei. Gezählt wird per AST bzw. tokenize; Docstrings, Kommentare, Leerzeilen und Imports zählen nicht, `wc -l` ist also nicht das Maß. Diese Grenze ist ein Richtwert und kein Anlass für künstliche `*_helpers`/`*_utils`-Module. Ausnahmen bekommen `# GRENZE(dateigroesse): <Grund>` und einen Eintrag in `docs/ARCHITEKTUR.md`.
+- **Dateigröße:** ~300 Zeilen **ausführbarer Code** pro Datei. Gezählt wird per AST bzw. tokenize; Docstrings, Kommentare, Leerzeilen und Imports zählen nicht, `wc -l` ist also nicht das Maß. Diese Grenze ist ein Richtwert und kein Anlass für künstliche `*_helpers`/`*_utils`-Module. Ausnahmen bekommen `# GRENZE(dateigroesse): <Grund>` und einen Eintrag in `docs/ARCHITEKTUR.md` unter der Überschrift „Ausnahmen 300-Zeilen-Regel“.
+  - Geprüft wird **nur** mit dem gemeinsamen Prüfer aus dem Geschwister-Repo bw-gui (kein eigener Zähler): `PYTHONPATH=../bw-gui/src python -m bw_gui.testing.line_limits --repo . --arch-doc docs/ARCHITEKTUR.md` (ohne `--paths`: die berührten Dateien).
 - **Docstrings** im Google-Stil für jede neue oder geänderte Funktion bzw. Methode. Sie beschreiben Zweck, Argumente, Rückgabe, Invarianten und Fehlerfälle.
 - **Marker:** `GRENZE:` für bewusst akzeptierte Einschränkungen, `BAUSTELLE:` für offene Punkte, optional mit Scope, z. B. `GRENZE(W1):`. Keine `TODO`/`FIXME`. Suche: `rg -n "\b(GRENZE|BAUSTELLE)\b"`.
 - **Pfade:** keine maschinenspezifischen absoluten Pfade in Code, Doku oder Konfiguration. Pfade stehen relativ zum Repo oder als Geschwister-Repo (`../bw-gui`).
