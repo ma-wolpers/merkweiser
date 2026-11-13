@@ -72,29 +72,46 @@ def quick_select(plan: NotePlan, choices: NoteChoices, choice: Choice) -> None:
         choices.head = side or (Pick.BEIDE if plan.head.fm is not None else Pick.KONFLIKT)
 
 
+def head_problems(plan: NotePlan, choices: NoteChoices) -> list[str]:
+    """Was am Kopfbereich noch fehlt (leer ohne Kopf-Eintrag oder wenn entschieden)."""
+    if plan.head is None:
+        return []
+    if choices.head is None:
+        return ["Kopfbereich: Wahl fehlt"]
+    if choices.head is Pick.BEIDE:
+        try:
+            plan.head.fm.resolve(choices.fm)
+        except ValueError:
+            return ["Kopfbereich: Entscheidung je Eigenschaft fehlt"]
+    return []
+
+
+def entry_problems(plan: NotePlan, choices: NoteChoices, index: int) -> list[str]:
+    """Was an Eintrag ``index`` noch fehlt: die Wahl selbst bzw. unentschiedene Todos."""
+    entry, pick = plan.entries[index], choices.picks.get(index)
+    if pick is None:
+        return [f"Notiz {entry.number}: Wahl fehlt"]
+    if pick is Pick.BEARBEITET:
+        return []
+    return [f"Todo „{todo.text}“: erledigt oder offen?"
+            for todo in entry.todos if (index, todo.row) not in choices.todos]
+
+
 def missing(plan: NotePlan, choices: NoteChoices) -> list[str]:
     """Was noch zu entscheiden ist (leer = „Auswahl übernehmen“ möglich).
+
+    Setzt sich aus ``head_problems`` und ``entry_problems`` zusammen (dieselben
+    Regeln markieren in der Oberfläche die offenen Karten); danach, wenn sonst
+    nichts fehlt, der Hinweis, dass bei fehlender Hauptdatei nichts wiederhergestellt würde.
 
     Returns:
         Deutsche Hinweise in Anzeigereihenfolge.
     """
     if plan.whole_only:
         return [] if choices.whole else ["Ganze Fassung wählen"]
-    out = []
-    if plan.head is not None and choices.head is None:
-        out.append("Kopfbereich: Wahl fehlt")
-    elif plan.head is not None and choices.head is Pick.BEIDE:
-        try:
-            plan.head.fm.resolve(choices.fm)
-        except ValueError:
-            out.append("Kopfbereich: Entscheidung je Eigenschaft fehlt")
-    for k, entry in enumerate(plan.entries):
-        pick = choices.picks.get(k)
-        if pick is None:
-            out.append(f"Notiz {entry.number}: Wahl fehlt")
-        elif pick is not Pick.BEARBEITET:
-            out += [f"Todo „{todo.open_line.strip()}“: erledigt oder offen?"
-                    for todo in entry.todos if (k, todo.row) not in choices.todos]
+    out = head_problems(plan, choices)
+    for k in range(len(plan.entries)):
+        out += entry_problems(plan, choices, k)
     if not out and plan.main_missing and not _body(plan, choices) and choices.head is not Pick.KONFLIKT:
         out.append("Nichts zum Wiederherstellen gewählt – zum Entfernen „Version verwerfen“ nutzen")
     return out

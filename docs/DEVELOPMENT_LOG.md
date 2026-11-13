@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-13 – W8: Konfliktdialog kompakt (Karten statt vieler Kästen)
+
+- Nutzerbefund nach der Sichtprüfung: zu viele Kästen und Texte für wenig Information. Gewählt (Variante „kompakte Karten“): je Notiz eine `style.card` mit Kopfzeile „Thema · Art“, Vergleich ohne eigenen Kasten (`diff_box(…, framed=False)`), `SegmentedButton` mit Kurztexten statt RadioGroup; Todos einzeilig mit „H ☐ · K ☑“; Fallkopf zweizeilig; Schnellwahl als eine Zeile „Alle:“; „Übernehmen (n offen)“ statt „Noch offen: …“ + „Auswahl übernehmen“.
+- SSOT: Kurz- und Langtexte stehen in einer Tabelle (`note_plan._LABELS`, `pick_labels(…, short)`, `head_labels(…, short)`); `Todo.text` liefert den Text ohne Marker. `missing` ist jetzt aus `head_problems` und `entry_problems` zusammengesetzt; dieselben Funktionen markieren die Karten als „offen“. Kartenstil `style.card` auch für `note_view.note_card` (vorher dort inline).
+- Flet 0.86.5 im Paket geprüft: `SegmentedButton.allow_empty_selection` (sonst `ValueError` bei leerem `selected`), `show_selected_icon`, Auswahl über `e.control.selected`.
+
 ## 2026-11-13 – Zeilengrenze nur noch mit dem gemeinsamen Prüfer
 
 - `tools/code_lines.py` entfernt: Er duplizierte `bw_gui.testing.line_limits` (gemeinsamer Prüfer aller Repos der Familie; Nutzerentscheidung 2026-11-10). Vorher auf allen Dateien in `src/` und `tools/` laufen lassen: bestanden, also kein Unterschied im Ergebnis.

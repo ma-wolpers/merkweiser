@@ -32,3 +32,17 @@ URGENCY_STYLE = {
 
 #: Breite der farbigen Leiste links an offenen dringenden Todos.
 URGENCY_BAR = 4
+
+
+def card(controls: list[ft.Control], spacing: float | None = None) -> ft.Container:
+    """Karte im einheitlichen Stil (Notizkarten, Notizen im Konfliktdialog).
+
+    Args:
+        controls: Inhalt von oben nach unten.
+        spacing: Abstand zwischen den Zeilen (``None`` = Flet-Standard).
+
+    Returns:
+        Abgerundeter Container mit Fläche ``SURFACE_CONTAINER``.
+    """
+    column = ft.Column(controls) if spacing is None else ft.Column(controls, spacing=spacing)
+    return ft.Container(content=column, padding=8, border_radius=8, bgcolor=ft.Colors.SURFACE_CONTAINER)

@@ -59,7 +59,7 @@ def test_todo_status_must_be_decided_and_keeps_spelling() -> None:
     """Keine Vorauswahl: ohne Entscheidung kein Ergebnis; erledigt übernimmt ``[X]`` byte-genau."""
     plan, choices = start(b"T\n- [ ] a\n", b"T\n- [X] a\n")
     [entry] = plan.entries
-    assert entry.kind is Kind.STATUS and missing(plan, choices) == ["Todo „- [ ] a“: erledigt oder offen?"]
+    assert entry.kind is Kind.STATUS and missing(plan, choices) == ["Todo „a“: erledigt oder offen?"]
     with pytest.raises(ValueError):
         note_result(plan, choices)
     choices.todos[(0, entry.todos[0].row)] = True

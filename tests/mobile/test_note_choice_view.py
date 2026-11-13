@@ -1,4 +1,4 @@
-"""Mobile: notizweise Konfliktauswahl (W8) – ohne Fenster, mit echtem Service auf synthetischem Vault."""
+"""Mobile: notizweise Konfliktauswahl (W8, kompakte Karten) – ohne Fenster, mit echtem Service auf synthetischem Vault."""
 
 import asyncio
 from pathlib import Path
@@ -53,12 +53,28 @@ def texts(controls) -> str:
     return "\n".join(c.value for c in controls if isinstance(c, ft.Text) and isinstance(c.value, str))
 
 
-def button(controls, label: str, kind=ft.Button):
+def button(controls, label: str, kind=ft.TextButton):
     return next(c for c in controls if isinstance(c, kind) and c.content == label)
 
 
-def choose(group, value: str) -> None:
-    group.on_change(SimpleNamespace(control=SimpleNamespace(value=value)))
+def apply_button(controls) -> ft.Button:
+    """Der Knopf „Übernehmen“ bzw. „Übernehmen (n offen)“."""
+    return next(c for c in controls if isinstance(c, ft.Button) and str(c.content).startswith("Übernehmen"))
+
+
+def bars(controls) -> list:
+    """Alle Umschaltleisten (Notizen, Kopf, Todos) in Anzeigereihenfolge."""
+    return [c for c in controls if isinstance(c, ft.SegmentedButton)]
+
+
+def bar(controls, first_value: str):
+    """Erste Umschaltleiste, deren erstes Segment ``first_value`` ist."""
+    return next(b for b in bars(controls) if b.segments[0].value == first_value)
+
+
+def choose(segmented, value: str | None) -> None:
+    """Simuliert das Antippen eines Segments (``None`` = Wahl aufgehoben)."""
+    segmented.on_change(SimpleNamespace(control=SimpleNamespace(selected=[value] if value else [])))
 
 
 def test_todo_and_note_choices_then_apply(tmp_path: Path) -> None:
@@ -66,32 +82,44 @@ def test_todo_and_note_choices_then_apply(tmp_path: Path) -> None:
     root, service, app, said = setup(tmp_path, {MAIN: b"Einkauf\n- [ ] Milch\n\nArbeit\n- alt\n",
                                                 NESTED: b"Einkauf\n- [x] Milch\n\nArbeit\n- neu\n"})
     controls = view(app)
-    assert button(controls, "Auswahl übernehmen").disabled
-    assert "Todo „- [ ] Milch“ – Hauptdatei: offen · Konfliktversion: erledigt" in texts(controls)
-    todo = next(c for c in controls if isinstance(c, ft.RadioGroup) and c.content.controls[0].value == "erledigt")
-    assert todo.value is None  # keine Vorauswahl
+    apply = apply_button(controls)
+    assert apply.disabled and apply.content == "Übernehmen (2 offen)" and "Milch" in apply.tooltip
+    shown = texts(controls)
+    assert "Einkauf · nur Häkchen" in shown and "Arbeit · geändert" in shown and "H ☐ · K ☑" in shown
+    todo = bar(controls, "erledigt")
+    assert todo.selected == [] and todo.allow_empty_selection  # keine Vorauswahl
     choose(todo, "erledigt")
-    note = next(c for c in view(app) if isinstance(c, ft.RadioGroup) and c.content.controls[0].value == "haupt")
-    choose(note, "beide")
+    choose(bar(view(app), "haupt"), "beide")
     controls = view(app)
-    assert "Alles entschieden." in texts(controls)
-    asyncio.run(button(controls, "Auswahl übernehmen").on_click(None))
+    assert apply_button(controls).content == "Übernehmen" and "offen" not in texts(controls).split("\n")
+    asyncio.run(apply_button(controls).on_click(None))
     assert not said and service.conflicts() == []
     assert (root / MAIN).read_bytes() == b"Einkauf\n- [x] Milch\n\nArbeit\n- alt\n- neu\n"
 
 
+def test_deselecting_reopens_the_choice(tmp_path: Path) -> None:
+    """Erneutes Antippen hebt die Wahl auf; die Karte ist dann wieder offen."""
+    _root, _service, app, _said = setup(tmp_path, {MAIN: b"A\n- x\n", NESTED: b"A\n- y\n"})
+    choose(bar(view(app), "haupt"), "konflikt")
+    assert not apply_button(view(app)).disabled
+    choose(bar(view(app), "haupt"), None)
+    assert apply_button(view(app)).disabled
+
+
 def test_quick_select_only_sets_choices(tmp_path: Path) -> None:
-    """Schnellwahl schreibt nichts; erst „Auswahl übernehmen“ wendet an."""
+    """Schnellwahl schreibt nichts; erst „Übernehmen“ wendet an."""
     root, service, app, _said = setup(tmp_path, {MAIN: b"A\n- [ ] a\n", NESTED: b"A\n- [x] a\n- b\n"})
-    button(view(app), "Konfliktversion übernehmen", ft.OutlinedButton).on_click(None)
+    quick = button(view(app), "Konflikt")
+    assert quick.tooltip == "Konfliktversion übernehmen"
+    quick.on_click(None)
     assert (root / MAIN).read_bytes() == b"A\n- [ ] a\n" and len(service.conflicts()) == 1
-    asyncio.run(button(view(app), "Auswahl übernehmen").on_click(None))
+    asyncio.run(apply_button(view(app)).on_click(None))
     assert (root / MAIN).read_bytes() == b"A\n- [x] a\n- b\n"
 
 
 def test_edit_field_appears_for_bearbeitet_with_prefill(tmp_path: Path) -> None:
     _root, _service, app, _said = setup(tmp_path, {MAIN: b"A\n- x\n", NESTED: b"A\n- y\n"})
-    choose(next(c for c in view(app) if isinstance(c, ft.RadioGroup)), "bearbeitet")
+    choose(bar(view(app), "haupt"), "bearbeitet")
     [field] = [c for c in view(app) if isinstance(c, ft.TextField)]
     assert field.value == "A\n- x\n- y"
 
@@ -103,7 +131,7 @@ def test_main_deleted_header_and_discard_with_confirmation(tmp_path: Path) -> No
     shown = texts(controls)
     assert "Hauptdatei fehlt: Hauptdatei fehlt" not in shown and "inhaltlich gleich" not in shown
     assert conflict_view.MAIN_DELETED_HINT in shown
-    button(controls, "Version verwerfen", ft.TextButton).on_click(None)
+    button(controls, "Version verwerfen").on_click(None)
     [dialog] = app.page.dialogs
     asyncio.run(next(a for a in dialog.actions if a.content == "Verwerfen").on_click(None))
     service.clock.advance(121)  # Quarantäne des Löschprotokolls ablaufen lassen
@@ -113,11 +141,12 @@ def test_main_deleted_header_and_discard_with_confirmation(tmp_path: Path) -> No
 
 def test_main_deleted_restore_one_note(tmp_path: Path) -> None:
     root, _service, app, _said = setup(tmp_path, {CONF: b"A\n\nB\n"})
-    groups = [c for c in view(app) if isinstance(c, ft.RadioGroup)]
-    assert [g.value for g in groups] == [None, None]
-    choose(groups[0], "haupt")  # „Weglassen“
-    choose(groups[1], "konflikt")  # „Wiederherstellen“
-    asyncio.run(button(view(app), "Auswahl übernehmen").on_click(None))
+    first, second = bars(view(app))
+    assert [first.selected, second.selected] == [[], []]
+    assert [s.label.value for s in first.segments] == ["Wiederherstellen", "Weglassen", "✎"]
+    choose(first, "haupt")  # „Weglassen“
+    choose(bars(view(app))[1], "konflikt")  # „Wiederherstellen“
+    asyncio.run(apply_button(view(app)).on_click(None))
     assert (root / MAIN).read_bytes() == b"B\n"
 
 
@@ -127,6 +156,6 @@ def test_empty_version_is_named_and_offers_only_discard(tmp_path: Path) -> None:
     controls = view(app)
     shown = texts(controls)
     assert "Diese Konfliktversion ist leer." in shown and "inhaltlich gleich" not in shown
-    assert not any(isinstance(c, ft.Button) and c.content == "Alle Notizen wiederherstellen" for c in controls)
-    assert button(controls, "Auswahl übernehmen").disabled
+    assert not any(isinstance(c, ft.TextButton) and c.content == "Alle wiederherstellen" for c in controls)
+    assert apply_button(controls).disabled and "Version verwerfen" in shown.replace("„", "").replace("“", "")
     assert any(isinstance(c, ft.TextButton) and c.content == "Version verwerfen" for c in controls)

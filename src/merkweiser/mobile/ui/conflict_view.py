@@ -20,13 +20,13 @@ from ...core.cleanup import is_empty_version
 from ...core.conflicts import CaseKind
 from .diff_box import diff_box
 from .note_choice_view import note_choice_controls
+from .style import EXPLANATION
 
 if TYPE_CHECKING:
     from .app import MobileApp
 
 #: Erklärung bei fehlender Hauptdatei (Fallart „Hauptdatei fehlt“).
-MAIN_DELETED_HINT = ("Die Hauptdatei fehlt (gelöscht oder umbenannt). Wähle, welche Notizen dieser Version "
-                     "wiederhergestellt werden, oder verwirf die Version – Verworfenes bleibt unter Backups.")
+MAIN_DELETED_HINT = "Gelöscht oder umbenannt: Notizen wiederherstellen oder Version verwerfen (bleibt im Backup)."
 
 
 def conflicts_view(app: "MobileApp") -> list[ft.Control]:
@@ -122,13 +122,11 @@ def _case_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     """
     controls: list[ft.Control] = [
         ft.Text(case.conflict.main_relpath, weight=ft.FontWeight.BOLD),
-        ft.Text(f"Konfliktversion {conflict_origin(case)}", size=12),
-        ft.Text(case_headline(case), size=12),
+        ft.Text(f"{case_headline(case)} · Konfliktversion {conflict_origin(case)}", size=11, color=EXPLANATION),
     ]
     if case.main_bytes is None:
-        controls.append(ft.Text(MAIN_DELETED_HINT, size=12))
-        if is_empty_version(case.conflict_bytes):
-            controls.append(ft.Text("Diese Konfliktversion ist leer.", size=12, italic=True))
+        empty = " Diese Konfliktversion ist leer." if is_empty_version(case.conflict_bytes) else ""
+        controls.append(ft.Text(MAIN_DELETED_HINT + empty, size=12))
     if case.kind is CaseKind.BUSY:
         return controls + [diff_box(conflict_diff(case))]
     return controls + note_choice_controls(app, case, cases)

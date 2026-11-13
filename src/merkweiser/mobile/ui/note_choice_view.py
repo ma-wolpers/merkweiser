@@ -1,14 +1,16 @@
-"""Notizweise Konfliktauflösung (Mobile, W8): eine Wahl je Notiz, Todos direkt erledigt/offen.
+"""Notizweise Konfliktauflösung (Mobile, W8): eine kompakte Karte je Notiz, Todos direkt erledigt/offen.
 
-Ersetzt die abschnittsweise Auswahl. Aufbau je Fall:
+Aufbau je Fall (Nutzerwunsch 2026-11-13: kompakt, ohne an Übersicht zu verlieren):
 
-* **Schnellwahl** („Hauptdatei behalten“, „Konfliktversion übernehmen“,
-  „Zusammenführen“): setzt nur alle Wahlen; bei fehlender Hauptdatei
-  „Alle Notizen wiederherstellen“ und „Version verwerfen“ (mit Bestätigung),
-* ggf. **Kopfbereich (YAML)**,
-* je Notiz Vergleich, Wahl und – bei verschiedenem Häkchen – „Erledigt/Offen“
-  ohne Vorauswahl,
-* **„Noch offen: …“** und „Auswahl übernehmen“ (erst aktiv, wenn nichts mehr fehlt).
+* **Schnellwahl** in einer Zeile („Alle: Haupt · Konflikt · Beide“, ausführlich im
+  Tooltip): setzt nur alle Wahlen; bei fehlender Hauptdatei „Alle wiederherstellen“
+  und „Version verwerfen“ (mit Bestätigung),
+* ggf. eine Karte **Kopfbereich (YAML)**,
+* je Notiz eine **Karte**: Kopfzeile „Thema · Art“ (rot „offen“, solange etwas
+  fehlt), farbige Vergleichszeilen, eine Umschaltleiste mit Kurztexten; Todos
+  mit verschiedenem Häkchen als eine Zeile mit „Erledigt | Offen“ ohne Vorauswahl,
+* **„Übernehmen (n offen)“** – erst aktiv, wenn nichts mehr fehlt; was fehlt,
+  steht im Tooltip und an den Karten.
 
 Die Wahl liegt je Fall (Pfad und Inhalt beider Fassungen) in der App; jede
 Wahl zeichnet die Seite neu (``app.render``), ein bearbeiteter Text nicht.
@@ -22,25 +24,28 @@ from typing import TYPE_CHECKING
 import flet as ft
 
 from ...app.conflict_views import Choice, DiffRow, conflict_diff
-from ...app.note_conflicts import NoteChoices, edit_prefill, entry_diff, initial_choices, missing, note_result, \
-    quick_select
+from ...app.note_conflicts import NoteChoices, edit_prefill, entry_diff, entry_problems, head_problems, \
+    initial_choices, missing, note_result, quick_select
 from ...app.note_plan import KIND_LABELS, Kind, NotePlan, Pick, head_labels, note_plan, pick_labels
 from ...core import conflict_files as cf
 from ...core.conflicts import CaseKind
 from .diff_box import diff_box
 from .frontmatter_choices import frontmatter_controls
+from .style import EXPLANATION, card
 
 if TYPE_CHECKING:
     from .app import MobileApp
 
-#: Schnellwahl-Knöpfe: (Wahl, Beschriftung).
-QUICK = ((Choice.HAUPTDATEI, "Hauptdatei behalten"), (Choice.KONFLIKTVERSION, "Konfliktversion übernehmen"),
-         (Choice.BEIDE, "Zusammenführen"))
+#: Schnellwahl: (Wahl, Kurztext, Erklärung im Tooltip).
+QUICK = ((Choice.HAUPTDATEI, "Haupt", "Hauptdatei behalten"),
+         (Choice.KONFLIKTVERSION, "Konflikt", "Konfliktversion übernehmen"),
+         (Choice.BEIDE, "Beide", "Zusammenführen"))
 _TODO_OPTIONS = (("erledigt", "Erledigt"), ("offen", "Offen"))
+_TITLE_LENGTH = 40
 
 
 def note_choice_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
-    """Schnellwahl, Kopf, Notizen und Übernehmen-Knopf eines Falls (nicht ``BUSY``).
+    """Schnellwahl, Kopf, Notiz-Karten und Übernehmen-Knopf eines Falls (nicht ``BUSY``).
 
     Args:
         app: Die laufende App.
@@ -53,17 +58,18 @@ def note_choice_controls(app: "MobileApp", case, cases) -> list[ft.Control]:
     plan = note_plan(case)
     choices = _choices(app, plan)
     siblings = [c for c in cases if c.conflict.main_relpath == case.conflict.main_relpath]
-    controls = _quick_controls(app, plan, choices, siblings)
+    controls = [_quick_row(app, plan, choices, siblings)]
     if plan.whole_only:
         controls += [ft.Text(plan.whole_only, size=12), diff_box(conflict_diff(case))]
-    controls += _head_controls(app, plan, choices)
-    same = sum(1 for entry in plan.entries if entry.kind is Kind.GLEICH)
-    if same:
-        controls.append(ft.Text(f"{same} Notiz(en) in beiden Fassungen gleich.", size=12, italic=True))
+    if plan.head is not None:
+        controls.append(_head_card(app, plan, choices))
     for index, entry in enumerate(plan.entries):
         if entry.kind is not Kind.GLEICH:
-            controls += _entry_controls(app, plan, choices, index)
-    return controls + _footer(app, plan, choices, siblings)
+            controls.append(_entry_card(app, plan, choices, index))
+    same = sum(1 for entry in plan.entries if entry.kind is Kind.GLEICH)
+    if same:
+        controls.append(ft.Text(f"{same} Notiz(en) gleich", size=11, italic=True, color=EXPLANATION))
+    return controls + [_apply_button(app, plan, choices, siblings)]
 
 
 def _choices(app: "MobileApp", plan: NotePlan) -> NoteChoices:
@@ -76,8 +82,8 @@ def _choices(app: "MobileApp", plan: NotePlan) -> NoteChoices:
     return store[key]
 
 
-def _quick_controls(app: "MobileApp", plan: NotePlan, choices: NoteChoices, siblings) -> list[ft.Control]:
-    """Schnellwahl bzw. Wiederherstellen/Verwerfen bei fehlender Hauptdatei."""
+def _quick_row(app: "MobileApp", plan: NotePlan, choices: NoteChoices, siblings) -> ft.Control:
+    """Eine Zeile Schnellwahl bzw. Wiederherstellen/Verwerfen bei fehlender Hauptdatei."""
     def quick(choice: Choice):
         def click(_e) -> None:
             quick_select(plan, choices, choice)
@@ -87,14 +93,14 @@ def _quick_controls(app: "MobileApp", plan: NotePlan, choices: NoteChoices, sibl
     if plan.main_missing:
         buttons: list[ft.Control] = []
         if plan.entries or plan.head or plan.whole_only:
-            buttons.append(ft.Button("Alle Notizen wiederherstellen", on_click=quick(Choice.KONFLIKTVERSION)))
+            buttons.append(ft.TextButton("Alle wiederherstellen", on_click=quick(Choice.KONFLIKTVERSION)))
         buttons.append(_discard_button(app, "Version verwerfen", [plan.case]))
         if len(siblings) > 1:
-            buttons.append(_discard_button(app, f"Alle {len(siblings)} Versionen verwerfen", siblings))
-        return [ft.Row(buttons, wrap=True)]
-    offered = [(c, label) for c, label in QUICK if not (plan.whole_only and c is Choice.BEIDE)]
-    return [ft.Row([ft.OutlinedButton(label, on_click=quick(c)) for c, label in offered], wrap=True),
-            ft.Text("Setzt alle Notizen auf einmal; angewendet wird erst mit „Auswahl übernehmen“.", size=11)]
+            buttons.append(_discard_button(app, f"Alle {len(siblings)} verwerfen", siblings))
+        return ft.Row(buttons, wrap=True, spacing=0)
+    offered = [q for q in QUICK if not (plan.whole_only and q[0] is Choice.BEIDE)]
+    return ft.Row([ft.Text("Alle:", size=12)] + [ft.TextButton(short, tooltip=long, on_click=quick(choice))
+                                                 for choice, short, long in offered], wrap=True, spacing=0)
 
 
 def _discard_button(app: "MobileApp", label: str, targets) -> ft.Control:
@@ -116,73 +122,89 @@ def _discard_button(app: "MobileApp", label: str, targets) -> ft.Control:
     return ft.TextButton(label, on_click=click)
 
 
-def _radio(options, value: str | None, on_change) -> ft.RadioGroup:
-    """Auswahl als Zeile von Optionen (``value=None``: nichts vorausgewählt)."""
-    return ft.RadioGroup(content=ft.Row([ft.Radio(value=v, label=label) for v, label in options], wrap=True),
-                         value=value, on_change=on_change)
+def _segments(options, value: str | None, on_pick) -> ft.SegmentedButton:
+    """Einzeilige Umschaltleiste; ``value=None``: nichts vorausgewählt (erneutes Antippen hebt die Wahl auf)."""
+    def changed(e) -> None:
+        on_pick(e.control.selected[0] if e.control.selected else None)
+
+    return ft.SegmentedButton(
+        segments=[ft.Segment(value=v, label=ft.Text(label, size=12)) for v, label in options],
+        selected=[value] if value else [], allow_empty_selection=True, show_selected_icon=False, on_change=changed)
 
 
-def _head_controls(app: "MobileApp", plan: NotePlan, choices: NoteChoices) -> list[ft.Control]:
-    """Kopfbereich (YAML): Wahl der Fassung, bei „Beide“ die Fragen je Eigenschaft."""
-    if plan.head is None:
-        return []
+def _title_row(title: str, problems: list[str]) -> ft.Control:
+    """Kopfzeile einer Karte; rot „offen“, solange dort etwas fehlt (Details im Tooltip)."""
+    parts: list[ft.Control] = [ft.Text(title, size=12, weight=ft.FontWeight.W_600, expand=True)]
+    if problems:
+        parts.append(ft.Text("offen", size=11, color=ft.Colors.ERROR, tooltip="; ".join(problems)))
+    return ft.Row(parts)
 
-    def picked(e) -> None:
-        choices.head = Pick(e.control.value)
+
+def _head_card(app: "MobileApp", plan: NotePlan, choices: NoteChoices) -> ft.Control:
+    """Karte „Kopfbereich (YAML)“: Vergleich, Wahl, bei „Beide“ die Fragen je Eigenschaft."""
+    def picked(value: str | None) -> None:
+        choices.head = Pick(value) if value else None
         app.render()
 
+    rows = [DiffRow("haupt", line) for line in plan.head.main] + [DiffRow("konflikt", line) for line in plan.head.other]
     controls: list[ft.Control] = [
-        ft.Text("Kopfbereich (YAML)", weight=ft.FontWeight.BOLD),
-        diff_box([*_lines("haupt", plan.head.main), *_lines("konflikt", plan.head.other)], None),
-        _radio([(p.value, label) for p, label in head_labels(plan)],
-               choices.head.value if choices.head else None, picked)]
+        _title_row("Kopfbereich (YAML)", head_problems(plan, choices)), diff_box(rows, None, framed=False),
+        _segments([(p.value, label) for p, label in head_labels(plan, short=True)],
+                  choices.head.value if choices.head else None, picked)]
     if choices.head is Pick.BEIDE:
         controls += frontmatter_controls(plan.head.fm, choices.fm, app.render)
-    return controls
+    return card(controls, spacing=4)
 
 
-def _lines(side: str, lines) -> list[DiffRow]:
-    """Vergleichszeilen einer Seite."""
-    return [DiffRow(side, line) for line in lines]
-
-
-def _entry_controls(app: "MobileApp", plan: NotePlan, choices: NoteChoices, index: int) -> list[ft.Control]:
-    """Kopfzeile, Vergleich, Wahl, Bearbeiten-Feld und Todo-Wahlen einer Notiz."""
+def _entry_card(app: "MobileApp", plan: NotePlan, choices: NoteChoices, index: int) -> ft.Control:
+    """Karte einer Notiz: Kopfzeile, Vergleich (nicht bei „nur Häkchen“), Wahl, Bearbeiten-Feld, Todos."""
     entry = plan.entries[index]
-    title = f"Notiz {entry.number} – {KIND_LABELS[entry.kind]}"
+    first = next((line.strip() for line in entry.a_lines or entry.b_lines if line.strip()), "")
+    title = (first if len(first) <= _TITLE_LENGTH else first[:_TITLE_LENGTH - 1] + "…") + " · " + KIND_LABELS[entry.kind]
     if entry.moved:
-        title += " (steht in der anderen Fassung an anderer Stelle)"
-    controls: list[ft.Control] = [ft.Text(title, size=12, weight=ft.FontWeight.W_600),
-                                  diff_box(entry_diff(entry), None)]
+        title += " · an anderer Stelle"
+    controls: list[ft.Control] = [_title_row(title, entry_problems(plan, choices, index))]
+    if entry.kind is not Kind.STATUS:
+        controls.append(diff_box(entry_diff(entry), None, framed=False))
     pick = choices.picks.get(index)
     if entry.kind is not Kind.STATUS:
-        def picked(e) -> None:
-            choices.picks[index] = Pick(e.control.value)
+        def picked(value: str | None) -> None:
+            choices.picks[index] = Pick(value) if value else None
             if choices.picks[index] is Pick.BEARBEITET and index not in choices.texts:
                 choices.texts[index] = edit_prefill(entry, choices, index)
             app.render()
-        controls.append(_radio([(p.value, label) for p, label in pick_labels(plan, entry)],
-                               pick.value if pick else None, picked))
+        controls.append(_segments([(p.value, label) for p, label in pick_labels(plan, entry, short=True)],
+                                  pick.value if pick else None, picked))
     if pick is Pick.BEARBEITET:
         def edited(e) -> None:
             choices.texts[index] = e.control.value or ""
-        controls.append(ft.TextField(value=choices.texts.get(index, ""), multiline=True, min_lines=2,
-                                     label="Bearbeiteter Text", on_change=edited))
-        return controls
-    for todo in entry.todos:
-        def toggled(e, row=todo.row) -> None:
-            choices.todos[(index, row)] = e.control.value == "erledigt"
-            app.render()
-        state = choices.todos.get((index, todo.row))
-        sides = f"Hauptdatei: {'erledigt' if todo.main_done else 'offen'} · " \
-                f"Konfliktversion: {'offen' if todo.main_done else 'erledigt'}"
-        controls += [ft.Text(f"Todo „{todo.open_line.strip()}“ – {sides}", size=12),
-                     _radio(_TODO_OPTIONS, None if state is None else ("erledigt" if state else "offen"), toggled)]
-    return controls
+        controls.append(ft.TextField(value=choices.texts.get(index, ""), multiline=True, min_lines=2, dense=True,
+                                     on_change=edited))
+    else:
+        controls += [_todo_row(app, choices, index, todo) for todo in entry.todos]
+    return card(controls, spacing=4)
 
 
-def _footer(app: "MobileApp", plan: NotePlan, choices: NoteChoices, siblings) -> list[ft.Control]:
-    """„Noch offen: …“ und „Auswahl übernehmen“ (erst aktiv, wenn nichts fehlt)."""
+def _todo_row(app: "MobileApp", choices: NoteChoices, index: int, todo) -> ft.Control:
+    """Eine Zeile je Todo: Text, Stand je Fassung (H/K) und „Erledigt | Offen“ ohne Vorauswahl."""
+    def picked(value: str | None) -> None:
+        if value is None:
+            choices.todos.pop((index, todo.row), None)
+        else:
+            choices.todos[(index, todo.row)] = value == "erledigt"
+        app.render()
+
+    state = choices.todos.get((index, todo.row))
+    box = {True: "☑", False: "☐"}
+    sides = f"H {box[todo.main_done]} · K {box[not todo.main_done]}"
+    return ft.Row([ft.Text(todo.text, size=12, expand=True),
+                   ft.Text(sides, size=11, color=EXPLANATION, tooltip="Stand in Hauptdatei (H) und Konfliktversion (K)"),
+                   _segments(_TODO_OPTIONS, None if state is None else ("erledigt" if state else "offen"), picked)],
+                  vertical_alignment=ft.CrossAxisAlignment.CENTER)
+
+
+def _apply_button(app: "MobileApp", plan: NotePlan, choices: NoteChoices, siblings) -> ft.Control:
+    """„Übernehmen (n offen)“; erst aktiv, wenn ``missing`` nichts meldet (Liste im Tooltip)."""
     problems = missing(plan, choices)
     manual = tuple(c.conflict.relpath for c in siblings if c is not plan.case) \
         if plan.case.kind is CaseKind.MAIN_DELETED else ()
@@ -190,6 +212,9 @@ def _footer(app: "MobileApp", plan: NotePlan, choices: NoteChoices, siblings) ->
     async def apply(_e) -> None:
         await app.act(lambda s: s.resolve(plan.case, *note_result(plan, choices), manual))
 
-    hint = ft.Text("Noch offen: " + "; ".join(problems), size=12) if problems else \
-        ft.Text("Alles entschieden.", size=12)
-    return [hint, ft.Button("Auswahl übernehmen", on_click=apply, disabled=bool(problems))]
+    label = f"Übernehmen ({len(problems)} offen)" if problems else "Übernehmen"
+    button = ft.Button(label, on_click=apply, disabled=bool(problems), tooltip="; ".join(problems) or None)
+    on_cards = head_problems(plan, choices) + [p for k in range(len(plan.entries))
+                                                for p in entry_problems(plan, choices, k)]
+    hint = [p for p in problems if p not in on_cards]  # was an keiner Karte steht (z. B. nichts wiederhergestellt)
+    return ft.Column([button] + [ft.Text(p, size=11, color=EXPLANATION) for p in hint], spacing=2)

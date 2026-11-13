@@ -31,7 +31,7 @@ from ...core.document import Document, ParsedNote
 from ...core.inline import Urgency, strip_urgency
 from .note_dialogs import note_actions
 from .tag_dialog import show_move_flow
-from .style import EXPLANATION, URGENCY_BAR, URGENCY_STYLE
+from .style import EXPLANATION, URGENCY_BAR, URGENCY_STYLE, card
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -66,7 +66,7 @@ def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
     if not rows or ref is None:
         return None
     column = ([header] if header is not None else []) + [note_row(app, r) for r in rows] + [note_actions(app, ref, extra(ref) if extra else ())]
-    return ft.Container(content=ft.Column(column), padding=8, border_radius=8, bgcolor=ft.Colors.SURFACE_CONTAINER)
+    return card(column)
 
 
 def note_row(app: "MobileApp", row: Row) -> ft.Control:

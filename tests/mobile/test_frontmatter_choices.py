@@ -44,15 +44,14 @@ def test_stamp_decision_then_merge_writes_one_clean_head(tmp_path: Path) -> None
 
     app = SimpleNamespace(service=service, act=act, say=said.append, render=lambda: None)
     view = lambda: list(walk(conflict_view.conflicts_view(app)))  # noqa: E731 – nach jeder Wahl neu bauen
-    merge = next(c for c in view() if isinstance(c, ft.OutlinedButton) and c.content == "Zusammenführen")
+    merge = next(c for c in view() if isinstance(c, ft.TextButton) and c.tooltip == "Zusammenführen")
     merge.on_click(None)  # Schnellwahl: setzt nur die Wahl
     controls = view()
-    apply = next(c for c in controls if isinstance(c, ft.Button) and c.content == "Auswahl übernehmen")
-    assert apply.disabled and "Kopfbereich: Entscheidung je Eigenschaft fehlt" in " ".join(
-        c.value for c in controls if isinstance(c, ft.Text) and c.value)
+    apply = next(c for c in controls if isinstance(c, ft.Button) and str(c.content).startswith("Übernehmen"))
+    assert apply.disabled and "Kopfbereich: Entscheidung je Eigenschaft fehlt" in apply.tooltip
     [group] = [c for c in controls if isinstance(c, ft.RadioGroup) and c.content.controls[0].value == "weiter"]
     group.on_change(SimpleNamespace(control=SimpleNamespace(value="verwerfen")))
-    apply = next(c for c in view() if isinstance(c, ft.Button) and c.content == "Auswahl übernehmen")
+    apply = next(c for c in view() if isinstance(c, ft.Button) and str(c.content).startswith("Übernehmen"))
     assert not apply.disabled
     asyncio.run(apply.on_click(None))
     assert not said
