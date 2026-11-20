@@ -4,13 +4,14 @@ from merkweiser.app.nav import Nav, PageRef
 from merkweiser.app.ordering import by_rank, rank, urgent_first
 from merkweiser.app.tag_spans import text_parts
 from merkweiser.app.views import Row
-from merkweiser.core.inline import Urgency
+from merkweiser.core.inline import TodoStatus, Urgency
 
 
 def row(text: str, depth: int, urgent: bool | Urgency = False, done: bool | None = False) -> Row:
     """Zeile mit Text, Tiefe und Todo-Zustand (``done=None``: kein Todo)."""
     level = Urgency(int(urgent))
-    return Row("todo" if done is not None else "item", text, depth, done, level, (), None)
+    status = None if done is None else (TodoStatus.DONE if done else TodoStatus.OPEN)
+    return Row("todo" if done is not None else "item", text, depth, status, level, (), None)
 
 
 def texts(rows) -> list[str]:

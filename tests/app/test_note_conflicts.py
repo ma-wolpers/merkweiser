@@ -6,6 +6,7 @@ from merkweiser.app.conflict_views import Choice, case_headline
 from merkweiser.app.note_conflicts import edit_prefill, entry_diff, initial_choices, missing, note_result, quick_select
 from merkweiser.app.note_plan import Kind, Pick, note_plan
 from merkweiser.core.conflicts import CaseKind, ConflictCase
+from merkweiser.core.inline import TodoStatus
 from merkweiser.core.merge.diff3 import merge3
 from merkweiser.core.merge.frontmatter import merge_frontmatter, split
 from merkweiser.core.vault import parse_conflict_name
@@ -52,20 +53,44 @@ def test_zusammenfuehren_keeps_both_and_marks_todos_done() -> None:
     quick_select(plan, choices, Choice.BEIDE)
     data, decision = note_result(plan, choices)
     assert data == b"A\n- [x] a\n\nB\n- x\n- y\n\nC\n"
-    assert decision == "Notizweise – Notiz 2: Beide, Notiz 3: Übernehmen; Todos: 1 erledigt, 0 offen"
+    assert decision == "Notizweise – Notiz 2: Beide, Notiz 3: Übernehmen; Todos: 1 erledigt"
 
 
 def test_todo_status_must_be_decided_and_keeps_spelling() -> None:
     """Keine Vorauswahl: ohne Entscheidung kein Ergebnis; erledigt übernimmt ``[X]`` byte-genau."""
     plan, choices = start(b"T\n- [ ] a\n", b"T\n- [X] a\n")
     [entry] = plan.entries
-    assert entry.kind is Kind.STATUS and missing(plan, choices) == ["Todo „a“: erledigt oder offen?"]
+    assert entry.kind is Kind.STATUS and missing(plan, choices) == ["Todo „a“: erledigt, verpasst oder offen?"]
     with pytest.raises(ValueError):
         note_result(plan, choices)
-    choices.todos[(0, entry.todos[0].row)] = True
+    choices.todos[(0, entry.todos[0].row)] = TodoStatus.DONE
     assert note_result(plan, choices)[0] == b"T\n- [X] a\n"
-    choices.todos[(0, entry.todos[0].row)] = False
+    choices.todos[(0, entry.todos[0].row)] = TodoStatus.OPEN
     assert note_result(plan, choices)[0] == b"T\n- [ ] a\n"
+
+
+def test_missed_todo_three_way_choice() -> None:
+    """W9: offen gegen verpasst → R1 wählt verpasst; jede der drei Wahlen ist möglich (dritte mit STATUS_CHAR)."""
+    plan, choices = start(b"T\n- [ ] a\n", b"T\n- [-] a\n")
+    [entry] = plan.entries
+    [todo] = entry.todos
+    assert entry.kind is Kind.STATUS
+    assert (todo.main_status, todo.other_status, todo.merged_status) == (
+        TodoStatus.OPEN, TodoStatus.MISSED, TodoStatus.MISSED)
+    quick_select(plan, choices, Choice.BEIDE)
+    data, decision = note_result(plan, choices)
+    assert data == b"T\n- [-] a\n" and decision == "Konfliktversion übernehmen"  # byte-genau die Konfliktversion
+    choices.todos[(0, todo.row)] = TodoStatus.DONE  # in keiner Fassung vorhanden
+    assert note_result(plan, choices)[0] == b"T\n- [x] a\n"
+    quick_select(plan, choices, Choice.HAUPTDATEI)
+    assert note_result(plan, choices)[0] == b"T\n- [ ] a\n"
+
+
+def test_done_beats_missed_in_quick_merge() -> None:
+    """Vorrang erledigt > verpasst: „Zusammenführen“ übernimmt ``[X]`` byte-genau."""
+    plan, choices = start(b"T\n- [-] a\n", b"T\n- [X] a\n")
+    quick_select(plan, choices, Choice.BEIDE)
+    assert note_result(plan, choices)[0] == b"T\n- [X] a\n"
 
 
 def test_todo_toggle_inside_changed_note_with_conflict_side() -> None:
@@ -74,7 +99,7 @@ def test_todo_toggle_inside_changed_note_with_conflict_side() -> None:
     [entry] = plan.entries
     assert entry.kind is Kind.GEAENDERT and entry.suggested is None
     choices.picks[0] = Pick.KONFLIKT
-    choices.todos[(0, entry.todos[0].row)] = True
+    choices.todos[(0, entry.todos[0].row)] = TodoStatus.DONE
     assert note_result(plan, choices)[0] == b"T\n- [x] a\n- neu\n"
 
 

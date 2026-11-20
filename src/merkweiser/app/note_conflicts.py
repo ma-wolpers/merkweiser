@@ -10,15 +10,18 @@ Fassungen, wenn die Wahl ihr Zeile für Zeile entspricht), ``entry_diff`` und
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 from ..core.conflicts import render
+from ..core.inline import TodoStatus
 from ..core.merge.frontmatter import split
 from ..core.merge.model import Cert
 from ..core.merge.notes import STATUS_MASK, BodyNotes, status_key
 from ..core.source import SourceText
 from .conflict_views import Choice, DiffRow
 from .note_plan import Kind, NoteEntry, NotePlan, Pick, pick_labels, render_entry
+from .views import STATE_WORD, STATE_CHOICES
 
 @dataclass
 class NoteChoices:
@@ -27,7 +30,7 @@ class NoteChoices:
     Attributes:
         picks: Wahl je Eintragsindex (``None`` = noch offen).
         texts: Bearbeiteter Text je Eintragsindex (nur bei ``BEARBEITET``).
-        todos: ``(Eintrag, Abschnitt) → erledigt`` (fehlt = noch offen).
+        todos: ``(Eintrag, Abschnitt) → gewählter Todo-Zustand`` (fehlt = noch offen).
         head: Wahl für den Kopf.
         fm: Entscheidungen je Kopf-Konflikt (bei ``head`` = ``BEIDE``).
         whole: Wahl im Ganzdatei-Modus (nur ``HAUPT``/``KONFLIKT``).
@@ -35,7 +38,7 @@ class NoteChoices:
 
     picks: dict[int, Pick | None] = field(default_factory=dict)
     texts: dict[int, str] = field(default_factory=dict)
-    todos: dict[tuple[int, int], bool] = field(default_factory=dict)
+    todos: dict[tuple[int, int], TodoStatus] = field(default_factory=dict)
     head: Pick | None = None
     fm: dict[int, str] = field(default_factory=dict)
     whole: Pick | None = None
@@ -52,7 +55,7 @@ def quick_select(plan: NotePlan, choices: NoteChoices, choice: Choice) -> None:
 
     ``HAUPTDATEI``/``KONFLIKTVERSION`` übernehmen überall diese Seite (Todos wie
     dort). ``BEIDE`` („Zusammenführen“): geänderte Notizen „Beide“, einseitige
-    behalten bzw. übernehmen, Todos erledigt (Regel R1), Kopf je Eigenschaft.
+    behalten bzw. übernehmen, Todos nach Regel R1 (erledigt > verpasst > offen), Kopf je Eigenschaft.
 
     Raises:
         ValueError: ``BEIDE`` im Ganzdatei-Modus.
@@ -67,7 +70,8 @@ def quick_select(plan: NotePlan, choices: NoteChoices, choice: Choice) -> None:
     for k, entry in enumerate(plan.entries):
         choices.picks[k] = side or merge.get(entry.kind, Pick.HAUPT)
         for todo in entry.todos:
-            choices.todos[(k, todo.row)] = True if side is None else todo.main_done == (side is Pick.HAUPT)
+            choices.todos[(k, todo.row)] = {None: todo.merged_status, Pick.HAUPT: todo.main_status}.get(
+                side, todo.other_status)
     if plan.head is not None:
         choices.head = side or (Pick.BEIDE if plan.head.fm is not None else Pick.KONFLIKT)
 
@@ -93,7 +97,8 @@ def entry_problems(plan: NotePlan, choices: NoteChoices, index: int) -> list[str
         return [f"Notiz {entry.number}: Wahl fehlt"]
     if pick is Pick.BEARBEITET:
         return []
-    return [f"Todo „{todo.text}“: erledigt oder offen?"
+    *rest, last = (STATE_WORD[s] for s in STATE_CHOICES)
+    return [f"Todo „{todo.text}“: {', '.join(rest)} oder {last}?"
             for todo in entry.todos if (index, todo.row) not in choices.todos]
 
 
@@ -161,7 +166,7 @@ def _body(plan: NotePlan, choices: NoteChoices) -> tuple[str, ...]:
     emitted = []
     for k, entry in enumerate(plan.entries):
         pick = choices.picks.get(k) or Pick.HAUPT
-        todos = {row: done for (index, row), done in choices.todos.items() if index == k}
+        todos = {row: state for (index, row), state in choices.todos.items() if index == k}
         lines = render_entry(entry, pick, todos, choices.texts.get(k, ""))
         if lines:
             source = "B" if entry.a_index is None or (entry.b_index is not None and pick is Pick.KONFLIKT) else "A"
@@ -201,8 +206,9 @@ def _decision(plan: NotePlan, choices: NoteChoices, data: bytes) -> str:
         return "Version wiederhergestellt" if plan.main_missing else "Konfliktversion übernehmen"
     names = [f"Notiz {e.number}: {dict(pick_labels(plan, e))[choices.picks[k]]}"
              for k, e in enumerate(plan.entries) if e.kind not in (Kind.GLEICH, Kind.STATUS)]
-    done = sum(1 for value in choices.todos.values() if value)
-    todos = f"; Todos: {done} erledigt, {len(choices.todos) - done} offen" if choices.todos else ""
+    counts = Counter(choices.todos.values())
+    todos = "; Todos: " + ", ".join(f"{counts[s]} {STATE_WORD[s]}" for s in STATE_CHOICES if counts[s]) \
+        if choices.todos else ""
     return "Notizweise – " + (", ".join(names) or "nur Todos") + todos
 
 
@@ -228,5 +234,5 @@ def edit_prefill(entry: NoteEntry, choices: NoteChoices, index: int) -> str:
     pick = choices.picks.get(index)
     if pick in (None, Pick.BEARBEITET):
         pick = {Kind.NUR_HAUPT: Pick.HAUPT, Kind.NUR_KONFLIKT: Pick.KONFLIKT}.get(entry.kind, Pick.BEIDE)
-    todos = {row: done for (k, row), done in choices.todos.items() if k == index}
+    todos = {row: state for (k, row), state in choices.todos.items() if k == index}
     return "\n".join(render_entry(entry, pick, todos))

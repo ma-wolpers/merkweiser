@@ -29,7 +29,8 @@ def test_leading_separator_is_not_frontmatter() -> None:
 
 def test_status_key_masks_only_checkbox_status() -> None:
     assert status_key("- [x] a") == status_key("- [ ] a") == f"- [{STATUS_MASK}] a"
-    assert status_key("- [-] a") == "- [-] a" and status_key("Text [x]") == "Text [x]"
+    assert status_key("- [-] a") == f"- [{STATUS_MASK}] a"  # W9: verpasst ist ein Todo-Zustand
+    assert status_key("- [/] a") == "- [/] a" and status_key("Text [x]") == "Text [x]"
 
 
 def test_todo_in_code_block_is_not_masked() -> None:

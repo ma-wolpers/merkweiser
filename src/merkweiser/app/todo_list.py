@@ -28,7 +28,9 @@ if TYPE_CHECKING:
     from .notes_service import NotesService
 
 DEFAULT_FILTER: dict = {"status": "offen", "zeitraum": "aktuell", "tags": "", "oder": False}
-STATUS_LABELS = {"offen": "offen", "erledigt": "erledigt", "alle": "alle"}
+STATUS_LABELS = {f.value: f.value
+                 for f in (StatusFilter.OFFEN, StatusFilter.ERLEDIGT, StatusFilter.VERPASST, StatusFilter.ALLE)}
+"""Status-Optionen des Filter-Dialogs in Anzeigereihenfolge (Werte aus ``StatusFilter``)."""
 RANGE_LABELS = {"aktuell": "bis heute", "zukünftig": "ab morgen", "beides": "alle Tage"}
 
 

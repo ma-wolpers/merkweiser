@@ -645,6 +645,7 @@ def test_backup_pages_list_files_and_undo_with_confirmation(tmp_path: Path) -> N
     """W4: Backups → Datei → Änderung; „Rückgängig“ fragt nach und nimmt nur diese Änderung zurück."""
     import asyncio
 
+    from merkweiser.core.inline import TodoStatus
     from merkweiser.core.patch import Target
     from merkweiser.mobile.ui import backup_view
     fake = _dialog_app(tmp_path)
@@ -652,7 +653,7 @@ def test_backup_pages_list_files_and_undo_with_confirmation(tmp_path: Path) -> N
     fake.open_page = opened.append
     said = []
     fake.say = lambda message, link=False: said.append(message)
-    fake.service.set_done(Target("2026-01-15.md", 1, "- [ ] Aufgabe"), True)
+    fake.service.set_status(Target("2026-01-15.md", 1, "- [ ] Aufgabe"), TodoStatus.DONE)
     fake.service.clock.advance(121)
     fake.service.writer.finish_due()
     [tile] = [c for c in backup_view.backups_page(fake, "") if isinstance(c, ft.ListTile)]

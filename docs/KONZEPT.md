@@ -253,7 +253,7 @@ Die Anwendung soll Todos unabhängig von ihrer ursprünglichen Notiz anzeigen un
 * Todos aus allen Notizen anzeigen
 * Todos nach Status filtern
 * neues Todo zu einer Notiz hinzufügen
-* Todo als erledigt/offen markieren
+* Todo als erledigt/offen/verpasst markieren
 * Todo als dringend markieren
 * Todo einem Projekt zuordnen
 * Todo auf ein späteres Datum verschieben
@@ -284,6 +284,16 @@ wird zu:
 ```
 
 und umgekehrt.
+
+#### Verpasst (W9, ergänzt am 2026-11-18 auf Nutzerwunsch)
+
+Ein Todo kann auch als **verpasst** markiert werden, wenn es nicht mehr erledigt wird, aber nachvollziehbar bleiben soll:
+
+```markdown
+- [-] Todo
+```
+
+Verpasste Todos zählen nicht mehr als offen und lassen sich über den Status-Filter „verpasst“ anzeigen. Auch das ist nur die Markdown-Darstellung, ohne internen Zustand.
 
 #### Verschieben auf ein späteres Datum
 

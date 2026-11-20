@@ -4,7 +4,14 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ## [Unreleased]
 
+### Added
+
+- **Todos als „verpasst“ markieren:** Das neue ⊘-Symbol neben dem Stern markiert ein Todo als verpasst (`- [-]` in der Datei). Es wird durchgestrichen und blass angezeigt, verliert die Ampel-Leiste und zählt nicht mehr als offen. Ein zweiter Tipp macht es wieder offen; die Checkbox bleibt erledigt/offen. Im Filter des Todos-Tabs gibt es den Status „verpasst“.
+
 ### Changed
+
+- **`- [-]` ist jetzt ein Todo** (verpasst). Bisher galt es als normaler Listenpunkt. Enter am Ende einer `[-]`-Zeile setzt die Liste mit einem offenen Todo fort; „Checkbox umschalten“ im Editor behandelt `[-]` wie ein abgehaktes Todo.
+- **Sync-Konflikte:** Unterscheiden sich zwei Fassungen nur im Häkchen, gilt automatisch **erledigt > verpasst > offen** (bisher nur „erledigt gewinnt“). Im Konfliktdialog wählst du je Todo zwischen ☑ erledigt, ⊘ verpasst und ☐ offen.
 
 - **Konflikte notizweise entscheiden:** Unter *Einstellungen → Konflikte* wählst du jetzt je Notiz: Hauptdatei, Konfliktversion, Beide oder selbst bearbeiten; Notizen, die nur in einer Fassung stehen, behältst bzw. übernimmst du oder lässt sie weg. Jede Notiz ist eine kompakte Karte mit Thema, farbigen Vergleichszeilen und einer Umschaltleiste; solange dort etwas fehlt, steht „offen“ an der Karte. Gleiche Notizen werden nur gezählt. Wo „Hauptdatei“, „Konfliktversion“ und „Beide“ gemeint sind, stehen statt Wörtern die Farben der Vergleichszeilen (rot −, grün +, beide nebeneinander; das Wort im Tooltip); der Todo-Stand je Fassung ist ein rotes bzw. grünes ☐/☑, die Wahl ☑ | ☐. „Alle:“ mit denselben Farbfeldern setzt alle Notizen auf einmal; geschrieben wird erst mit „Übernehmen“ (der Knopf zeigt, wie viel noch offen ist). Die bisherige abschnittsweise Auswahl entfällt.
 - **Todos mit verschiedenem Häkchen** (in einer Fassung erledigt, in der anderen offen) entscheidest du direkt mit „Erledigt“ oder „Offen“; nichts ist vorausgewählt.

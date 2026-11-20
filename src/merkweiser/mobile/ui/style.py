@@ -33,6 +33,17 @@ URGENCY_STYLE = {
 #: Breite der farbigen Leiste links an offenen dringenden Todos.
 URGENCY_BAR = 4
 
+#: ⊘-Knopf je Zustand „verpasst?“ (W9) → Symbol, Farbe, Tooltip. Farbe ``None`` =
+#: Themenfarbe; verpasst in der Fehlerfarbe (hell und dunkel lesbar), Bedeutung
+#: zusätzlich im Tooltip.
+MISSED_STYLE = {
+    False: (ft.Icons.BLOCK, None, "als verpasst markieren"),
+    True: (ft.Icons.BLOCK, ft.Colors.ERROR, "verpasst – tippen: wieder offen"),
+}
+
+#: Text verpasster Todos: durchgestrichen (Farbe zusätzlich ``EXPLANATION``).
+MISSED_TEXT = ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH)
+
 
 def card(controls: list[ft.Control], spacing: float | None = None) -> ft.Container:
     """Karte im einheitlichen Stil (Notizkarten, Notizen im Konfliktdialog).

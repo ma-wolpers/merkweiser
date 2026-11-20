@@ -5,8 +5,8 @@ import difflib
 import pytest
 
 from merkweiser.core.document import parse_document
-from merkweiser.core.edits import NotATodoError, add_todo, set_done, set_project, set_urgency
-from merkweiser.core.inline import Urgency
+from merkweiser.core.edits import NotATodoError, add_todo, set_project, set_status, set_urgency
+from merkweiser.core.inline import TodoStatus, Urgency
 from merkweiser.core.note_ops import NoteNotFoundError, append_note, delete_note, replace_note_text
 from merkweiser.core.patch import (
     BlockTarget, LineEdit, StaleTargetError, Target, UnsupportedEncodingError, apply_edits, resolve_block,
@@ -34,25 +34,45 @@ def tgt(line_no: int, text: str) -> Target:
     return Target("x.md", line_no, text)
 
 
-def test_set_done_changes_only_status_char_and_keeps_crlf() -> None:
+def test_set_status_done_changes_only_status_char_and_keeps_crlf() -> None:
     """Erledigen ändert genau ein Zeichen in einer Zeile; CRLF und fehlender Umbruch bleiben."""
     before = BASE.encode()
-    after = set_done(doc(), tgt(1, "- [ ] Kisten packen #keller"), True)
+    after = set_status(doc(), tgt(1, "- [ ] Kisten packen #keller"), TodoStatus.DONE)
     assert after == before.replace(b"- [ ] Kisten", b"- [x] Kisten")
     assert len(changed_lines(before, after)) == 2
 
 
-def test_set_done_keeps_capital_x_and_is_idempotent() -> None:
+def test_set_status_keeps_capital_x_and_is_idempotent() -> None:
     """``[X]`` bleibt beim Erledigen stehen; Zielzustand erreicht → unverändert."""
-    assert set_done(doc(), tgt(2, "- [X] Erledigt"), True) == BASE.encode()
-    reopened = set_done(doc(), tgt(2, "- [X] Erledigt"), False)
+    assert set_status(doc(), tgt(2, "- [X] Erledigt"), TodoStatus.DONE) == BASE.encode()
+    reopened = set_status(doc(), tgt(2, "- [X] Erledigt"), TodoStatus.OPEN)
     assert b"- [ ] Erledigt" in reopened
+
+
+def test_set_status_missed_transitions() -> None:
+    """W9: offen → verpasst → offen, erledigt → verpasst; nur das Statuszeichen ändert sich."""
+    before = BASE.encode()
+    missed = set_status(doc(), tgt(1, "- [ ] Kisten packen #keller"), TodoStatus.MISSED)
+    assert missed == before.replace(b"- [ ] Kisten", b"- [-] Kisten")
+    assert set_status(parse_document(missed), tgt(1, "- [-] Kisten packen #keller"), TodoStatus.MISSED) == missed
+    reopened = set_status(parse_document(missed), tgt(1, "- [-] Kisten packen #keller"), TodoStatus.OPEN)
+    assert reopened == before
+    done_to_missed = set_status(doc(), tgt(2, "- [X] Erledigt"), TodoStatus.MISSED)
+    assert b"- [-] Erledigt\r\n" in done_to_missed
+
+
+def test_set_status_rejects_non_todo_state() -> None:
+    """``NONE``/``OTHER`` sind keine Zielzustände; ``[/]`` ist kein Todo."""
+    with pytest.raises(ValueError):
+        set_status(doc(), tgt(1, "- [ ] Kisten packen #keller"), TodoStatus.OTHER)
+    with pytest.raises(NotATodoError):
+        set_status(doc("- [/] halb\n"), tgt(0, "- [/] halb"), TodoStatus.DONE)
 
 
 def test_target_relocates_uniquely_after_insert() -> None:
     """Eine verschobene Zeile wird über eindeutigen Text wiedergefunden."""
     moved = doc("Neu\n" + BASE)
-    after = set_done(moved, tgt(1, "- [ ] Kisten packen #keller"), True)
+    after = set_status(moved, tgt(1, "- [ ] Kisten packen #keller"), TodoStatus.DONE)
     assert b"- [x] Kisten packen" in after
 
 
@@ -60,16 +80,16 @@ def test_identical_todos_are_never_guessed() -> None:
     """Zwei identische Todos und das Ziel steht nicht mehr an seiner Stelle → StaleTargetError."""
     twins = doc("Neu\nT\n- [ ] gleich\n- [ ] gleich\n")
     with pytest.raises(StaleTargetError):
-        set_done(twins, tgt(0, "- [ ] gleich"), True)
-    assert b"- [x] gleich\n- [ ] gleich" in set_done(twins, tgt(2, "- [ ] gleich"), True)
+        set_status(twins, tgt(0, "- [ ] gleich"), TodoStatus.DONE)
+    assert b"- [x] gleich\n- [ ] gleich" in set_status(twins, tgt(2, "- [ ] gleich"), TodoStatus.DONE)
 
 
 def test_not_a_todo() -> None:
     """Thema, Punkt ohne Checkbox oder Todo im Codeblock sind keine Todos."""
     with pytest.raises(NotATodoError):
-        set_done(doc(), tgt(0, "Thema #t"), True)
+        set_status(doc(), tgt(0, "Thema #t"), TodoStatus.DONE)
     with pytest.raises(NotATodoError):
-        set_done(doc("```\n- [ ] code\n```\n"), tgt(1, "- [ ] code"), True)
+        set_status(doc("```\n- [ ] code\n```\n"), tgt(1, "- [ ] code"), TodoStatus.DONE)
 
 
 def test_set_urgent_wraps_content_before_trailing_tags_and_back() -> None:
@@ -160,7 +180,7 @@ def test_unsupported_encoding_is_never_written() -> None:
     """Nicht unterstütztes Encoding → jede Schreib-Op verweigert."""
     bad = parse_document(b"T \xe4\n- [ ] a\n")
     with pytest.raises(UnsupportedEncodingError):
-        set_done(bad, tgt(1, "- [ ] a"), True)
+        set_status(bad, tgt(1, "- [ ] a"), TodoStatus.DONE)
     with pytest.raises(UnsupportedEncodingError):
         append_note(bad, "N")
 

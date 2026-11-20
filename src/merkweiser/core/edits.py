@@ -9,7 +9,7 @@ Minimal-Diff: Es ändert sich jeweils nur die betroffene Zeile bzw. es kommt
 genau eine Zeile hinzu. Operationen sind idempotent: Ist der gewünschte
 Zustand schon erreicht, kommen die unveränderten Bytes zurück.
 
-Hinweis zur Benennung: ``set_done(done)`` statt „toggle“. Die UI kennt den
+Hinweis zur Benennung: ``set_status(status)`` statt „toggle“. Die UI kennt den
 gewünschten Zielzustand; ein Umschalten, das neu geplant wird, könnte sonst
 nach einer fremden Änderung in die falsche Richtung kippen.
 """
@@ -19,8 +19,8 @@ from __future__ import annotations
 import re
 
 from .document import Document, ParsedNote
-from .inline import (MARK, RED_MARK, ListItem, TodoStatus, Urgency, find_tags, leading_whitespace, parse_list_item,
-                     project_name, urgency_span)
+from .inline import (MARK, RED_MARK, STATUS_CHAR, ListItem, TodoStatus, Urgency, find_tags, leading_whitespace,
+                     parse_list_item, project_name, urgency_span)
 from .outline import Node
 from .patch import LineEdit, Target, apply_edits, resolve_line
 
@@ -31,31 +31,37 @@ class NotATodoError(ValueError):
     """Die Zielzeile ist kein Todo (bzw. kein Listenpunkt)."""
 
 
-def set_done(doc: Document, target: Target, done: bool) -> bytes:
-    """Setzt den Erledigt-Status eines Todos.
+def set_status(doc: Document, target: Target, status: TodoStatus) -> bytes:
+    """Setzt den Zustand eines Todos: offen ``[ ]``, erledigt ``[x]`` oder verpasst ``[-]``.
 
-    Erledigt schreibt ``[x]``; ein vorhandenes ``[X]`` bleibt beim Erledigen
-    stehen (keine Normalisierung).
+    Zielzustand statt Umschalten (siehe Modul-Docstring). Das Zeichen kommt aus
+    der einen Grammatikquelle ``inline.STATUS_CHAR``. Ein vorhandenes ``[X]``
+    bleibt bei „erledigt“ stehen (keine Normalisierung). Ersetzt seit W9 das
+    boolesche ``set_done``, das einen ``[-]`` nicht wieder öffnen konnte.
 
     Args:
         doc: Aktuelles Dokument.
         target: Zeile des Todos.
-        done: Gewünschter Zustand.
+        status: Gewünschter Zustand; nur ``OPEN``, ``DONE`` oder ``MISSED``.
 
     Returns:
-        Neue Bytes (unverändert, wenn der Zustand schon stimmt).
+        Neue Bytes (unverändert, wenn der Zustand schon stimmt). Nur das
+        Statuszeichen ändert sich.
 
     Raises:
+        ValueError: ``status`` ist kein Todo-Zustand (``NONE``/``OTHER``).
         StaleTargetError: Ziel nicht eindeutig auffindbar.
-        NotATodoError: Zeile ist kein offenes oder erledigtes Todo.
+        NotATodoError: Zeile ist kein Todo.
     """
+    if not status.is_todo:
+        raise ValueError(f"kein Todo-Zustand: {status.value}")
     line_no, item = _todo_at(doc, target)
-    if (item.status is TodoStatus.DONE) == done:
+    if item.status is status:
         return doc.source.to_bytes()
     text = doc.line_text(line_no)
     col = item.status_col
     assert col is not None
-    new_text = text[:col] + ("x" if done else " ") + text[col + 1:]
+    new_text = text[:col] + STATUS_CHAR[status] + text[col + 1:]
     return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (new_text,))])
 
 
@@ -274,7 +280,7 @@ def _todo_at(doc: Document, target: Target) -> tuple[int, ListItem]:
 
     Raises:
         StaleTargetError: Ziel nicht eindeutig.
-        NotATodoError: kein offenes oder erledigtes Todo, oder im Codeblock.
+        NotATodoError: kein Todo (offen, erledigt, verpasst), oder im Codeblock.
     """
     line_no = resolve_line(doc.source, target)
     item = parse_list_item(doc.line_text(line_no))

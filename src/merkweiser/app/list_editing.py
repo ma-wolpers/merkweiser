@@ -202,7 +202,7 @@ def continue_list(old: str, new: str, caret: int | None = None) -> tuple[str, in
     Returns:
         ``(neuer Text, Caret)`` oder ``None``, wenn nichts zu tun ist (kein
         einzelnes Enter, keine Punktzeile, Enter vor dem Inhalt des Punkts,
-        ``[-]``-Punkte).
+        ``[/]``-Punkte u. a.; ``[-]`` setzt seit W9 als Todo mit ``[ ]`` fort).
     """
     at = _inserted_newline(old, new, caret)
     if at is None:

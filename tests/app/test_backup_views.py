@@ -8,6 +8,7 @@ import pytest
 from merkweiser.app.backup_views import file_changes, file_entries, undo, undo_group
 from merkweiser.app.notes_service import NotesService, ReadOnlyVaultError
 from merkweiser.app.settings import Settings
+from merkweiser.core.inline import TodoStatus
 from merkweiser.core.patch import Target
 from tests.fakes import FakeClock
 
@@ -33,9 +34,9 @@ def settle(svc: NotesService) -> None:
 def test_single_change_listed_and_undone(tmp_path: Path) -> None:
     """Abhaken erscheint als Änderung mit Vergleich; Rückgängig hebt nur diesen Haken auf."""
     svc = service(tmp_path, {DAY: b"Thema\n- [ ] a\n- x\n- [ ] b\n"})
-    svc.set_done(Target(DAY, 1, "- [ ] a"), True)
+    svc.set_status(Target(DAY, 1, "- [ ] a"), TodoStatus.DONE)
     settle(svc)
-    svc.set_done(Target(DAY, 3, "- [ ] b"), True)
+    svc.set_status(Target(DAY, 3, "- [ ] b"), TodoStatus.DONE)
     settle(svc)
     [entry] = file_entries(svc)
     assert (entry.relpath, entry.count) == (DAY, 2)
@@ -69,7 +70,7 @@ def test_automerge_group_action_restores_conflict(tmp_path: Path) -> None:
 
 def test_undo_refused_read_only(tmp_path: Path) -> None:
     svc = service(tmp_path, {DAY: b"Thema\n- [ ] a\n"})
-    svc.set_done(Target(DAY, 1, "- [ ] a"), True)
+    svc.set_status(Target(DAY, 1, "- [ ] a"), TodoStatus.DONE)
     settle(svc)
     [view] = file_changes(svc, DAY)
     svc.read_only = True

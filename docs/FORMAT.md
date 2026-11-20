@@ -88,7 +88,8 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
 | `- [x] Text` oder `- [X] Text` | erledigtes Todo. Merkweiser schreibt `[x]`; ein vorhandenes `[X]` bleibt beim Bearbeiten stehen. |
 | `- [ ] ==Text==` | **dringend (Gelb)**: Der Inhalt beginnt mit einer `==…==`-Markierung. |
 | `- [ ] ==🔴Text==` | **sehr dringend (Rot)**, *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* Nach dem öffnenden `==` steht 🔴; beim Lesen ist **ein** Leerzeichen danach erlaubt (`==🔴 Text==`), Merkweiser schreibt ohne. Obsidian zeigt beides als Hervorhebung. Geschlossen wird am ersten `==` nach dem Textbeginn; `==🔴==` ohne weiteren Text gilt als Gelb mit dem Text „🔴“. Text, der selbst `==` enthält, kann Merkweiser nicht markieren. **GRENZE:** Beginnt der Text selbst mit 🔴, wird Gelb als Rot gelesen. |
-| `- [-] Text`, andere Zeichen | **GRENZE:** wird als normaler Listenpunkt behandelt und bleibt unverändert. |
+| `- [-] Text` | **verpasstes Todo** (*geändert am 2026-11-18 auf Nutzerwunsch (W9)*, vorher normaler Listenpunkt). Setzen lässt es sich in der App über ⊘. Es zählt als Todo (Filter „verpasst“), aber nicht als offen. Treffen in einem Sync-Konflikt verschiedene Häkchen aufeinander, gilt **erledigt > verpasst > offen**. |
+| `- [/] Text`, `- [?] Text`, andere Zeichen | **GRENZE:** wird als normaler Listenpunkt behandelt und bleibt unverändert. |
 
 ## Tags und Projekte
 

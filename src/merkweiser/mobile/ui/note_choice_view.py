@@ -1,4 +1,4 @@
-"""Notizweise Konfliktauflösung (Mobile, W8): eine kompakte Karte je Notiz, Todos direkt erledigt/offen.
+"""Notizweise Konfliktauflösung (Mobile, W8): eine kompakte Karte je Notiz, Todos direkt erledigt/verpasst/offen.
 
 Aufbau je Fall (Nutzerwunsch 2026-11-13: kompakt, ohne an Übersicht zu verlieren):
 
@@ -27,8 +27,10 @@ from ...app.conflict_views import Choice, DiffRow, conflict_diff
 from ...app.note_conflicts import NoteChoices, edit_prefill, entry_diff, entry_problems, head_problems, \
     initial_choices, missing, note_result, quick_select
 from ...app.note_plan import KIND_LABELS, Kind, NotePlan, Pick, head_labels, note_plan, pick_labels, sides_meaning
+from ...app.views import STATE_SYMBOL, STATE_WORD, STATE_CHOICES
 from ...core import conflict_files as cf
 from ...core.conflicts import CaseKind
+from ...core.inline import TodoStatus
 from .diff_box import diff_box, side_chips
 from .frontmatter_choices import frontmatter_controls
 from .style import EXPLANATION, card
@@ -42,9 +44,6 @@ QUICK = ((Choice.HAUPTDATEI, ("haupt",), "Hauptdatei behalten"),
          (Choice.BEIDE, ("haupt", "konflikt"), "Zusammenführen"))
 #: Welche Fassung(en) eine Wahl zeigt, wenn sie wörtlich „diese Fassung“ heißt (``sides_meaning``).
 _PICK_SIDES = {Pick.HAUPT: ("haupt",), Pick.KONFLIKT: ("konflikt",), Pick.BEIDE: ("haupt", "konflikt")}
-#: Todo-Wahl: (Wert, Symbol, Tooltip).
-_TODO_OPTIONS = (("erledigt", "☑", "Erledigt"), ("offen", "☐", "Offen"))
-_BOX = {True: "☑", False: "☐"}
 _TITLE_LENGTH = 40
 
 
@@ -202,20 +201,28 @@ def _entry_card(app: "MobileApp", plan: NotePlan, choices: NoteChoices, index: i
 
 
 def _todo_row(app: "MobileApp", choices: NoteChoices, index: int, todo) -> ft.Control:
-    """Eine Zeile je Todo: Text, Stand je Fassung als Farbfeld (rot/grün wie im Vergleich), dann ☑ | ☐ ohne Vorauswahl."""
+    """Eine Zeile je Todo: Text, Stand je Fassung als Farbfeld, dann ☑ | ⊘ | ☐ ohne Vorauswahl.
+
+    Die Farbfelder (rot = Hauptdatei, grün = Konfliktversion, wie im Vergleich)
+    zeigen das Symbol des Zustands der jeweiligen Fassung. Gewählt werden kann
+    jeder der drei Zustände (W9: auch „verpasst“, wenn ihn keine Fassung hat).
+    Symbole und Wörter kommen aus ``views.STATE_SYMBOL``/``STATE_WORD``.
+    """
     def picked(value: str | None) -> None:
         if value is None:
             choices.todos.pop((index, todo.row), None)
         else:
-            choices.todos[(index, todo.row)] = value == "erledigt"
+            choices.todos[(index, todo.row)] = TodoStatus(value)
         app.render()
 
     state = choices.todos.get((index, todo.row))
-    sides = ft.Row([side_chips(("haupt",), _BOX[todo.main_done]), side_chips(("konflikt",), _BOX[not todo.main_done])],
+    sides = ft.Row([side_chips(("haupt",), STATE_SYMBOL[todo.main_status]),
+                    side_chips(("konflikt",), STATE_SYMBOL[todo.other_status])],
                    spacing=2, tight=True, tooltip="Stand in Hauptdatei (rot) und Konfliktversion (grün)")
-    options = [ft.Segment(value=value, label=ft.Text(symbol, size=12), tooltip=tip) for value, symbol, tip in _TODO_OPTIONS]
+    options = [ft.Segment(value=status.value, label=ft.Text(STATE_SYMBOL[status], size=12),
+                          tooltip=STATE_WORD[status].capitalize()) for status in STATE_CHOICES]
     return ft.Row([ft.Text(todo.text, size=12, expand=True), sides,
-                   _segments(options, None if state is None else ("erledigt" if state else "offen"), picked)],
+                   _segments(options, None if state is None else state.value, picked)],
                   vertical_alignment=ft.CrossAxisAlignment.CENTER)
 
 

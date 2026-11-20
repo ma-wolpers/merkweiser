@@ -6,9 +6,9 @@ Semantik (``docs/PLAN.md``, „Suche“), für Desktop und Mobile identisch:
 * ``tags`` prüft die **effektiven** Tags (inklusive Vererbung); mehrere Tags
   standardmäßig UND, umschaltbar auf ODER.
 * ``projekt`` prüft die effektiven Projekte.
-* ``status`` (offen/erledigt) und ``dringend`` (ja/nein) beziehen sich auf
-  Todos: Ist einer davon gesetzt, kommen nur Todos in Frage. ``[-]`` u. a.
-  gelten nicht als Todo.
+* ``status`` (offen/erledigt/verpasst) und ``dringend`` (ja/nein) beziehen sich auf
+  Todos: Ist einer davon gesetzt, kommen nur Todos in Frage. ``[-]`` ist seit
+  W9 ein Todo („verpasst“); ``[/]`` u. a. gelten nicht als Todo.
 * ``text``: ``TextQuery`` mit Modus ``TEILSTRING`` (Standard, per ``casefold``)
   oder ``REGEX`` (``re.IGNORECASE``). Ungültiger Regex → ``InvalidQuery``.
 * ``von``/``bis``: Datum der Tagesdatei, inklusiv.
@@ -48,11 +48,18 @@ class TagMode(Enum):
 
 
 class StatusFilter(Enum):
-    """Filter nach Erledigungsstatus."""
+    """Filter nach Erledigungsstatus (``VERPASST`` = ``[-]``, seit W9)."""
 
     ALLE = "alle"
     OFFEN = "offen"
     ERLEDIGT = "erledigt"
+    VERPASST = "verpasst"
+
+
+STATUS_OF_FILTER: dict[StatusFilter, TodoStatus] = {StatusFilter.OFFEN: TodoStatus.OPEN,
+                                                    StatusFilter.ERLEDIGT: TodoStatus.DONE,
+                                                    StatusFilter.VERPASST: TodoStatus.MISSED}
+"""Einzige Zuordnung Status-Filter → Todo-Zustand (``ALLE`` fehlt: keine Einschränkung)."""
 
 
 class UrgentFilter(Enum):
@@ -197,9 +204,8 @@ def _matches(doc: Document, note: ParsedNote, node: Node, criteria: Filter,
         or criteria.dringend is not UrgentFilter.EGAL
     if todo_only and not is_todo:
         return False
-    if criteria.status is StatusFilter.OFFEN and node.item.status is not TodoStatus.OPEN:  # type: ignore[union-attr]
-        return False
-    if criteria.status is StatusFilter.ERLEDIGT and node.item.status is not TodoStatus.DONE:  # type: ignore[union-attr]
+    wanted_status = STATUS_OF_FILTER.get(criteria.status)
+    if wanted_status is not None and node.item.status is not wanted_status:  # type: ignore[union-attr]
         return False
     if criteria.dringend is not UrgentFilter.EGAL and node.item.urgent != (criteria.dringend is UrgentFilter.JA):  # type: ignore[union-attr]
         return False

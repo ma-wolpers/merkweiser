@@ -5,10 +5,11 @@ Vorkommen, aus denen sie stammt, plus ein **Zertifikat**, das begründet,
 warum diese Zuordnung zulässig ist. ``verify`` prüft beides unabhängig.
 
 Merge-Regel „erledigt gewinnt“ (die einzige erlaubte Inhaltsersetzung ohne
-Nutzeraktion):
+Nutzeraktion), seit W9 als Vorrang **erledigt > verpasst > offen**:
 
-* **R1:** Zeilenpaar unterscheidet sich **nur** im Statuszeichen ``[ ]``
-  gegenüber ``[x]``/``[X]`` → die erledigte Zeile byte-genau.
+* **R1:** Zeilenpaar unterscheidet sich **nur** im Statuszeichen, und beide
+  Zeichen sind Todo-Zustände verschiedener Stufe (``[ ]``, ``[-]``,
+  ``[x]``/``[X]``) → die Zeile mit dem höheren Zustand byte-genau.
 * **R2:** Zeilenpaar unterscheidet sich **nur** in ``[x]`` gegenüber ``[X]``
   → die Zeile der Hauptdatei (A) byte-genau, keine Normalisierung.
 """
@@ -18,9 +19,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from ..inline import parse_list_item
+from ..inline import STATUS_OF_CHAR, TodoStatus, parse_list_item
 
 A, B, BASE = "A", "B", "O"
+
+_PRECEDENCE = {TodoStatus.OPEN: 0, TodoStatus.MISSED: 1, TodoStatus.DONE: 2}
+"""Vorrang der Regel R1 (W9): erledigt > verpasst > offen."""
 
 
 class Cert(Enum):
@@ -29,7 +33,7 @@ class Cert(Enum):
     ANKER = "anker"                  # Synchronzeile der Ausrichtung
     UEBERNAHME = "uebernahme"        # Zeile stammt aus genau einer Seite
     IDENTISCH = "identisch"          # byte-gleiche Änderung beider Seiten in derselben Region
-    R1 = "r1"                        # erledigt gewinnt
+    R1 = "r1"                        # erledigt > verpasst > offen
     R2 = "r2"                        # [x] gegen [X]: Schreibweise der Hauptdatei
 
 
@@ -121,7 +125,7 @@ def status_rule(a_line: str, b_line: str) -> tuple[Cert, str] | None:
         b_line: Zeile der anderen Seite (B).
 
     Returns:
-        ``(Cert.R1, erledigte Zeile)``, ``(Cert.R2, a_line)`` oder ``None``,
+        ``(Cert.R1, Zeile mit dem höheren Zustand)``, ``(Cert.R2, a_line)`` oder ``None``,
         wenn sich die Zeilen nicht **nur** im Statuszeichen unterscheiden.
     """
     a_item, b_item = parse_list_item(a_line), parse_list_item(b_line)
@@ -130,9 +134,9 @@ def status_rule(a_line: str, b_line: str) -> tuple[Cert, str] | None:
     col = a_item.status_col
     if len(a_line) != len(b_line) or a_line[:col] + a_line[col + 1:] != b_line[:col] + b_line[col + 1:]:
         return None
-    pair = {a_line[col], b_line[col]}
-    if pair in ({" ", "x"}, {" ", "X"}):
-        return Cert.R1, a_line if a_line[col] != " " else b_line
-    if pair == {"x", "X"}:
+    a_status, b_status = STATUS_OF_CHAR.get(a_line[col]), STATUS_OF_CHAR.get(b_line[col])
+    if a_status is None or b_status is None or a_line[col] == b_line[col]:
+        return None
+    if a_status is b_status:  # nur [x] gegen [X]
         return Cert.R2, a_line
-    return None
+    return Cert.R1, a_line if _PRECEDENCE[a_status] > _PRECEDENCE[b_status] else b_line

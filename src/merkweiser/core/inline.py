@@ -63,12 +63,33 @@ class UrgencySpan:
 
 
 class TodoStatus(Enum):
-    """Status eines Listenpunkts."""
+    """Status eines Listenpunkts.
 
-    NONE = "none"    # keine Checkbox
-    OPEN = "open"    # [ ]
-    DONE = "done"    # [x] oder [X]
-    OTHER = "other"  # [-], [/] … (GRENZE: wie normaler Punkt behandelt)
+    ``OPEN``, ``DONE`` und ``MISSED`` sind Todos (``is_todo``). ``MISSED``
+    (``[-]``, „verpasst“) gibt es seit W9: Der Nutzer setzt es per ⊘, und für
+    abgelaufene Routinen-Instanzen setzt Merkweiser es selbst. Andere Zeichen
+    (``[/]``, ``[?]`` …) bleiben ``OTHER`` und gelten als normaler Punkt.
+    """
+
+    NONE = "none"      # keine Checkbox
+    OPEN = "open"      # [ ]
+    DONE = "done"      # [x] oder [X]
+    MISSED = "missed"  # [-] (W9: verpasst)
+    OTHER = "other"    # [/], [?] … (GRENZE: wie normaler Punkt behandelt)
+
+    @property
+    def is_todo(self) -> bool:
+        """``True`` für die drei Todo-Zustände offen, erledigt, verpasst."""
+        return self in STATUS_CHAR
+
+
+STATUS_CHAR: dict[TodoStatus, str] = {TodoStatus.OPEN: " ", TodoStatus.DONE: "x", TodoStatus.MISSED: "-"}
+"""Einzige Quelle Zustand → Checkbox-Zeichen, so wie Merkweiser es schreibt.
+
+Gelesen wird zusätzlich ``X`` als erledigt (``STATUS_OF_CHAR``)."""
+
+STATUS_OF_CHAR: dict[str, TodoStatus] = {char: status for status, char in STATUS_CHAR.items()} | {"X": TodoStatus.DONE}
+"""Einzige Quelle Checkbox-Zeichen → Todo-Zustand (für Parser, Merge-Regel R1 und ``status_key``)."""
 
 
 @dataclass(frozen=True)
@@ -98,8 +119,8 @@ class ListItem:
 
     @property
     def is_todo(self) -> bool:
-        """``True`` für offene oder erledigte Todos (nicht für ``OTHER``)."""
-        return self.status in (TodoStatus.OPEN, TodoStatus.DONE)
+        """``True`` für offene, erledigte oder verpasste Todos (nicht für ``OTHER``)."""
+        return self.status.is_todo
 
 
 @dataclass(frozen=True)
@@ -159,7 +180,7 @@ def parse_list_item(text: str) -> ListItem | None:
     checkbox = _CHECKBOX_RE.match(text, content_start)
     if checkbox:
         char = checkbox.group(1)
-        status = {" ": TodoStatus.OPEN, "x": TodoStatus.DONE, "X": TodoStatus.DONE}.get(char, TodoStatus.OTHER)
+        status = STATUS_OF_CHAR.get(char, TodoStatus.OTHER)
         status_col, body_start = content_start + 1, checkbox.end()
     return ListItem(indent=indent_columns(match.group(1)), marker=match.group(2), status=status,
                     status_col=status_col, body_start=body_start, urgency=urgency(text[body_start:]))

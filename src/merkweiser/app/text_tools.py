@@ -115,11 +115,11 @@ def apply_text_edits(text: str, start: int, end: int, edits: list[Edit]) -> tupl
 def toggle_todo(text: str, start: int | None, end: int | None) -> tuple[str, int | None, int | None]:
     """Macht die Zeilen zu Todos bzw. wieder zu Text.
 
-    Sind alle nicht leeren Zeilen des Bereichs Todos (offen oder abgehakt),
+    Sind alle nicht leeren Zeilen des Bereichs Todos (offen, abgehakt oder verpasst),
     wird zurückgeschaltet: ``  - [ ] x``/``- [x] x`` → ``x`` (Marker und
     Einrückung verschwinden, Text ist nie eingerückt). Sonst wird jede Zeile
     ohne Todo eines: ``x`` → ``- [ ] x``, ``- x``/``1. x`` → Checkbox hinter dem
-    Marker; die Einrückung bleibt dabei erhalten. ``[-]`` und andere
+    Marker; die Einrückung bleibt dabei erhalten. ``[/]`` und andere
     Statuszeichen bleiben unverändert (GRENZE laut FORMAT.md). Der Caret bleibt
     beim selben Zeichen. Eine einzelne leere Zeile (auch nur Leerraum) wird
     zu ``- [ ] `` hinter ihrem Leerraum; der Caret steht danach am Zeilenende.

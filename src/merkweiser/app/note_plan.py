@@ -7,7 +7,7 @@ Ergebnis stehen in ``note_conflicts``; die Oberfläche rendert nur.
 Arten und Wahlen (Nutzerentscheidungen 2026-11-10, ``PLAN-SPAETERE-SCHRITTE.md`` W8):
 
 * ``GLEICH`` – in beiden Fassungen gleich (eingeklappt, keine Wahl),
-* ``STATUS`` – nur Häkchen verschieden: nur die Todo-Wahl erledigt/offen,
+* ``STATUS`` – nur Häkchen verschieden: nur die Todo-Wahl erledigt/verpasst/offen,
 * ``GEAENDERT`` – Hauptdatei / Konfliktversion / Beide / Bearbeitet,
 * ``NUR_HAUPT`` – Behalten / Entfernen / Bearbeitet,
 * ``NUR_KONFLIKT`` – Übernehmen (bei fehlender Hauptdatei: Wiederherstellen) / Weglassen / Bearbeitet.
@@ -31,9 +31,9 @@ from dataclasses import dataclass
 from enum import Enum
 
 from ..core.conflicts import ConflictCase
-from ..core.inline import parse_list_item
+from ..core.inline import STATUS_CHAR, TodoStatus, parse_list_item
 from ..core.merge.frontmatter import OPEN, FmMerge, Head, merge_frontmatter, split
-from ..core.merge.model import A, B, Cert, Hunk
+from ..core.merge.model import A, B, Cert, Hunk, status_rule
 from ..core.merge.notes import STATUS_MASK, BodyNotes, Row, body_notes, note_rows, pair_notes, status_key
 from ..core.source import SourceText
 
@@ -60,23 +60,66 @@ class Pick(Enum):
 class Todo:
     """Ein Todo, dessen Häkchen sich zwischen den Fassungen unterscheidet (R1).
 
+    Seit W9 gibt es drei Zustände (offen ``[ ]``, verpasst ``[-]``, erledigt
+    ``[x]``/``[X]``); zwei davon kommen in den Fassungen vor, gewählt werden
+    kann jeder der drei (``line``).
+
     Attributes:
         row: Index des Abschnitts in ``NoteEntry.rows``.
-        open_line: Zeile mit ``[ ]`` (byte-genau aus der Fassung, in der es offen ist).
-        done_line: Zeile mit ``[x]``/``[X]`` (byte-genau aus der anderen Fassung).
-        main_done: In der Hauptdatei erledigt.
+        main_line: Zeile der Hauptdatei (byte-genau).
+        other_line: Zeile der Konfliktversion (byte-genau).
     """
 
     row: int
-    open_line: str
-    done_line: str
-    main_done: bool
+    main_line: str
+    other_line: str
+
+    @property
+    def main_status(self) -> TodoStatus:
+        """Zustand in der Hauptdatei."""
+        return _status(self.main_line)
+
+    @property
+    def other_status(self) -> TodoStatus:
+        """Zustand in der Konfliktversion."""
+        return _status(self.other_line)
+
+    @property
+    def merged_status(self) -> TodoStatus:
+        """Zustand nach Regel R1 (erledigt > verpasst > offen), Quelle ``status_rule``."""
+        rule = status_rule(self.main_line, self.other_line)
+        return _status(rule[1]) if rule else self.main_status
+
+    def line(self, status: TodoStatus) -> str:
+        """Zeile für einen gewählten Zustand.
+
+        Byte-genau die Zeile der Fassung, die diesen Zustand hat (bevorzugt die
+        Hauptdatei); hat keine ihn (dritte Wahl), die Zeile der Hauptdatei mit
+        dem Zeichen aus ``STATUS_CHAR``.
+
+        Args:
+            status: ``OPEN``, ``DONE`` oder ``MISSED``.
+
+        Returns:
+            Die Zeile ohne Zeilenende.
+        """
+        for line in (self.main_line, self.other_line):
+            if _status(line) is status:
+                return line
+        col = status_key(self.main_line).index(STATUS_MASK)
+        return self.main_line[:col] + STATUS_CHAR[status] + self.main_line[col + 1:]
 
     @property
     def text(self) -> str:
         """Text des Todos ohne Marker und Häkchen (für die Anzeige)."""
-        item = parse_list_item(self.open_line)
-        return self.open_line[item.body_start:].strip() if item else self.open_line.strip()
+        item = parse_list_item(self.main_line)
+        return self.main_line[item.body_start:].strip() if item else self.main_line.strip()
+
+
+def _status(line: str) -> TodoStatus:
+    """Todo-Zustand einer Zeile (über ``inline.parse_list_item``)."""
+    item = parse_list_item(line)
+    return item.status if item else TodoStatus.NONE
 
 
 @dataclass(frozen=True)
@@ -270,10 +313,8 @@ def _entry(a: BodyNotes | None, b: BodyNotes, i: int | None, j: int | None) -> N
 
 
 def _todo(index: int, row: Row) -> Todo:
-    """Todo aus einem R1-Abschnitt (offene und erledigte Zeile byte-genau)."""
-    a_line, b_line = row.a[0], row.b[0]
-    main_done = a_line[status_key(a_line).index(STATUS_MASK)] in "xX"
-    return Todo(index, b_line if main_done else a_line, a_line if main_done else b_line, main_done)
+    """Todo aus einem R1-Abschnitt (beide Zeilen byte-genau)."""
+    return Todo(index, row.a[0], row.b[0])
 
 
 def _suggestions(entries: list[NoteEntry], a: BodyNotes | None, b: BodyNotes,
@@ -311,13 +352,13 @@ def _matching_pick(entry: NoteEntry, output: list[str]) -> Pick | None:
             return pick
     return None
 
-def render_entry(entry: NoteEntry, pick: Pick, todos: dict[int, bool], text: str = "") -> tuple[str, ...]:
+def render_entry(entry: NoteEntry, pick: Pick, todos: dict[int, TodoStatus], text: str = "") -> tuple[str, ...]:
     """Zeilen eines Eintrags für eine Wahl (leer = Notiz entfällt).
 
     Args:
         entry: Eintrag.
         pick: Wahl (bei ``GLEICH``/``STATUS`` zählt nur ``KONFLIKT`` für ``[x]``/``[X]``).
-        todos: Abschnitt → erledigt; fehlt ein Todo, gilt der Stand der Hauptdatei.
+        todos: Abschnitt → gewählter Zustand; fehlt ein Todo, gilt der Stand der Hauptdatei.
         text: Bearbeiteter Text (nur bei ``BEARBEITET``).
 
     Returns:
@@ -341,7 +382,7 @@ def render_entry(entry: NoteEntry, pick: Pick, todos: dict[int, bool], text: str
             out += row.a
         elif row.cert is Cert.R1:
             todo = by_row[r]
-            out.append(todo.done_line if todos.get(r, todo.main_done) else todo.open_line)
+            out.append(todo.line(todos.get(r, todo.main_status)))
         elif row.cert is Cert.R2:
             out += row.b if pick is Pick.KONFLIKT else row.a
         else:

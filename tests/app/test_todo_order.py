@@ -9,10 +9,10 @@ import pytest
 from merkweiser.app.notes_service import NotesService
 from merkweiser.app.notify_content import NotifyContent, content
 from merkweiser.app.notify_plan import MAX_LINES, NotifySettings, plan
-from merkweiser.app.ordering import todo_groups
+from merkweiser.app.ordering import rank, todo_groups
 from merkweiser.app.settings import Settings
 from merkweiser.app.views import HitRow
-from merkweiser.core.inline import Urgency
+from merkweiser.core.inline import TodoStatus, Urgency
 from merkweiser.core.patch import Target
 from tests.fakes import FakeClock
 
@@ -21,7 +21,7 @@ BERLIN = ZoneInfo("Europe/Berlin")
 
 
 def hit(day: str, text: str, level: int = 0, done: bool = False) -> HitRow:
-    return HitRow(day, text, "", done, Urgency(level), Target(f"{day}.md", 0, text))
+    return HitRow(day, text, "", TodoStatus.DONE if done else TodoStatus.OPEN, Urgency(level), Target(f"{day}.md", 0, text))
 
 
 def texts(rows) -> list[str]:
@@ -98,3 +98,9 @@ def test_plan_without_red_is_normal_and_bold_follows_the_cut() -> None:
     neutral = plan(datetime(2026, 1, 14, 21, 0, tzinfo=BERLIN), NotifySettings(enabled=True, at=time(7, 0), horizon=2),
                    lambda _d: NotifyContent(), BERLIN)[0]
     assert neutral.bold == () and neutral.as_item()["bold"] == []
+
+
+def test_missed_rows_have_no_rank() -> None:
+    """W9: Verpasste Todos rücken nie nach vorn (Rang nur für offene)."""
+    missed = HitRow("2026-01-15", "x", "", TodoStatus.MISSED, Urgency.ROT, Target("2026-01-15.md", 0, "x"))
+    assert rank(missed) == 0 and missed.done is False

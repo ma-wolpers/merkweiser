@@ -170,7 +170,7 @@ def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
         app.open_page(PageRef("notiz", note_arg(row.target)))
 
     head = ft.Text(f"{row.day} · {row.context}" if row.context else row.day, size=11)
-    body = todo_line(app, row.text, row.done, row.urgency, row.target, open_note) if row.done is not None \
+    body = todo_line(app, row.text, row.status, row.urgency, row.target, open_note) if row.status is not None \
         else ft.Text(row.text)
     return ft.Column([head, body], spacing=0)
 

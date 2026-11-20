@@ -67,7 +67,8 @@ def test_indent_columns_use_tab_stops(prefix: str, expected: int) -> None:
     ("- [ ] offen", TodoStatus.OPEN, False),
     ("- [x] erledigt", TodoStatus.DONE, False),
     ("- [X] Erledigt", TodoStatus.DONE, False),
-    ("- [-] abgebrochen", TodoStatus.OTHER, False),
+    ("- [-] verpasst", TodoStatus.MISSED, False),
+    ("- [/] halb", TodoStatus.OTHER, False),
     ("- [ ] ==dringend== mehr", TodoStatus.OPEN, True),
     ("- ==hervorgehoben==", TodoStatus.NONE, True),
     ("- [ ]", TodoStatus.OPEN, False),
@@ -80,6 +81,23 @@ def test_parse_list_item(text: str, status: TodoStatus, urgent: bool) -> None:
     item = parse_list_item(text)
     assert item is not None
     assert (item.status, item.urgent) == (status, urgent)
+
+
+@pytest.mark.parametrize("text, is_todo", [
+    ("- [ ] a", True), ("- [x] a", True), ("- [X] a", True), ("- [-] a", True),
+    ("- [/] a", False), ("- [?] a", False), ("- a", False),
+])
+def test_is_todo_includes_missed(text: str, is_todo: bool) -> None:
+    """W9: offen, erledigt und verpasst sind Todos; andere Zeichen nicht."""
+    item = parse_list_item(text)
+    assert item is not None and item.is_todo is is_todo and item.status.is_todo is is_todo
+
+
+def test_status_char_round_trip() -> None:
+    """``STATUS_CHAR`` und ``STATUS_OF_CHAR`` sind zueinander passend (eine Quelle)."""
+    from merkweiser.core.inline import STATUS_CHAR, STATUS_OF_CHAR
+    assert all(STATUS_OF_CHAR[char] is status for status, char in STATUS_CHAR.items())
+    assert STATUS_OF_CHAR["X"] is TodoStatus.DONE
 
 
 @pytest.mark.parametrize("text", ["Text", "-kein Punkt", "#tag", "", "    "])

@@ -46,11 +46,27 @@ def test_empty_filter_returns_all_visible_nodes() -> None:
     assert len(texts(Filter())) == 10
 
 
-def test_todo_view_excludes_other_status_and_plain_items() -> None:
-    """``nur_todos``: ``[-]`` und Punkte ohne Checkbox sind keine Todos."""
+def test_todo_view_includes_missed_and_excludes_plain_items() -> None:
+    """``nur_todos``: ``[-]`` ist seit W9 ein Todo (verpasst); Punkte ohne Checkbox nicht."""
     assert texts(Filter(nur_todos=True)) == [
-        "- [ ] Lernen", "- [x] Anmelden", "- [ ] ==Dringend abgeben==", "- [ ] Kisten packen #keller",
-        "- [ ] Skript lesen"]
+        "- [ ] Lernen", "- [x] Anmelden", "- [ ] ==Dringend abgeben==", "- [-] abgebrochen",
+        "- [ ] Kisten packen #keller", "- [ ] Skript lesen"]
+
+
+def test_other_status_is_not_a_todo() -> None:
+    """``[/]``, ``[?]`` u. a. bleiben normale Punkte (``GRENZE``)."""
+    doc = parse_document(b"T\n- [/] halb\n- [?] frage\n- [ ] echt\n")
+    hits = search([("x.md", date(2026, 1, 1), doc)], Filter(nur_todos=True))
+    assert [h.text for h in hits] == ["- [ ] echt"]
+
+
+def test_status_filter_verpasst() -> None:
+    """W9: ``VERPASST`` liefert nur ``[-]``; ``OFFEN`` und ``ERLEDIGT`` schließen es aus."""
+    assert texts(Filter(status=StatusFilter.VERPASST)) == ["- [-] abgebrochen"]
+    assert "- [-] abgebrochen" not in texts(Filter(status=StatusFilter.OFFEN))
+    assert "- [-] abgebrochen" not in texts(Filter(status=StatusFilter.ERLEDIGT))
+    [hit] = search(docs(), Filter(status=StatusFilter.VERPASST))
+    assert hit.status is TodoStatus.MISSED
 
 
 def test_status_and_urgency_imply_todos_and_combine() -> None:
@@ -63,7 +79,7 @@ def test_status_and_urgency_imply_todos_and_combine() -> None:
 def test_tags_use_effective_tags_with_and_or() -> None:
     """Effektive Tags (Thema + Erläuterung) mit UND bzw. ODER."""
     both = texts(Filter(tags=("uni", "klausur"), nur_todos=True))
-    assert both == ["- [ ] Lernen", "- [x] Anmelden", "- [ ] ==Dringend abgeben=="]
+    assert both == ["- [ ] Lernen", "- [x] Anmelden", "- [ ] ==Dringend abgeben==", "- [-] abgebrochen"]
     either = texts(Filter(tags=("#klausur", "keller"), tag_modus=TagMode.ODER, nur_todos=True))
     assert either == both + ["- [ ] Kisten packen #keller"]
 

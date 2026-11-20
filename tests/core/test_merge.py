@@ -120,6 +120,15 @@ def test_union_done_wins_and_capital_x_keeps_main() -> None:
     assert m2(["T", "- [ ] x"], ["T", "- [x] y"]).lines() == ("T", "- [ ] x", "- [x] y")  # kein R1 → beide
 
 
+def test_union_precedence_done_missed_open() -> None:
+    """W9: R1 als Vorrang erledigt > verpasst > offen, in beide Richtungen; ``[/]`` ist kein Zustand."""
+    assert m2(["T", "- [ ] x"], ["T", "- [-] x"]).lines() == ("T", "- [-] x")
+    assert m2(["T", "- [-] x"], ["T", "- [ ] x"]).lines() == ("T", "- [-] x")
+    assert m2(["T", "- [-] x"], ["T", "- [X] x"]).lines() == ("T", "- [X] x")
+    assert m2(["T", "- [x] x"], ["T", "- [-] x"]).lines() == ("T", "- [x] x")
+    assert m2(["T", "- [ ] x"], ["T", "- [/] x"]).lines() == ("T", "- [ ] x", "- [/] x")  # kein R1 → beide
+
+
 def test_repeated_identical_lines_stay_separate() -> None:
     """Zwei gleiche Vorkommen einer Seite fallen nicht zusammen."""
     result = m2(["T", "- [ ] g", "- [ ] g"], ["T", "- [ ] g"])

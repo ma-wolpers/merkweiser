@@ -27,7 +27,7 @@ from datetime import date
 from typing import TypeVar
 
 from ..core.document import Document, ParsedNote
-from ..core.inline import Urgency
+from ..core.inline import TodoStatus, Urgency
 from .views import HitRow, Row, note_rows
 
 T = TypeVar("T")
@@ -42,7 +42,7 @@ def rank(row: Row | HitRow) -> int:
     Returns:
         2 (Rot), 1 (Gelb) oder 0.
     """
-    return int(row.urgency) if row.done is False else 0
+    return int(row.urgency) if row.status is TodoStatus.OPEN else 0
 
 
 def by_rank(items: Sequence[T], key: Callable[[T], int]) -> list[T]:

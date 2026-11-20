@@ -6,7 +6,7 @@ Konfliktversion (B) ist deshalb eine **Ausrichtung von Notizfolgen** über
 je Seite die Reihenfolge (monoton):
 
 * **L0** – identische Notizen (ganzer Text) sind Anker,
-* **L1** – Notizen, die sich nur in Häkchen ``[ ]``/``[x]``/``[X]`` unterscheiden,
+* **L1** – Notizen, die sich nur in Häkchen ``[ ]``/``[-]``/``[x]``/``[X]`` unterscheiden,
 * **L2** – Notizen mit gleicher erster Zeile (Thema; Häkchen maskiert),
 * **L3** – eine übrig gebliebene 1×1-Lücke, wenn beide Notizen mindestens
   eine gleiche (maskierte, nicht leere) Zeile haben.
@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from ..blocks import analyze
-from ..inline import parse_list_item
+from ..inline import STATUS_OF_CHAR, parse_list_item
 from ..source import Line
 from .align import align
 from .model import Cert, status_rule
@@ -85,7 +85,7 @@ class Row:
     Attributes:
         a: Zeilen aus A.
         b: Zeilen aus B.
-        cert: ``Cert.R1`` (nur Häkchen offen/erledigt verschieden: Todo-Wahl),
+        cert: ``Cert.R1`` (nur Häkchen offen/verpasst/erledigt verschieden: Todo-Wahl),
             ``Cert.R2`` (nur ``[x]``/``[X]``) oder ``None`` (gleich bzw. Lücke).
     """
 
@@ -100,7 +100,7 @@ class Row:
 
 
 def status_key(line: str) -> str:
-    """Vergleichsschlüssel einer Zeile: Statuszeichen ``" "``, ``x``, ``X`` maskiert.
+    """Vergleichsschlüssel einer Zeile: Todo-Statuszeichen (``" "``, ``x``, ``X``, ``-``) maskiert.
 
     Args:
         line: Zeile ohne Zeilenende (außerhalb von Code).
@@ -109,7 +109,7 @@ def status_key(line: str) -> str:
         Die Zeile, bei Todos mit ``STATUS_MASK`` an der Stelle des Statuszeichens.
     """
     item = parse_list_item(line)
-    if item is None or item.status_col is None or line[item.status_col] not in " xX":
+    if item is None or item.status_col is None or line[item.status_col] not in STATUS_OF_CHAR:
         return line
     return line[:item.status_col] + STATUS_MASK + line[item.status_col + 1:]
 

@@ -28,10 +28,10 @@ from ...app.ordering import urgent_first
 from ...app.tag_spans import text_parts
 from ...app.views import NoteRef, Row, next_urgency, note_ref, note_rows
 from ...core.document import Document, ParsedNote
-from ...core.inline import Urgency, strip_urgency
+from ...core.inline import TodoStatus, Urgency, strip_urgency
 from .note_dialogs import note_actions
 from .tag_dialog import show_move_flow
-from .style import EXPLANATION, URGENCY_BAR, URGENCY_STYLE, card
+from .style import EXPLANATION, MISSED_STYLE, MISSED_TEXT, URGENCY_BAR, URGENCY_STYLE, card
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -87,9 +87,9 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
         lines += [rich_text(app, line, color=EXPLANATION) for line in row.more]
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":
-        head = todo_line(app, row.text, row.done, row.urgency, row.target)
+        head = todo_line(app, row.text, row.status, row.urgency, row.target)
     elif row.kind == "item":
-        head = _marked(ft.Text("•", size=18), rich_text(app, row.text))
+        head = marked(ft.Text("•", size=18), rich_text(app, row.text))
     else:
         return ft.Container(content=ft.Text("\n".join((row.text, *row.more))), padding=pad)
     continuation = [ft.Container(content=rich_text(app, line), padding=ft.Padding.only(left=MARKER_WIDTH))
@@ -97,18 +97,24 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
     return ft.Container(content=ft.Column([head, *continuation], spacing=0), padding=pad)
 
 
-def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, target,
+def todo_line(app: "MobileApp", text: str, status: TodoStatus, urgency: Urgency, target,
               open_note: Callable[[], None] | None = None) -> ft.Control:
-    """Todo mit Checkbox, antippbarem Text und Schnellaktionen (Ampel-Stern, verschieben).
+    """Todo mit Checkbox, antippbarem Text und Schnellaktionen (Ampel-Stern, verpasst, verschieben).
 
     Der Stern zeigt die Stufe (farblos, gelb, rot; ``style.URGENCY_STYLE``) und
     schaltet beim Tippen zur nächsten (``views.next_urgency``); geschrieben wird
     der Zielzustand. Offene gelbe bzw. rote Todos haben links eine farbige Leiste.
 
+    W9: Der ⊘-Knopf neben dem Stern schaltet zwischen verpasst und offen
+    (von erledigt aus: verpasst). Die Checkbox kennt nur erledigt/offen; ein
+    Tipp auf den Text erledigt ein offenes oder verpasstes Todo und öffnet ein
+    erledigtes wieder. Verpasste Todos sind durchgestrichen und blass
+    (``style.MISSED_TEXT``, ``EXPLANATION``) und haben keine Ampel-Leiste.
+
     Args:
         app: Die laufende App.
         text: Inhalt ohne Checkbox (Markierung wird für die Anzeige entfernt).
-        done: Erledigt-Status.
+        status: Todo-Zustand (``OPEN``, ``DONE`` oder ``MISSED``).
         urgency: Angezeigte Dringlichkeitsstufe.
         target: Adresse des Todos.
         open_note: Nur im Tab „Todos“: öffnet die Unterseite mit der ganzen Notiz
@@ -117,14 +123,19 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, 
     Returns:
         Eine Zeile mit Markerspalte, Text und den Symbolknöpfen.
     """
-    async def set_done(value: bool) -> None:
-        await app.act(lambda s: s.set_done(target, value))
+    missed = status is TodoStatus.MISSED
+
+    async def set_status(value: TodoStatus) -> None:
+        await app.act(lambda s: s.set_status(target, value))
 
     async def toggle(e) -> None:
-        await set_done(bool(e.control.value))
+        await set_status(TodoStatus.DONE if e.control.value else TodoStatus.OPEN)
 
     async def tap(_e) -> None:
-        await set_done(not done)
+        await set_status(TodoStatus.OPEN if status is TodoStatus.DONE else TodoStatus.DONE)
+
+    async def miss(_e) -> None:
+        await set_status(TodoStatus.OPEN if missed else TodoStatus.MISSED)
 
     async def cycle(_e) -> None:
         await app.act(lambda s: s.set_urgency(target, next_urgency(urgency)))
@@ -133,14 +144,18 @@ def todo_line(app: "MobileApp", text: str, done: bool | None, urgency: Urgency, 
         await show_move_flow(app, target)
 
     icon, color, tooltip = URGENCY_STYLE[int(urgency)]
-    checkbox = ft.Checkbox(value=bool(done), on_change=toggle, visual_density=ft.VisualDensity.COMPACT)
-    line = _marked(checkbox, ft.GestureDetector(content=rich_text(app, strip_urgency(text)), on_tap=tap), [
+    miss_icon, miss_color, miss_tip = MISSED_STYLE[missed]
+    checkbox = ft.Checkbox(value=status is TodoStatus.DONE, on_change=toggle, visual_density=ft.VisualDensity.COMPACT)
+    label = rich_text(app, strip_urgency(text), style=MISSED_TEXT, color=EXPLANATION) if missed \
+        else rich_text(app, strip_urgency(text))
+    line = marked(checkbox, ft.GestureDetector(content=label, on_tap=tap), [
         ft.IconButton(icon=icon, icon_color=color, on_click=cycle, tooltip=tooltip),
+        ft.IconButton(icon=miss_icon, icon_color=miss_color, on_click=miss, tooltip=miss_tip),
         ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
         *([ft.IconButton(icon=ft.Icons.ARTICLE_OUTLINED, on_click=lambda _e: open_note(), tooltip="Notiz öffnen")]
           if open_note else []),
     ])
-    bar = color if urgency and done is False else None
+    bar = color if urgency and status is TodoStatus.OPEN else None
     return ft.Container(content=line, border=ft.Border.only(left=ft.BorderSide(URGENCY_BAR, bar)) if bar else None)
 
 
@@ -173,7 +188,7 @@ def rich_text(app: "MobileApp", text: str, **style) -> ft.Text:
     return ft.Text(spans=spans, **style)
 
 
-def _marked(marker: ft.Control, body: ft.Control, actions: list[ft.Control] | None = None) -> ft.Control:
+def marked(marker: ft.Control, body: ft.Control, actions: list[ft.Control] | None = None) -> ft.Control:
     """Zeile aus fester Markerspalte, Text (füllt die Breite) und optionalen Knöpfen.
 
     Args:

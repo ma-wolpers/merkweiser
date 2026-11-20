@@ -63,6 +63,7 @@ def test_selection_moves_each_item_once() -> None:
 @pytest.mark.parametrize("before, after", [
     ("- a|", "- a\n- |"),
     ("  - [x] a|\nb", "  - [x] a\n  - [ ] |\nb"),
+    ("- [-] a|", "- [-] a\n- [ ] |"),
     ("- ab|cd", "- ab\n- |cd"),
     ("9. a|", "9. a\n10. |"),
 ])
@@ -81,10 +82,10 @@ def test_enter_in_an_empty_item_turns_it_into_text() -> None:
 
 
 def test_enter_elsewhere_is_ignored() -> None:
-    """Kein Punkt, Enter vor dem Inhalt, ``[-]`` oder mehr als ein Zeichen eingefügt → ``None``."""
+    """Kein Punkt, Enter vor dem Inhalt, ``[/]`` oder mehr als ein Zeichen eingefügt → ``None``."""
     assert continue_list("Text", "Text\n", 4) is None
     assert continue_list("- a", "-\n a", 1) is None
-    assert continue_list("- [-] a", "- [-] a\n", 7) is None
+    assert continue_list("- [/] a", "- [/] a\n", 7) is None
     assert continue_list("- a", "- a\nxy", 3) is None
 
 

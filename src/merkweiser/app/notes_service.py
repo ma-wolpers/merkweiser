@@ -26,11 +26,11 @@ from ..core.automerge_log import undo_automerge as _undo_automerge
 from ..core.conflicts import CaseKind, ConflictCase, auto_merge, classify
 from ..core.doc_cache import DocumentCache
 from ..core.document import Document, ParsedNote, parse_document
-from ..core.edits import add_todo, set_done, set_project, set_urgency
+from ..core.edits import add_todo, set_project, set_status, set_urgency
 from ..core.fs_probe import GUARANTEE, VaultNotWritableError, probe_install_mode
 from ..core.fsops import FsOps
 from ..core.history import History
-from ..core.inline import Urgency
+from ..core.inline import TodoStatus, Urgency
 from ..core.backups import recover_undos
 from ..core.duplicates import recover_duplicates
 from ..core.time_ops import recover_time_ops
@@ -374,9 +374,17 @@ class NotesService:
     # --- Aktionen ---------------------------------------------------------------------
 
     @_writes
-    def set_done(self, target: Target, done: bool) -> WriteResult:
-        """Todo erledigt bzw. offen setzen."""
-        return self._edit(target.relpath, lambda doc: set_done(doc, target, done))
+    def set_status(self, target: Target, status: TodoStatus) -> WriteResult:
+        """Todo offen, erledigt oder verpasst setzen (Zielzustand, ``edits.set_status``).
+
+        Args:
+            target: Zeile des Todos.
+            status: ``TodoStatus.OPEN``, ``DONE`` oder ``MISSED``.
+
+        Returns:
+            Ergebnis des Schreibvorgangs.
+        """
+        return self._edit(target.relpath, lambda doc: set_status(doc, target, status))
 
     @_writes
     def set_urgency(self, target: Target, level: Urgency) -> WriteResult:

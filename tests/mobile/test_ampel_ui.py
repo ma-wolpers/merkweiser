@@ -61,3 +61,38 @@ def test_todos_tab_keeps_the_day_boundary_and_hides_the_future(tmp_path: Path) -
              and not c.value.startswith("20")]
     order = [t for t in texts if t in ("gestern rot", "heute normal", "gestern gelb", "morgen")]
     assert order == ["gestern rot", "heute normal", "gestern gelb"]
+
+
+def missed_button(controls) -> ft.IconButton:
+    """Der ⊘-Knopf der ersten Todo-Zeile (W9)."""
+    return next(c for c in _walk_all(controls) if isinstance(c, ft.IconButton) and c.icon == ft.Icons.BLOCK)
+
+
+def test_missed_button_toggles_open_and_missed_and_strikes_through(tmp_path: Path) -> None:
+    """W9: ⊘ schaltet offen ↔ verpasst; verpasst ist durchgestrichen, blass und ohne Ampel-Leiste."""
+    from merkweiser.mobile.ui.style import EXPLANATION, MISSED_STYLE, MISSED_TEXT
+    app = fake(tmp_path, {"2026-01-15.md": "Heute\n- [ ] ==🔴Antrag== #amt\n"})
+    path = app.service.root / "2026-01-15.md"
+    button = missed_button(tabs.day_view(app))
+    assert button.tooltip == MISSED_STYLE[False][2]
+    asyncio.run(button.on_click(None))
+    assert path.read_text(encoding="utf-8").splitlines()[1] == "- [-] ==🔴Antrag== #amt"
+    controls = tabs.day_view(app)
+    assert missed_button(controls).tooltip == MISSED_STYLE[True][2]
+    assert missed_button(controls).icon_color == MISSED_STYLE[True][1]
+    struck = [c for c in _walk_all(controls) if isinstance(c, ft.Text) and c.style is MISSED_TEXT]
+    assert len(struck) == 1 and struck[0].color == EXPLANATION
+    assert not [c for c in _walk_all(controls) if isinstance(c, ft.Container) and c.border is not None]
+    checkbox = next(c for c in _walk_all(controls) if isinstance(c, ft.Checkbox))
+    assert checkbox.value is False
+    asyncio.run(missed_button(controls).on_click(None))
+    assert path.read_text(encoding="utf-8").splitlines()[1] == "- [ ] ==🔴Antrag== #amt"
+
+
+def test_tap_on_missed_text_marks_done(tmp_path: Path) -> None:
+    """Tipp auf den Text eines verpassten Todos erledigt es (wie bei offenen)."""
+    app = fake(tmp_path, {"2026-01-15.md": "Heute\n- [-] spät\n"})
+    path = app.service.root / "2026-01-15.md"
+    tap = next(c for c in _walk_all(tabs.day_view(app)) if isinstance(c, ft.GestureDetector))
+    asyncio.run(tap.on_tap(None))
+    assert path.read_text(encoding="utf-8").splitlines()[1] == "- [x] spät"

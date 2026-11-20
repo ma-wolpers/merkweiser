@@ -86,14 +86,14 @@ def test_todo_and_note_choices_then_apply(tmp_path: Path) -> None:
     assert apply.disabled and apply.content == "Übernehmen (2 offen)" and "Milch" in apply.tooltip
     shown = texts(controls)
     assert "Einkauf · nur Häkchen" in shown and "Arbeit · geändert" in shown
-    todo = bar(controls, "erledigt")
+    todo = bar(controls, "done")
     assert todo.selected == [] and todo.allow_empty_selection  # keine Vorauswahl
-    assert [(s.label.value, s.tooltip) for s in todo.segments] == [("☑", "Erledigt"), ("☐", "Offen")]
+    assert [(s.label.value, s.tooltip) for s in todo.segments] == [("☑", "Erledigt"), ("⊘", "Verpasst"), ("☐", "Offen")]
     changed = bar(controls, "haupt")  # geänderte Notiz: Farbfelder statt Wörter, Wort im Tooltip
     assert [s.tooltip for s in changed.segments] == ["Hauptdatei", "Konfliktversion", "Beide", "Bearbeitet"]
     assert isinstance(changed.segments[0].label, ft.Container) and changed.segments[0].label.content.value == "−"
     assert isinstance(changed.segments[2].label, ft.Row)  # „Beide“: rot und grün nebeneinander
-    choose(todo, "erledigt")
+    choose(todo, "done")
     choose(bar(view(app), "haupt"), "beide")
     controls = view(app)
     assert apply_button(controls).content == "Übernehmen" and "offen" not in texts(controls).split("\n")

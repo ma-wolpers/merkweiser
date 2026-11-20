@@ -2,6 +2,30 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-20 – W9 P2: Status „verpasst“ `[-]` für alle Todos
+
+- **Grammatik (`core/inline.py`):**
+  - `TodoStatus.MISSED` und `TodoStatus.is_todo`.
+  - `STATUS_CHAR` (Zustand → Zeichen) und `STATUS_OF_CHAR` (Zeichen → Zustand, liest auch `X`) sind die einzige Quelle der Checkbox-Zeichen. Parser, Merge-Regel und `status_key` nutzen sie.
+  - `ListItem.is_todo` delegiert an den Zustand.
+- **Edit (`core/edits.py`):** `set_status(doc, target, status)` ersetzt `set_done` ohne Wrapper (Präzedenz W7 R6). Grund: Das boolesche `set_done(False)` hätte einen `[-]` nicht wieder geöffnet. Dazu `NotesService.set_status`.
+- **Suche (`core/query.py`):** `StatusFilter.VERPASST`; eine Zuordnung `STATUS_OF_FILTER` statt zweier `if`s. `todo_list.STATUS_LABELS` wird jetzt aus `StatusFilter` gebildet (vorher doppelte Wörter).
+- **Merge (`core/merge/model.py`):** R1 ist jetzt Vorrang erledigt > verpasst > offen (`_PRECEDENCE`); `status_key` maskiert auch `[-]`.
+- **W8-Konfliktdialog:**
+  - `note_plan.Todo` hat `main_line`/`other_line` mit `main_status`/`other_status`/`merged_status` (Letzteres über `status_rule`, damit der Vorrang eine Quelle hat).
+  - `line(status)` liefert byte-genau die Zeile der Fassung mit diesem Zustand, sonst die Hauptdatei-Zeile mit dem Zeichen aus `STATUS_CHAR` (dritte Wahl).
+  - `NoteChoices.todos` speichert jetzt `TodoStatus`. Die Oberfläche bietet ☑ | ⊘ | ☐; Symbole und Wörter stammen aus `views.STATE_SYMBOL`/`STATE_WORD`/`STATE_CHOICES`, die Wörter aus `STATUS_OF_FILTER`.
+  - Die Zusammenfassung in der Entscheidung nennt nur Zustände mit Anzahl > 0.
+- **Ansicht:**
+  - `Row`/`HitRow` haben `status: TodoStatus | None`; `done` ist eine Property über `checkbox_value`.
+  - `hit_rows` nutzt `status.is_todo`. Vorher war `is_todo` dort nachgebaut, sodass `[-]` als Text „[-] x“ erschienen wäre.
+  - `ordering.rank` gilt nur für OPEN.
+- **Mobile:**
+  - `note_view.todo_line(…, status, …)` mit ⊘-Knopf (`style.MISSED_STYLE`), Durchstreichung (`MISSED_TEXT`) und Leiste nur bei OPEN; `_marked` heißt jetzt `marked` (für die Vorschauzeilen in P5).
+  - Flet 0.86.5 im Paket geprüft: `TextStyle.decoration` (Dataclass-Feld, die Signatur zeigt nur `**kwargs`), `TextDecoration.LINE_THROUGH`, `Icons.BLOCK`.
+- **Nebenwirkungen (gewollt, getestet):** `continue_list` setzt nach `- [-] x` mit `- [ ] ` fort; `toggle_todo` behandelt `[-]` als Todo. Tests, die `[-]` als Nicht-Todo nutzten, nehmen jetzt `[/]`.
+- **Tests:** `test_edits` (Übergänge, ungültige Ziele), `test_query` (VERPASST, `[/]`), `test_lexer_inline` (`is_todo`, Round-Trip der Zeichen-Tabellen), `test_merge` (Vorrang in beide Richtungen), `test_note_conflicts` (drei Zustände, dritte Wahl, erledigt > verpasst byte-genau), `test_todo_order` (Rang), `test_ampel_ui` (⊘, Durchstreichung, Tipp auf verpasst); volle Suite grün.
+
 ## 2026-11-20 – W9 P1: Altfunde zusammengeführt (Schreibschleife, eigene Konfliktdateien)
 
 - `NotesService._edit` ist jetzt eine dünne Hülle um `step_ops.run_step`. Damit gibt es nur noch eine Lesen–Planen–Schreiben-Schleife mit Neuplanung. Die Hülle ergänzt nur „fehlende Datei ohne `allow_missing` → `StaleTargetError`“, das Vergessen des Caches und `WriteResult("", "DONE")` bei „nichts zu tun“. Die doppelte Konstante `notes_service.MAX_REPLANS` ist entfernt.

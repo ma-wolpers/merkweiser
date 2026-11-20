@@ -16,7 +16,7 @@ from ..core.inline import TodoStatus, Urgency, find_tags
 from ..core.outline import Node, NodeKind
 from ..core.patch import Target
 from ..core.move_plan import MoveContext
-from ..core.query import Filter, Hit
+from ..core.query import STATUS_OF_FILTER, Filter, Hit
 from ..core.tags import tag_from_input
 from ..core.topics import is_empty_topic
 
@@ -29,7 +29,7 @@ class Row:
         kind: ``topic``, ``item``, ``todo`` oder ``other``.
         text: Anzeigetext der ersten Zeile (Marker und Checkbox entfernt).
         depth: Einrückungstiefe im Baum (0 = oberste Ebene).
-        done: Erledigt-Status bei Todos, sonst ``None``.
+        status: Todo-Zustand (offen/erledigt/verpasst) bei Todos, sonst ``None``.
         urgency: Dringlichkeitsstufe (``Urgency``).
         tags: Effektive Tags (sortiert).
         target: Adresse der ersten Zeile (für Aktionen) oder ``None``.
@@ -44,12 +44,42 @@ class Row:
     kind: str
     text: str
     depth: int
-    done: bool | None
+    status: TodoStatus | None
     urgency: Urgency
     tags: tuple[str, ...]
     target: Target | None
     more: tuple[str, ...] = ()
     empty_topic: bool = False
+
+    @property
+    def done(self) -> bool | None:
+        """Wert der Checkbox (``checkbox_value``)."""
+        return checkbox_value(self.status)
+
+
+def checkbox_value(status: TodoStatus | None) -> bool | None:
+    """Checkbox-Wert eines Todo-Zustands: erledigt → ``True``, offen/verpasst → ``False``.
+
+    Die Checkbox kennt nur erledigt/offen; „verpasst“ zeigt die Oberfläche
+    zusätzlich über ⊘ und Durchstreichung (W9).
+
+    Args:
+        status: Zustand oder ``None`` (kein Todo).
+
+    Returns:
+        ``True``/``False`` bei Todos, ``None`` sonst.
+    """
+    return None if status is None else status is TodoStatus.DONE
+
+
+STATE_SYMBOL: dict[TodoStatus, str] = {TodoStatus.OPEN: "☐", TodoStatus.DONE: "☑", TodoStatus.MISSED: "⊘"}
+"""Einzige Quelle Symbol je Todo-Zustand (Konfliktdialog, Zusammenfassungen)."""
+
+STATE_WORD: dict[TodoStatus, str] = {status: f.value for f, status in STATUS_OF_FILTER.items()}
+"""Wort je Todo-Zustand (offen/erledigt/verpasst), abgeleitet aus den Status-Filter-Werten."""
+
+STATE_CHOICES: tuple[TodoStatus, ...] = (TodoStatus.DONE, TodoStatus.MISSED, TodoStatus.OPEN)
+"""Wählbare Todo-Zustände in Anzeigereihenfolge (Konfliktdialog W8/W9)."""
 
 
 EMPTY_TOPIC_LABEL = "kein Thema"
@@ -76,7 +106,7 @@ def note_rows(relpath: str, doc: Document, note: ParsedNote) -> list[Row]:
         empty = node.kind is NodeKind.TOPIC and is_empty_topic(line)
         rows.append(Row(kind="todo" if is_todo else node.kind.value,
                         text=empty_topic_text(line) if empty else display_text(line, node),
-                        depth=_depth(note, node), done=(item.status is TodoStatus.DONE) if is_todo else None,
+                        depth=_depth(note, node), status=item.status if is_todo else None,
                         urgency=item.urgency if item else Urgency.NONE, tags=tuple(sorted(note.tags[node.index].effective)),
                         target=Target(relpath, node.lines[0], line), more=_more_lines(doc, node),
                         empty_topic=empty))
@@ -146,7 +176,7 @@ class HitRow:
         text: Inhalt ohne Marker und Checkbox (Dringlichkeits-Markierung noch
             enthalten; die Anzeige nutzt ``inline.strip_urgency``).
         context: Kontextpfad (Thema › Eltern-Punkte).
-        done: Erledigt-Status bei Todos, sonst ``None``.
+        status: Todo-Zustand (offen/erledigt/verpasst) bei Todos, sonst ``None``.
         urgency: Dringlichkeitsstufe.
         target: Adresse der Zeile.
     """
@@ -154,9 +184,14 @@ class HitRow:
     day: str
     text: str
     context: str
-    done: bool | None
+    status: TodoStatus | None
     urgency: Urgency
     target: Target
+
+    @property
+    def done(self) -> bool | None:
+        """Wert der Checkbox (``checkbox_value``)."""
+        return checkbox_value(self.status)
 
 
 def hit_rows(hits: list[Hit]) -> list[HitRow]:
@@ -170,14 +205,14 @@ def hit_rows(hits: list[Hit]) -> list[HitRow]:
     """
     rows = []
     for hit in hits:
-        is_todo = hit.status in (TodoStatus.OPEN, TodoStatus.DONE)
+        is_todo = hit.status.is_todo
         text = hit.text.strip()
         if is_todo:
             text = text.split("]", 1)[1].strip() if "]" in text else text
         elif text[:2] in ("- ", "* ", "+ "):
             text = text[2:].strip()
         rows.append(HitRow(day=hit.day.isoformat(), text=text, context=" › ".join(hit.context),
-                           done=(hit.status is TodoStatus.DONE) if is_todo else None, urgency=hit.urgency,
+                           status=hit.status if is_todo else None, urgency=hit.urgency,
                            target=Target(hit.relpath, hit.line_no, hit.text)))
     return rows
 

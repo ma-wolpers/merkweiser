@@ -7,6 +7,7 @@ import pytest
 
 from merkweiser.app.notes_service import MoveTag, NotesService, ProjectConflictError, SameDayMoveError
 from merkweiser.app.settings import Settings, load_settings, save_settings
+from merkweiser.core.inline import TodoStatus
 from merkweiser.core.patch import Target
 from merkweiser.core.query import Filter, StatusFilter, TextQuery
 from tests.fakes import FakeClock
@@ -68,7 +69,7 @@ def test_search_and_set_done_roundtrip(tmp_path: Path) -> None:
     (svc.root / "2026-01-02.md").write_bytes(b"Uni #uni\n- [ ] Lernen\n")
     svc.start()
     [hit] = svc.search(Filter(text=TextQuery("lernen"), nur_todos=True))
-    svc.set_done(Target(hit.relpath, hit.line_no, hit.text), True)
+    svc.set_status(Target(hit.relpath, hit.line_no, hit.text), TodoStatus.DONE)
     settle(svc)
     done = svc.search(Filter(status=StatusFilter.ERLEDIGT))
     assert [h.text for h in done] == ["- [x] Lernen"] and done[0].tags == ("uni",)
