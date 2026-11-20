@@ -16,11 +16,15 @@ import hashlib
 import json
 import secrets
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..ports.clock import Clock
 from .appdata import VaultData, write_json_atomic
 from .fsops import FsOps
 from .vault import DECIDED_SUFFIX, OWN_DEVICE_PREFIX, parse_conflict_name
+
+if TYPE_CHECKING:  # safe_write importiert dieses Modul; nur für die Typangabe
+    from .safe_write import Writer
 
 
 def sha1(data: bytes) -> str:
@@ -156,3 +160,40 @@ def read_sidecar(data: VaultData, conflict_relpath: str, current_sha1: str) -> d
         return None
     payload = json.loads(path.read_text(encoding="utf-8"))
     return payload if payload.get("konflikt_sha1") == current_sha1 else None
+
+
+def create_own_conflict(writer: Writer, relpath: str, content: bytes, base: bytes | None,
+                        origin: str | None = None, reuse: bool = False) -> tuple[str, str | None]:
+    """Legt ``content`` als eigene Konfliktdatei an, mit Sidecar-Basis, wenn ``base`` bekannt ist.
+
+    Einzige Quelle für die Folge „Konfliktdatei exklusiv anlegen →
+    ``konfliktbasis``-Op mit den Basis-Bytes → Sidecar“. Genutzt von
+    ``NotesService.replace_note_text`` (Notiz nicht mehr eindeutig),
+    ``backups`` (nicht eindeutiges Rückgängig) und dem Rohtext-Editor der
+    Routinen (W9). Der Merge kann die Konfliktdatei dann per diff3 gegen die
+    Basis einbringen.
+
+    Args:
+        writer: Writer des Vaults (liefert Dateisystem, Uhr, Op-Store und App-Daten).
+        relpath: Hauptdatei relativ zum Vault.
+        content: Merkweisers Fassung (Inhalt der Konfliktdatei).
+        base: Planungsstand, gegen den ``content`` entstanden ist, oder ``None``
+            (dann kein Sidecar; der Merge behandelt die Datei wie eine fremde Version).
+        origin: Herkunft im Sidecar, z. B. ``UNDO_ORIGIN``.
+        reuse: ``True`` → eine schon vorhandene eigene Konfliktdatei mit genau
+            diesem Inhalt wiederverwenden (idempotent bei Wiederholung).
+
+    Returns:
+        ``(konflikt_relpath, basis_op_id)``; ``basis_op_id`` ist ``None`` ohne Basis.
+    """
+    main = writer.root / relpath
+    path = (find_with_content(main, content) if reuse else None) or create_from_bytes(
+        writer.fs, main, content, writer.clock)
+    conflict_rel = writer.rel(path)
+    if base is None:
+        return conflict_rel, None
+    basis = writer.store.create("konfliktbasis", {"relpath": relpath}, {"vorher": base})
+    basis.set_state("DONE")
+    basis.release()
+    write_sidecar(writer.data, conflict_rel, sha1(content), relpath, basis.id, sha1(base), origin)
+    return conflict_rel, basis.id

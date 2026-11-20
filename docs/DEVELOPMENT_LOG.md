@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-20 – W9 P1: Altfunde zusammengeführt (Schreibschleife, eigene Konfliktdateien)
+
+- `NotesService._edit` ist jetzt eine dünne Hülle um `step_ops.run_step`. Damit gibt es nur noch eine Lesen–Planen–Schreiben-Schleife mit Neuplanung. Die Hülle ergänzt nur „fehlende Datei ohne `allow_missing` → `StaleTargetError`“, das Vergessen des Caches und `WriteResult("", "DONE")` bei „nichts zu tun“. Die doppelte Konstante `notes_service.MAX_REPLANS` ist entfernt.
+- Neu: `conflict_files.create_own_conflict(writer, relpath, content, base, origin, reuse)` als einzige Quelle für „Konfliktdatei anlegen → `konfliktbasis`-Op → Sidecar“. Es ersetzt die Kopien in `NotesService.replace_note_text` und `backups._as_conflict`; Letzteres braucht `store` nicht mehr. Verhalten unverändert: `reuse=True` nur beim Rückgängig. Der Rohtext-Editor der Routinen (P7) nutzt die Funktion ebenfalls.
+- Tests: `tests/core/test_conflict_files.py` (4); volle Suite grün.
+
 ## 2026-11-20 – W9 P0: Plan Routinen und Status „verpasst“
 
 - Planrunde 2026-11-17/18 (sechs Fragerunden mit dem Nutzer) als Abschnitt W9 in `PLAN-SPAETERE-SCHRITTE.md` übernommen: verbindliche Entscheidungen, Design, Risiken, Commit-Tabelle P0–P7.

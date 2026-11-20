@@ -1164,7 +1164,7 @@ Wiederkehrende Todos (täglich, werktags, wöchentlich, alle n Tage/Wochen, mona
 | # | Inhalt | Stand |
 |---|---|---|
 | P0 | Dieser Plan, Änderungen in `PLAN.md` | erledigt |
-| P1 | Altfunde: `_edit` → `run_step`, `create_own_conflict` | offen |
+| P1 | Altfunde: `_edit` → `run_step`, `create_own_conflict` | erledigt |
 | P2 | Status „verpasst“ überall (Grammatik, Edits, Suche, Merge, Ansicht, ⊘, Filter) | offen |
 | P3 | Reiner Kern: `rhythm`, `routines`, `set_keys`, `topic_notes`, `insert_under_topic` | offen |
 | P4 | Durchlauf: Eintragen, Nachholen, Ablauf, Merkpunkt | offen |

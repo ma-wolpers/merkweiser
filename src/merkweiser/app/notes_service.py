@@ -2,7 +2,7 @@
 
 Bündelt Lesen (Tagesansicht, Todos, Suche, Konflikte) und alle Aktionen. Jede
 Aktion folgt demselben Muster: Datei frisch lesen → Operation planen →
-``Writer.write`` → bei ``ChangedBeforeWriteError`` bis zu 3-mal neu planen,
+``step_ops.run_step`` (``Writer.write``, bei ``ChangedBeforeWriteError`` bis zu 3-mal neu planen),
 danach ``StaleTargetError`` (die UI lädt neu und meldet es).
 
 ``start()`` führt die feste Startreihenfolge aus: Tausch-Wiederherstellung →
@@ -45,6 +45,7 @@ from ..core.recovery import RecoveryReport, recover
 from ..core.resolve import ResolveOutcome, discard, manual_only_paths, recover_resolves, resolve
 from ..core.retention import prune_ops, prune_sidecars
 from ..core.safe_write import ChangedBeforeWriteError, WriteResult, Writer
+from ..core.step_ops import run_step
 from ..core.vault import DayPattern, VaultIndex, scan, write_target
 from ..core.watch import Changes, State, observe, poll
 from ..ports.clock import Clock
@@ -52,7 +53,6 @@ from .settings import Settings
 from .time_state import load_state
 from .views import NoteRef
 
-MAX_REPLANS = 3
 READ_ONLY_GUARANTEE = "keine (schreibgeschützt)"
 #: Entscheidungstext beim automatischen Verwerfen leerer Versionen (Backups, Op-Manifest).
 EMPTY_VERSION_DECISION = "Leere Konfliktversion automatisch verworfen (Hauptdatei fehlte)"
@@ -438,14 +438,9 @@ class NotesService:
             return self._edit(relpath, lambda doc: replace_note_text(doc, original, text))
         except NoteNotFoundError:
             ours = replace_note_text(self._parse(planned_raw), original, text)
-            base = self.store.create("konfliktbasis", {"relpath": relpath}, {"vorher": planned_raw})
-            base.set_state("DONE")
-            base.release()
-            path = cf.create_from_bytes(self.fs, self.root / relpath, ours, self.clock)
-            rel = self.writer.rel(path)
-            cf.write_sidecar(self.data, rel, cf.sha1(ours), relpath, base.id, cf.sha1(planned_raw))
+            rel, base_id = cf.create_own_conflict(self.writer, relpath, ours, planned_raw)
             self.rescan()
-            return WriteResult(base.id, "CONFLICTED", [rel])
+            return WriteResult(base_id or "", "CONFLICTED", [rel])
 
     def note_of(self, target: Target) -> tuple[Document, ParsedNote] | None:
         """Die Notiz, die das Todo an ``target`` enthält – frisch aufgelöst (Notiz-Unterseite, W7).
@@ -632,19 +627,30 @@ class NotesService:
         return parse_document(raw, self.settings.project_prefix)
 
     def _edit(self, relpath: str, build: Callable[[Document], bytes], allow_missing: bool = False) -> WriteResult:
-        """Lesen → planen → schreiben, bei externer Änderung bis zu 3-mal neu planen."""
-        path = self.root / relpath
-        for _attempt in range(MAX_REPLANS):
-            before = path.read_bytes() if path.exists() else None
+        """Lesen → planen → schreiben über die eine Schreibschleife ``step_ops.run_step``.
+
+        ``run_step`` plant bei externer Änderung bis zu ``MAX_REPLANS``-mal neu.
+        Diese Hülle ergänzt nur, was die Einzel-Edits der Oberfläche brauchen.
+
+        Args:
+            relpath: Datei relativ zum Vault.
+            build: ``dokument → neue Bytes`` auf dem frisch gelesenen Stand.
+            allow_missing: ``True`` → eine fehlende Datei wird angelegt
+                (``append_note``); sonst ist sie ein veraltetes Ziel.
+
+        Returns:
+            Ergebnis des Schreibvorgangs; ``WriteResult("", "DONE")``, wenn
+            ``build`` nichts geändert hat.
+
+        Raises:
+            StaleTargetError: Datei fehlt (ohne ``allow_missing``), Ziel veraltet
+                oder wiederholt extern geändert.
+        """
+        def plan(doc: Document, before: bytes | None) -> bytes:
             if before is None and not allow_missing:
                 raise StaleTargetError(f"{relpath} existiert nicht mehr")
-            after = build(self._parse(before or b""))
-            if after == before:
-                return WriteResult("", "DONE")
-            try:
-                result = self.writer.write(relpath, before, after)
-            except ChangedBeforeWriteError:
-                continue
-            self.cache.forget(relpath)
-            return result
-        raise StaleTargetError(f"{relpath} wurde wiederholt extern geändert")
+            return build(doc)
+
+        result = run_step(self.writer, None, relpath, self.settings.project_prefix, plan)
+        self.cache.forget(relpath)
+        return result or WriteResult("", "DONE")

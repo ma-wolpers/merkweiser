@@ -238,7 +238,7 @@ def _continue(writer: Writer, store: OpStore, op, prefix: str) -> UndoPlan:
         return UndoPlan("schreiben")
     base = None if m["ziel_art"] == "verdrängt" else (after or b"")
     if base is None or op.state().get("konfliktdatei"):
-        return _as_conflict(writer, store, op, before or b"", base)
+        return _as_conflict(writer, op, before or b"", base)
     outcome: dict[str, UndoPlan] = {}
 
     def build(_doc, raw: bytes | None):
@@ -250,29 +250,22 @@ def _continue(writer: Writer, store: OpStore, op, prefix: str) -> UndoPlan:
     try:
         run_step(writer, op, rel, prefix, build)
     except UndoConflict:
-        return _as_conflict(writer, store, op, before or b"", base)
+        return _as_conflict(writer, op, before or b"", base)
     result = outcome["plan"]
     restored = rel if result.action == "schreiben" and parse_conflict_name(rel) else None
     finish(op, ergebnis=result.action, nur_manuell=[restored] if restored else [])
     return result
 
 
-def _as_conflict(writer: Writer, store: OpStore, op, content: bytes, base: bytes | None) -> UndoPlan:
+def _as_conflict(writer: Writer, op, content: bytes, base: bytes | None) -> UndoPlan:
     """Legt ``content`` als eigene Konfliktdatei an (mit Sidecar-Basis, falls ``base`` gegeben).
 
     Idempotent: Existiert schon eine Konfliktdatei mit genau diesem Inhalt, wird
     keine zweite angelegt.
     """
-    rel = op.manifest["relpath"]
-    main = writer.root / rel
     op.set_state(op.state().get("zustand", "PREPARED"), konfliktdatei=True)
-    path = cf.find_with_content(main, content) or cf.create_from_bytes(writer.fs, main, content, writer.clock)
-    conflict_rel = writer.rel(path)
-    if base is not None:
-        basis = store.create("konfliktbasis", {"relpath": rel}, {"vorher": base})
-        basis.set_state("DONE")
-        basis.release()
-        cf.write_sidecar(writer.data, conflict_rel, cf.sha1(content), rel, basis.id, cf.sha1(base), cf.UNDO_ORIGIN)
+    conflict_rel, _base_id = cf.create_own_conflict(writer, op.manifest["relpath"], content, base,
+                                                    cf.UNDO_ORIGIN, reuse=True)
     finish(op, ergebnis="konflikt", konflikte=[conflict_rel])
     return UndoPlan("konflikt")
 
