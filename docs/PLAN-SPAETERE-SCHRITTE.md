@@ -1091,3 +1091,83 @@ Ursachen: Entscheidungen gab es nur für die ganze Datei bzw. je diff3-Hunk. Zu 
 ### Abweichung bei der Umsetzung (C6)
 
 Statt einzelne Controls per `refresh` nachzuzeichnen, zeichnet jede Wahl die Seite per `app.render()` neu; die Wahl liegt je Fall (Pfad + Inhalt beider Fassungen) in der App. So können „Noch offen“ und der Übernehmen-Knopf nicht auseinanderlaufen. Tippen im Bearbeiten-Feld zeichnet nicht neu (Fokus bleibt).
+
+## W9 – Routinen (wiederkehrende Todos) und Status „verpasst“ (Planung 2026-11-17/18, freigegeben)
+
+### Context
+
+Wiederkehrende Todos (täglich, werktags, wöchentlich, alle n Tage/Wochen, monatlich, jährlich, mit Ampel) sollen in einer Markdown-Datei im Vault stehen und in der App bearbeitbar sein. Fällige Instanzen erscheinen zusammen mit allen anderen Todos und landen in der passenden Tagesdatei. Grundsatz: Die Markdown-Dateien bleiben die einzige Wahrheit; es gibt keine versteckten IDs. Dazu kommt der neue Todo-Zustand **„verpasst“ `[-]`**, der für alle Todos gilt.
+
+### Verbindliche Nutzerentscheidungen (2026-11-17/18)
+
+1. **Datei `Routinen.md` im Vault-Root** (fester Name). Alles vor der ersten `## `-Überschrift ist freier Doku-Text, den der Parser ignoriert; beim Anlegen schreibt die App eine kurze Erklärung hinein.
+   - Überschrift = Rhythmus: `## täglich`, `## werktags`, `## wöchentlich Di, Do`, `## alle 3 Tage ab 17.11.2026`, `## alle 2 Wochen Mo ab 16.11.2026`, `## monatlich 1., 15.` (auch mehrere Tage), `## jährlich 15.09.`.
+   - Optionen in Klammern: `(Frist N Tage)`, `(auch in Pausen)`.
+   - **Tags in der Überschrift werden an die Regeln darunter vererbt.**
+   - `## Pausen` mit Zeilen `- TT.MM.JJJJ bis TT.MM.JJJJ` (oder ein einzelner Tag).
+   - Regelzeilen haben die Form `- [ ] Text` und folgen der Todo-Grammatik (Ampel, Tags). **`- [x]` bedeutet: Regel pausiert.**
+2. **Eintragen am Fälligkeitstag** (beim Start bzw. Poll): `- [ ] Text #wdh` in die Tagesdatei, in eine **Notiz je Regel-Überschrift**. Thema der Notiz ist der Rhythmus-Teil der Überschrift ohne Klammer und ohne Tags. Danach ist die Instanz ein gewöhnliches Todo.
+3. **Merkpunkt** `eingetragen_bis: JJJJ-MM-TT` im Frontmatter von `Routinen.md`.
+   - Ohne Merkpunkt wird ab heute eingetragen.
+   - Gelöschte oder verschobene Instanzen entstehen nicht neu.
+   - Beim Merge zweier Fassungen gewinnt der spätere Tag.
+4. **Frist:** Ohne Angabe gilt eine Instanz, bis die nächste Instanz derselben Regel fällig wird; Pausen werden dabei übersprungen. Mit `(Frist N Tage)` gilt die Instanz am Fälligkeitstag und den folgenden Tagen, insgesamt N Tage. Danach wird sie **automatisch `[-]`**. Das gilt nur für offene Todos mit (auch geerbtem) `#wdh` in einer Notiz, deren Thema sich als Rhythmus lesen lässt.
+5. **Lückenlos nachholen:** Abgelaufene, nie eingetragene Instanzen werden direkt als `- [-] … #wdh` geschrieben.
+6. **Pausen** gelten für alle Überschriften außer denen mit `(auch in Pausen)`.
+7. **„Verpasst“ für alle Todos:** manuell über ein ⊘-Symbol neben dem Stern (schaltet zwischen offen und verpasst; auch erledigt → verpasst ist erlaubt). Die Checkbox bleibt offen/erledigt. Der Status-Filter bekommt „verpasst“, Standard bleibt „offen“. Verpasste Todos werden durchgestrichen und grau angezeigt.
+8. **Merge:** erledigt > verpasst > offen, automatisch. Im Konfliktdialog gibt es eine dritte Wahl.
+9. **Vorschau** kommender Instanzen unter „Zukünftig“, markiert mit 🔁.
+   - **Vorzeitiges Abhaken** schreibt `[x]` sofort in die Datei des Fälligkeitstags.
+   - Die Vorschau-Länge ist in den Einstellungen wählbar (Standard 7 Tage, 1–31).
+   - Die Morgen-Benachrichtigung enthält die Instanzen ihres Tages.
+10. **Editor in zwei Formen:** eine Formular-Seite „Routinen“ und „Als Text bearbeiten“.
+    - Die Formular-Seite öffnet ein 🔁-Knopf im Kopf des Todos-Tabs; ein Tipp auf eine Vorschauzeile öffnet die Regel.
+    - „Als Text bearbeiten“ prüft den Text, warnt bei Fehlern und bietet „Trotzdem speichern“.
+    - Eine neue Regel, die heute fällig ist, bekommt den Schalter „Heute schon eintragen“; er ist dann eingeschaltet.
+11. **Altfunde zusammenführen:** `NotesService._edit` nutzt `step_ops.run_step`. Die Folge „eigener Konflikt + Sidecar“ wird eine Kernfunktion.
+12. Von mir festgelegt, vom Nutzer jederzeit kippbar:
+    - `set_status` ersetzt `set_done` (Präzedenz W7 R6, kein Wrapper).
+    - `#wdh` darf geerbt sein.
+    - Die Benachrichtigung zeigt ablaufende `#wdh`-Todos normal an.
+
+### Design (Kurzfassung)
+
+- **`core/rhythm.py`:** Rhythmus-Grammatik, `is_due`, `next_due`, kanonische Schreibweise. `WEEKDAYS` zieht von `app/views.py` hierher um.
+- **`core/routines.py`:** Modell und Parser von `Routinen.md`.
+  - `occurrences(rf, day)` ist die **eine** Quelle für Eintrager, Vorschau und Benachrichtigung.
+  - Außerdem `expires_on`, `expiry_for`, `instance_line` und `instance_key`.
+- **`core/routine_days.py`:** reine Planung auf Tagesdateien: `present`, `plan_day`, `expire_lines`.
+- **`core/routine_edit.py`:** minimale Zeilen-Edits für den Formular-Editor, adressiert über `patch.Target`.
+- **`app/routine_service.py`:** Durchlauf `run_due`/`on_poll`, vorzeitiges Abhaken, Regel-Edits.
+- **`app/routine_preview.py`:** Vorschauzeilen. Sie entstehen aus einem synthetischen Dokument, gefiltert mit demselben `query.search`.
+- **`app/routine_views.py`:** UI-neutrales Formularmodell.
+- **`mobile/ui/routine_view.py`**, **`mobile/ui/routine_dialog.py`**: Routinen-Seite und Regel-Dialog.
+- **Gemeinsame Schreibwege:** Alle Schreibzugriffe laufen über `step_ops.run_step`. Die Instanz-Notiz entsteht über `move_plan.plan_target`/`insert_moved` (neuer Wrapper `insert_under_topic`). Der Merkpunkt wird mit `frontmatter.set_keys` geschrieben, das aus `_edits` extrahiert wird.
+- **Durchlauf:**
+  - Wird übersprungen bei Schreibschutz, offenem Konflikt auf `Routinen.md`, nicht beschreibbarem Kopf oder „in Bearbeitung“.
+  - Läuft Tag für Tag von `eingetragen_bis + 1` bis heute, höchstens 31 Tage je Durchlauf. Danach folgt der Ablauf der fälligen Instanzen.
+  - Der Merkpunkt wird nur vorwärts und nur bei unveränderten Regeln fortgeschrieben.
+  - `AmbiguousDayFile` bzw. ein Konflikt → Problem melden, Abbruch am zusammenhängenden Präfix.
+  - Idempotent durch `present()` und den Merkpunkt.
+- **Vorschauzeilen:** `HitRow.target` ist bei ihnen `None`, `HitRow.preview` gesetzt. Es gibt genau eine Weiche in der Oberfläche (`tabs._hit`).
+
+### Risiken und Grenzen
+
+- Nach langer Pause entstehen viele Tagesdateien, die nur `[-]`-Zeilen enthalten (gewollt: lückenlos).
+- Mit zwei Merkweiser-Geräten sind doppelte Instanzen möglich.
+- Bereits vorhandene `[-]`-Zeilen (Obsidian Tasks: „abgebrochen“) werden zu „verpasst“.
+- `GRENZE`: Wer das Thema einer Instanz-Notiz von Hand ändert, verliert für diese Notiz Erkennung und Ablauf.
+- Vier Symbole je Todo-Zeile sind auf dem Handy eng; das wird auf dem Gerät geprüft.
+
+### Commits
+
+| # | Inhalt | Stand |
+|---|---|---|
+| P0 | Dieser Plan, Änderungen in `PLAN.md` | erledigt |
+| P1 | Altfunde: `_edit` → `run_step`, `create_own_conflict` | offen |
+| P2 | Status „verpasst“ überall (Grammatik, Edits, Suche, Merge, Ansicht, ⊘, Filter) | offen |
+| P3 | Reiner Kern: `rhythm`, `routines`, `set_keys`, `topic_notes`, `insert_under_topic` | offen |
+| P4 | Durchlauf: Eintragen, Nachholen, Ablauf, Merkpunkt | offen |
+| P5 | Vorschau mit Einstellung, vorzeitiges Abhaken, Benachrichtigung | offen |
+| P6 | Formular-Editor | offen |
+| P7 | Rohtext-Editor, Kurzanleitung | offen |

@@ -43,6 +43,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
 | 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | umgesetzt (Phasen 0–7, signierte APK 2026-10-26); Gerätetest offen |
 | 13 | W8 Konflikte notizweise, Todo-Häkchen direkt, Versionen verwerfen, leere Versionen automatisch (Plan: `PLAN-SPAETERE-SCHRITTE.md` W8) | umgesetzt (C0–C6, kompakte Karten mit Farbfeldern, signierte APK 2026-11-13); Gerätetest offen |
+| 14 | W9 Routinen (`Routinen.md`, Eintragen am Fälligkeitstag mit `#wdh`, Vorschau, Editor) und Status „verpasst“ `[-]` für alle Todos (Plan: `PLAN-SPAETERE-SCHRITTE.md` W9) | in Arbeit (P0) |
 
 ## Context
 
@@ -107,7 +108,8 @@ Stand: Diese Fassung enthält vier externe Audits (2026-10-08/09). Alle frühere
 | Tag-Vererbung | Thema, Eltern-Listenpunkt (Einrückung) und umschließende Überschriften |
 | Erläuterungsabsatz | Text auf Ebene 0 *vor* dem ersten Listenpunkt gehört zum Thema. Text auf Ebene 0 *nach* Listenpunkten beginnt ein neues Thema. |
 | Überschriften | übergeordnete Vererbungsebene bis zur nächsten gleich- oder höherrangigen Überschrift |
-| Dateien und Datum | Ganzer Dateiname gegen das Muster, rekursive Suche. Dubletten werden angezeigt und markiert. Sonstige `.md` werden ignoriert. |
+| Dateien und Datum | Ganzer Dateiname gegen das Muster, rekursive Suche. Dubletten werden angezeigt und markiert. Sonstige `.md` werden ignoriert. *Geändert am 2026-11-18 auf Nutzerwunsch (W9):* Einzige Ausnahme ist `Routinen.md` im Vault-Root. Merkweiser liest sie als Regeldatei und schreibt den eigenen Frontmatter-Schlüssel `eingetragen_bis` hinein. Außerdem trägt Merkweiser fällige Routinen selbstständig als `- [ ] … #wdh` in Tagesdateien ein und setzt abgelaufene auf `[-]`. Das sind die ersten Schreibvorgänge ohne direkte Nutzeraktion; sie laufen über denselben Schreibweg mit Backup. |
+| Auto-Merge | *Geändert am 2026-11-18 auf Nutzerwunsch (W9):* Für Häkchen gilt der Vorrang **erledigt > verpasst > offen** (bisher nur „erledigt gewinnt“). |
 | Auto-Merge | Automatisch nur, wenn kein Inhalt verloren geht, plus **„erledigt gewinnt“**. Alles andere wird ein Konflikt mit vorausgewähltem Vorschlag. **Präzisiert am 2026-10-09 (Umsetzung):** Ohne verlässliche Basis (Union) werden beidseitig verschiedene Stellen automatisch zu „beide, A dann B“ (verlustfrei, im Auto-Merge-Protokoll mit Rückgängig; GRENZE: eine Umformulierung steht dann doppelt da). Konflikt-Hunks entstehen nur noch im 3-Wege-Fall. |
 | Eigene Konflikte | Eine Konfliktdatei im Vault im Syncthing-Format mit Gerätekennung `MERKWEISER…`. Der Name ist **kollisionssicher** (siehe unten). |
 | Backups | 30 Tage. Backups zu offenen Konflikten bleiben erhalten. |
@@ -223,7 +225,7 @@ merkweiser/
 | `blocks.py` | Frontmatter, Codeblöcke (opak), Trenner, `NoteSpan(first, last)`. **Alleinige Instanz für Notizgrenzen.** |
 | `lexer.py` | Gemeinsame Inline-Tokens (`CODE`, `LINK_URL`, `WIKILINK`, `HIGHLIGHT`, `TEXT`) mit Spalten-Spans |
 | `outline.py` | Zeilenklassen nach der Grammatik und Baum. Knoten verweisen auf Zeilen-Spans. |
-| `inline.py` | Checkbox (`[ ]`/`[x]`/`[X]`; `[-]` u. a. bleiben erhalten und gelten als normaler Punkt, `GRENZE`), dringend (Inhalt beginnt mit `==…==`; *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* zwei Stufen, `==…==` Gelb und `==🔴…==` Rot), Tags (nur in `TEXT`/`HIGHLIGHT`, nicht rein numerisch), Projekt-Tags über das Präfix |
+| `inline.py` | Checkbox (`[ ]`/`[x]`/`[X]`; `[-]` u. a. bleiben erhalten und gelten als normaler Punkt, `GRENZE`; *geändert am 2026-11-18 auf Nutzerwunsch (W9):* `[-]` ist ein Todo im Zustand „verpasst“), dringend (Inhalt beginnt mit `==…==`; *Geändert am 2026-10-26 auf Nutzerwunsch (W7):* zwei Stufen, `==…==` Gelb und `==🔴…==` Rot), Tags (nur in `TEXT`/`HIGHLIGHT`, nicht rein numerisch), Projekt-Tags über das Präfix |
 | `tags.py` | **Reine Auswertung:** effektiv = explizit ∪ Eltern-Punkt ∪ aktuelles Thema ∪ umschließende Überschriften |
 
 **Encoding (bewusst kleine Support-Menge):**
@@ -640,7 +642,7 @@ Sie ersetzt die einzelne Schattenkopie (Begründung siehe erstes Audit). Die Gru
   - **Verschiedene Filterarten werden UND-verknüpft.** Ein leeres Feld bedeutet keine Einschränkung.
   - `tags` werden gegen die **effektiven** Tags geprüft (inkl. Vererbung). Standard ist UND, umschaltbar auf ODER.
   - `projekt` wird gegen die effektiven Projekt-Tags geprüft.
-  - `status` (offen/erledigt/alle): Ist er gesetzt, kommen nur Todos in Frage. `[-]` und andere Status gelten nicht als Todo.
+  - `status` (offen/erledigt/alle): Ist er gesetzt, kommen nur Todos in Frage. `[-]` und andere Status gelten nicht als Todo. *Geändert am 2026-11-18 auf Nutzerwunsch (W9):* `[-]` ist ein Todo im Zustand „verpasst“, und der Filter kennt den Status „verpasst“. Andere Zeichen (`[/]`, `[?]` …) bleiben normale Punkte.
   - `dringend` (ja/nein/egal) bezieht sich auf Todos.
   - `text`: `TextQuery(muster, modus)`, **im Core definiert und auf beiden Plattformen identisch**. `TEILSTRING` (Standard) vergleicht per `casefold`, also ohne Groß-/Kleinschreibung. `REGEX` (ein expliziter Modus-Schalter auf Desktop **und** Mobile) nutzt `re.IGNORECASE`; ein ungültiges Muster → Fehleranzeige, keine Filterung. Die UIs reichen nur `muster` und `modus` durch.
   - `von`/`bis`: das Datum der Tagesdatei, inklusiv.

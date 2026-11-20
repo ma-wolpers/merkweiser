@@ -2,6 +2,15 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-20 – W9 P0: Plan Routinen und Status „verpasst“
+
+- Planrunde 2026-11-17/18 (sechs Fragerunden mit dem Nutzer) als Abschnitt W9 in `PLAN-SPAETERE-SCHRITTE.md` übernommen: verbindliche Entscheidungen, Design, Risiken, Commit-Tabelle P0–P7.
+- `PLAN.md`: Phase 14 in der Fortschrittstabelle. Ausdrückliche Änderungsvermerke („Geändert am 2026-11-18 auf Nutzerwunsch (W9)“) bei:
+  - Dateien und Datum: `Routinen.md` wird gelesen; die App trägt Routinen selbst ein.
+  - Auto-Merge: erledigt > verpasst > offen.
+  - Parser-Tabelle `inline.py`: `[-]` ist ein Todo.
+  - Suche: Status „verpasst“.
+
 ## 2026-11-13 – W8: APK
 
 - Signierte APK aus `ebe9efe` über `tools/build_apk.py` gebaut (Fingerabdruck per `apksigner` geprüft, `ANDROID_HOME` = `~/Android/sdk`) und nach `SyncSpike/merkweiser.apk` gelegt. Ein früherer Build während der Farbänderung wurde abgebrochen, damit keine halb bearbeiteten Dateien eingepackt werden.
