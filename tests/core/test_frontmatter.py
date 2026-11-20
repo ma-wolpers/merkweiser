@@ -135,3 +135,24 @@ def test_nfd_equals_nfc_and_casefold_duplicates() -> None:
     assert valid_activity(nfd) == "Café" and len(valid_activity(nfd)) == 4
     assert same_name("orga", "Orga") and same_name(nfd, "café") and not same_name("Orga", "Org")
     assert not is_valid("a:b") and is_valid("b")
+
+
+def test_set_keys_creates_updates_removes_and_keeps_rest() -> None:
+    """W9: ``set_keys`` legt Frontmatter an, ändert nur die eigene Zeile, entfernt sie wieder; CRLF bleibt."""
+    from merkweiser.core.frontmatter import set_keys
+    created = set_keys(b"# Routinen\n", {"eingetragen_bis": "2026-11-17"})
+    assert created == b"---\neingetragen_bis: 2026-11-17\n---\n# Routinen\n"
+    raw = b"---\r\ntags: [a]\r\neingetragen_bis: 2026-11-17\r\n---\r\nText\r\n"
+    assert set_keys(raw, {"eingetragen_bis": "2026-11-20"}) == raw.replace(b"11-17", b"11-20")
+    assert set_keys(raw, {"eingetragen_bis": "2026-11-17"}) == raw
+    assert set_keys(raw, {"eingetragen_bis": None}) == b"---\r\ntags: [a]\r\n---\r\nText\r\n"
+
+
+def test_set_keys_refuses_unsafe_heads() -> None:
+    """Undurchsichtig (auch doppelter Schlüssel), offen und mehrzeilige Werte werden abgelehnt."""
+    from merkweiser.core.frontmatter import set_keys
+    for raw in (b"---\n# Kommentar\n---\n", b"---\neingetragen_bis: a\neingetragen_bis: b\n---\n", b"---\nx: 1\n"):
+        with pytest.raises(FrontmatterError):
+            set_keys(raw, {"eingetragen_bis": "2026-11-17"})
+    with pytest.raises(ValueError):
+        set_keys(b"", {"eingetragen_bis": "a\nb"})

@@ -25,7 +25,7 @@ from ..core.frontmatter import OK, OPAQUE, OPEN, Damaged, Stamp, minutes, parse,
 from ..core.time_ops import discard_stamp, plan_rename_file, rename
 from ..core.timetrack import DayTotals, stale
 from .time_state import load_state
-from .views import WEEKDAYS
+from ..core.rhythm import WEEKDAYS
 
 if TYPE_CHECKING:
     from .notes_service import NotesService

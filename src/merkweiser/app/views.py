@@ -17,6 +17,7 @@ from ..core.outline import Node, NodeKind
 from ..core.patch import Target
 from ..core.move_plan import MoveContext
 from ..core.query import STATUS_OF_FILTER, Filter, Hit
+from ..core.rhythm import WEEKDAYS
 from ..core.tags import tag_from_input
 from ..core.topics import is_empty_topic
 
@@ -311,9 +312,6 @@ def next_urgency(level: Urgency) -> Urgency:
         Die Zielstufe.
     """
     return Urgency((int(level) + 1) % 3)
-
-
-WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 
 
 def day_label(day: date, today: date) -> str:

@@ -45,3 +45,12 @@ def test_topic_line_and_find_topic_note() -> None:
     assert find_topic_note(doc, "B") is None
     assert find_topic_note(doc, "C") is None
     assert find_topic_note(doc, "...") is None
+
+
+def test_topic_notes_lists_all_matches() -> None:
+    """W9: ``topic_notes`` liefert alle Notizen eines Themas; ``find_topic_note`` nur bei genau einer."""
+    from merkweiser.core.topics import topic_notes, without_tags
+    doc = parse_document(b"t\xc3\xa4glich\n- [ ] a\n\nAnderes\n- b\n\nt\xc3\xa4glich\n- [ ] c\n")
+    assert [n.index for n in topic_notes(doc, "täglich")] == [0, 2]
+    assert find_topic_note(doc, "täglich") is None and topic_notes(doc, "...") == []
+    assert without_tags("werktags #schule (Frist 2 Tage)") == "werktags  (Frist 2 Tage)"

@@ -1,7 +1,9 @@
 """YAML-Frontmatter: lesen und gezielt eigene Schlüssel ändern, ohne Fremdpakete (S5, PLAN-SPAETERE-SCHRITTE.md).
 
 Merkweiser ändert im Frontmatter **nur** ``zeit_<Tätigkeit>``, ``messung_start``
-und ``messung_taetigkeit``. Alles andere bleibt byte-genau (``patch.apply_edits``).
+und ``messung_taetigkeit`` (``set_own``) sowie, nur in ``Routinen.md``, den
+Merkpunkt ``eingetragen_bis`` (``set_keys``, W9). Alles andere bleibt
+byte-genau (``patch.apply_edits``).
 
 Unterstützte Struktur (alles andere gilt als **undurchsichtig**):
 
@@ -34,7 +36,7 @@ nächsten Schreiben zu einer Zeile.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -221,13 +223,56 @@ def set_own(raw: bytes, values: Mapping[str, int | None] | None = None, stamp: o
         FrontmatterError: undurchsichtig, offen, Encoding oder ein zu
             überschreibender eigener Wert ist beschädigt.
     """
+    return _write(raw, lambda fm: _desired(fm, values or {}, stamp))
+
+
+def set_keys(raw: bytes, values: Mapping[str, str | None]) -> bytes:
+    """Setzt bzw. entfernt einfache einzeilige Schlüssel ``schlüssel: wert``; alles andere bleibt byte-genau.
+
+    Für Merkweisers Schlüssel außerhalb der Zeiterfassung, z. B. den Merkpunkt
+    ``eingetragen_bis`` in ``Routinen.md`` (W9). Gleiche Sicherheitsregeln wie
+    ``set_own``: Bei undurchsichtigem oder offenem Kopf (auch bei doppeltem
+    Schlüssel) und bei nicht unterstütztem Encoding wird nichts geändert.
+
+    Args:
+        raw: Dateiinhalt (``b""`` für eine neue Datei).
+        values: ``{schlüssel: wert}``; ``None`` entfernt den Schlüssel. Werte
+            werden unverändert geschrieben und müssen einzeilig sein.
+
+    Returns:
+        Neue Bytes (unverändert, wenn nichts zu tun ist). Ohne Frontmatter
+        entsteht eines am Dateianfang.
+
+    Raises:
+        FrontmatterError: undurchsichtig, offen oder Encoding.
+        ValueError: Wert enthält einen Zeilenumbruch.
+    """
+    if any(value is not None and ("\n" in value or "\r" in value) for value in values.values()):
+        raise ValueError("Frontmatter-Werte müssen einzeilig sein")
+    return _write(raw, lambda _fm: {key: None if value is None else f"{key}: {value}" for key, value in values.items()})
+
+
+def _write(raw: bytes, plan: Callable[[Frontmatter], dict[str, str | None]]) -> bytes:
+    """Gemeinsamer Schreibkern von ``set_own`` und ``set_keys``.
+
+    Args:
+        raw: Dateiinhalt.
+        plan: ``frontmatter → {schlüssel: zeile_oder_None}`` (darf
+            ``FrontmatterError`` werfen, z. B. bei beschädigten eigenen Werten).
+
+    Returns:
+        Neue Bytes.
+
+    Raises:
+        FrontmatterError: undurchsichtig, offen oder Encoding.
+    """
     source = SourceText.from_bytes(raw)
     if not source.writable:
         raise FrontmatterError("Encoding nicht unterstützt")
     fm = parse(source)
     if fm.state in (OPAQUE, OPEN):
         raise FrontmatterError(f"Kopfbereich nicht sicher lesbar ({fm.reason}) – nichts geändert")
-    desired = _desired(fm, values or {}, stamp)
+    desired = plan(fm)
     if fm.state == NONE:
         lines = tuple(line for line in desired.values() if line)
         return raw if not lines else apply_edits(source, [LineEdit(0, 0, ("---", *lines, "---"))])

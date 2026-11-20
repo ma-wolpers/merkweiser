@@ -2,6 +2,20 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-20 – W9 P3: Reiner Kern der Routinen
+
+- Neu `core/rhythm.py` (Grammatik, `is_due`, `next_due`, kanonische Schreibweise mit Round-Trip) und `core/routines.py` (Parser von `Routinen.md`, `occurrences` als einzige Quelle der fälligen Instanzen, `expires_on`/`expiry_for`, `instance_line`/`instance_key`, `same_rules`). Noch ohne Schreibzugriff; den Durchlauf bringt P4.
+- Entscheidungen beim Umsetzen:
+  - Das Notiz-Thema der Instanzen ist die **kanonische** Rhythmus-Schreibweise und nicht die Überschrift wörtlich. Grund: stabil zusammenführbar, auch bei abweichender Schreibung, und für den Ablauf immer parsebar.
+  - `alle n Wochen` ohne Wochentag nimmt den Wochentag des Starttags.
+  - In Abschnitten werden Codeblöcke übersprungen. Freitext, eingerückte Punkte und `[-]` sind Fehler je Zeile.
+- `WEEKDAYS` zieht von `app/views.py` nach `core/rhythm.py`, weil der Core es braucht. `views`, `time_scan` und `time_view` importieren von dort.
+- Extrahiert, damit es eine Quelle bleibt:
+  - `frontmatter.set_keys`, mit gemeinsamem Kern `_write`, den auch `set_own` nutzt;
+  - `topics.topic_notes` (`find_topic_note` baut darauf auf) und das öffentliche `without_tags`;
+  - `move_plan.insert_under_topic`, ein Wrapper um `plan_target`/`insert_moved`: Instanzen landen wie verschobene Todos.
+- Tests: `test_rhythm.py` (40), `test_routines.py` (10), dazu `test_frontmatter` (`set_keys`), `test_topics` (`topic_notes`), `test_move_plan` (`insert_under_topic`) und `test_package` (neue Core-Module ohne UI-Importe); volle Suite grün.
+
 ## 2026-11-20 – W9 P2: Status „verpasst“ `[-]` für alle Todos
 
 - **Grammatik (`core/inline.py`):**

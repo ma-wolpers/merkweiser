@@ -120,6 +120,29 @@ Merkweiser ordnet jede Zeile einer Klasse zu (bei Überschneidung gewinnt die ob
   - Merkweiser schreibt **nie** Konfliktmarker in deine Notizen.
 - Hilfsdateien `.NAME.mw-*.tmp`/`.old`/`.partial` existieren nur während eines Schreibvorgangs. Trag `.*.mw-*` in die `.stignore` von Syncthing ein.
 
+## Routinen (`Routinen.md`, W9)
+
+Wiederkehrende Todos stehen in **einer** Datei `Routinen.md` im Notizordner (nicht in Unterordnern). Sie ist keine Tagesdatei. Grammatik (`core/rhythm.py`, `core/routines.py`):
+
+- **Doku-Block:** Alles vor der ersten Zeile, die mit `## ` beginnt, wird ignoriert (Platz für Erklärungen). Codeblöcke werden überall ignoriert.
+- **Überschrift = Rhythmus** (ohne Groß-/Kleinschreibung):
+
+  | Überschrift | fällig |
+  |---|---|
+  | `## täglich` | jeden Tag |
+  | `## werktags` | Mo–Fr (Feiertage über Pausen) |
+  | `## wöchentlich Di, Do` | an diesen Wochentagen (`Mo Di Mi Do Fr Sa So`, Komma oder Leerzeichen) |
+  | `## alle 3 Tage ab 17.11.2026` | ab dem Starttag jeden 3. Tag |
+  | `## alle 2 Wochen Mo ab 16.11.2026` | an den Wochentagen jeder 2. Woche; die Woche des Starttags zählt als erste (ohne Wochentag: der des Starttags) |
+  | `## monatlich 1., 15.` | an diesen Monatstagen; 29.–31. fallen in kürzeren Monaten auf den letzten Tag |
+  | `## jährlich 15.09.` | jedes Jahr an diesem Tag; 29.02. in Nicht-Schaltjahren am 28.02. |
+
+- **Optionen** in einer Klammer am Ende, getrennt durch Komma: `(Frist 3 Tage)` bzw. `(Frist 1 Tag)` = so viele Tage ab dem Fälligkeitstag gültig; ohne Frist gilt ein Todo, bis das nächste derselben Regel fällig wird. `(auch in Pausen)` = Pausen gelten für diese Überschrift nicht.
+- **Tags in der Überschrift** (z. B. `## werktags #schule`) gelten für alle Regeln darunter.
+- **Regeln:** `- [ ] Text` auf oberster Ebene, mit Ampel (`==…==`, `==🔴…==`) und Tags wie jedes Todo. `- [x] Text` = **pausiert** (erzeugt nichts). Andere Zeilen in einem Abschnitt (Freitext, eingerückte Punkte, `[-]`) sind Fehler; Merkweiser zeigt sie an und überspringt sie.
+- **Pausen:** unter `## Pausen` je Zeile `- TT.MM.JJJJ bis TT.MM.JJJJ` oder ein einzelner Tag `- TT.MM.JJJJ` (beide Tage einschließlich). An diesen Tagen entsteht nichts.
+- Eine unlesbare Überschrift (unbekannter Rhythmus, falsche Option) macht nur ihren Abschnitt ungültig.
+
 ## Zeiterfassung im Frontmatter
 
 Der Zeit-Tracker speichert Arbeitszeit in der Tagesdatei, flach und in ganzen Minuten:

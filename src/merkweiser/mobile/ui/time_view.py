@@ -26,7 +26,7 @@ import flet as ft
 from ...app import time_service as ts
 from ...app.nav import PageRef
 from ...app.time_scan import ScanResult, refresh
-from ...app.views import WEEKDAYS
+from ...core.rhythm import WEEKDAYS
 from ...core.activities import DEFAULT_ACTIVITY, is_valid
 from ...core.frontmatter import Stamp
 from ...core.time_ops import pending_booking

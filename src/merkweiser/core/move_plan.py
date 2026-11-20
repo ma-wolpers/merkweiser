@@ -201,6 +201,26 @@ def insert_moved(doc: Document, plan: MovePlan, ziel: dict) -> bytes:
     return apply_edits(doc.source, [LineEdit(first_item, first_item, explanation), LineEdit(end, end, rest)])
 
 
+def insert_under_topic(doc: Document, topic: str, lines: tuple[str, ...]) -> bytes:
+    """Fügt Todo-Zeilen unter einem Thema ein – nach derselben Regel wie beim Verschieben.
+
+    Gibt es genau eine Notiz mit diesem (zusammenführbaren) Thema, kommen die
+    Zeilen an ihr Ende; sonst entsteht eine neue Notiz ``topic`` + Zeilen am
+    Dateiende (``plan_target``/``insert_moved``). Genutzt von den Routinen
+    (W9), damit Instanzen genau so landen wie verschobene Todos.
+
+    Args:
+        doc: Aktuelles Dokument der Tagesdatei (auch leer).
+        topic: Themenzeile.
+        lines: Einzufügende Zeilen (Todos auf Ebene 0).
+
+    Returns:
+        Neue Bytes.
+    """
+    plan = MovePlan(BlockTarget("", 0, ()), tuple(lines), "todo", topic, topic_key(topic))
+    return insert_moved(doc, plan, plan_target(doc, plan))
+
+
 def moved_chunks(plan: MovePlan, ziel: dict) -> tuple[tuple[str, ...], ...]:
     """Die Zeilenfolgen, die ``insert_moved`` am Stück einfügt (für den Zielnachweis).
 

@@ -33,7 +33,7 @@ def topic_key(line: str) -> str:
     return line.strip().replace(_ELLIPSIS, EMPTY_TOPIC)
 
 
-def _without_tags(key: str) -> str:
+def without_tags(key: str) -> str:
     """Entfernt alle echten Tags (nicht in Code oder Links) aus einem Schlüssel.
 
     Args:
@@ -60,7 +60,7 @@ def is_empty_topic(line: str) -> bool:
         ``True`` für ``...``, ``…``, ``#a #b``, ``... #a``; ``False`` für Text
         und für ``#`` in Code oder Links.
     """
-    return _without_tags(topic_key(line)) in ("", EMPTY_TOPIC)
+    return without_tags(topic_key(line)) in ("", EMPTY_TOPIC)
 
 
 def is_tag_topic(line: str) -> bool:
@@ -115,7 +115,23 @@ def find_topic_note(doc: Document, key: str) -> ParsedNote | None:
         Die Notiz bei genau einem Treffer, sonst ``None``. Nicht
         zusammenführbare Schlüssel (reines ``...``) liefern immer ``None``.
     """
-    if not mergeable(key):
-        return None
-    hits = [n for n in doc.notes if (line := topic_line(doc, n)) is not None and topic_key(line) == key]
+    hits = topic_notes(doc, key)
     return hits[0] if len(hits) == 1 else None
+
+
+def topic_notes(doc: Document, key: str) -> list[ParsedNote]:
+    """Alle Notizen eines Dokuments mit diesem Themenschlüssel (Dateireihenfolge).
+
+    Grundlage von ``find_topic_note``; die Routinen (W9) prüfen damit, ob eine
+    Instanz in irgendeiner Notiz ihres Themas schon steht.
+
+    Args:
+        doc: Dokument.
+        key: Gesuchter Schlüssel (aus ``topic_key``).
+
+    Returns:
+        Die Notizen; leer für nicht zusammenführbare Schlüssel (reines ``...``).
+    """
+    if not mergeable(key):
+        return []
+    return [n for n in doc.notes if (line := topic_line(doc, n)) is not None and topic_key(line) == key]

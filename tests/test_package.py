@@ -20,7 +20,7 @@ def test_layer_packages_import_without_ui_frameworks() -> None:
     import sys
 
     modules = ("merkweiser.core", "merkweiser.ports", "merkweiser.app", "merkweiser.app.notes_service",
-               "merkweiser.app.views")
+               "merkweiser.app.views", "merkweiser.core.rhythm", "merkweiser.core.routines")
     code = (f"import sys, importlib; [importlib.import_module(n) for n in {modules!r}]; "
             "assert 'flet' not in sys.modules and 'tkinter' not in sys.modules")
     subprocess.run([sys.executable, "-c", code], check=True)

@@ -138,3 +138,14 @@ def test_moving_a_whole_note_removes_its_blank_gap() -> None:
     move = plan_move(source, Target("2026-10-08.md", 2, "- [ ] allein"))
     assert move.mode == "notiz"
     assert remove_moved_source(source, move) == "A\n\nB\n".encode()
+
+
+def test_insert_under_topic_merges_or_appends() -> None:
+    """W9: ``insert_under_topic`` hängt an die einzige Notiz des Themas, sonst neue Notiz am Ende."""
+    from merkweiser.core.move_plan import insert_under_topic
+    lines = ("- [ ] Mails #wdh",)
+    assert insert_under_topic(parse_document(b""), "täglich", lines) == "täglich\n- [ ] Mails #wdh\n".encode()
+    merged = insert_under_topic(parse_document("A\n- x\n\ntäglich\n- [x] alt #wdh\n".encode()), "täglich", lines)
+    assert merged == "A\n- x\n\ntäglich\n- [x] alt #wdh\n- [ ] Mails #wdh\n".encode()
+    twice = "täglich\n- a\n\ntäglich\n- b\n".encode()
+    assert insert_under_topic(parse_document(twice), "täglich", lines) == twice + "\ntäglich\n- [ ] Mails #wdh\n".encode()
