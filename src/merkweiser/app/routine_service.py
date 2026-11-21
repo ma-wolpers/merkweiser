@@ -33,7 +33,9 @@ from ..core.inline import TodoStatus, parse_list_item
 from ..core.patch import StaleTargetError, Target
 from ..core.query import Filter, StatusFilter
 from ..core.routine_days import expire_lines, missing, plan_day
-from ..core.routines import ROUTINES_FILE, UNTIL_KEY, WDH_TAG, RoutineFile, expiry_for, occurrences, parse_routines
+from ..core.routines import (ROUTINES_FILE, UNTIL_KEY, WDH_TAG, Occurrence, RoutineFile, expiry_for, occurrences,
+                             parse_routines)
+from ..core.safe_write import WriteResult
 from ..core.step_ops import run_step
 from ..core.topics import topic_line
 from ..core.vault import AmbiguousDayFile, write_target
@@ -114,6 +116,34 @@ def run_due(service: "NotesService") -> RoutineReport:
     except Exception as exc:  # GRENZE(W9): ein Fehler im Durchlauf darf Start und Poll nie abbrechen
         report.problems.append(f"Routinen übersprungen: {exc}")
     return report
+
+
+def check_preview(service: "NotesService", occ: Occurrence) -> WriteResult | None:
+    """Hakt eine Vorschau-Instanz vorzeitig ab: ``- [x] … #wdh`` sofort in die Datei ihres Tages.
+
+    Gleiche Platzierung wie beim Eintragen (``plan_day``); steht die Instanz
+    dort schon, passiert nichts. Am Fälligkeitstag erkennt der Durchlauf sie
+    über ``present`` und schreibt sie nicht noch einmal.
+
+    Args:
+        service: Geöffneter, beschreibbarer Service.
+        occ: Die Instanz aus ``HitRow.preview``.
+
+    Returns:
+        Ergebnis des Schreibvorgangs oder ``None`` (schon vorhanden).
+
+    Raises:
+        ReadOnlyVaultError: im Schreibschutz.
+        AmbiguousDayFile: mehrere Dateien für den Tag, keine eindeutig.
+    """
+    service.check_writable()
+    relpath = write_target(service.index, service.pattern, occ.day)
+    entry = [(occ.topic, occ.body, occ.line(TodoStatus.DONE))]
+    result = run_step(service.writer, None, relpath, service.settings.project_prefix,
+                      lambda doc, _raw: plan_day(doc, entry))
+    service.cache.forget(relpath)
+    service.rescan()
+    return result
 
 
 def on_poll(service: "NotesService", changes: Changes) -> RoutineReport | None:

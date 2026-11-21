@@ -13,6 +13,10 @@ Normale Todos früherer Tage und alle zukünftigen stehen nicht darin
 (Nutzerentscheidung 2026-10-26). 🔥 gibt es nur hier; die Datei behält
 ``==🔴…==``. Verschobene Todos stehen seit dem 2026-10-22 ohne Kopfzeile direkt
 in der Zieldatei und zählen damit zum Auslösetag.
+
+W9: Routinen-Instanzen, die am Auslösetag noch nicht eingetragen sind (der
+Termin ist im Voraus geplant), kommen aus derselben Vorschau wie im Tab
+„Todos“ (``routine_preview.preview_rows``) und zählen wie eingetragene.
 """
 
 from __future__ import annotations
@@ -24,6 +28,7 @@ from typing import TYPE_CHECKING
 from ..core.inline import Urgency, strip_urgency
 from ..core.query import Filter, StatusFilter
 from .ordering import rank, todo_groups
+from .routine_preview import preview_rows
 from .views import HitRow, hit_rows
 
 if TYPE_CHECKING:
@@ -61,7 +66,8 @@ def content(service: "NotesService", day: date) -> NotifyContent:
     Returns:
         Zeilen samt Zählung und Fett-Indizes.
     """
-    rows = hit_rows(service.search(Filter(nur_todos=True, status=StatusFilter.OFFEN, bis=day)))
+    wanted = Filter(nur_todos=True, status=StatusFilter.OFFEN, bis=day)
+    rows = hit_rows(service.search(wanted)) + preview_rows(service, wanted, service.clock.today(), last=day)
     groups = todo_groups(rows, day)
     past_yellow = [row for row in groups.past if rank(row) == Urgency.GELB]
     entries = ([(row, True) for row in groups.red] + [(row, False) for row in groups.today]

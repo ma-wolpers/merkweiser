@@ -13,6 +13,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
   - `- [x]`, um eine Regel zu pausieren.
 
   War die App ein paar Tage zu, trägt Merkweiser die verpassten Tage lückenlos nach. Der Start-Hinweis nennt, was passiert ist. Bis zu welchem Tag eingetragen ist, steht als `eingetragen_bis` oben in `Routinen.md`. Die Grammatik steht in `docs/FORMAT.md`. Einen Editor in der App gibt es noch nicht.
+- **Vorschau kommender Routinen:** Im Tab *Todos* erscheinen Routinen der nächsten 7 Tage unter „Zukünftig“ (Zeitraum *ab morgen* oder *alle Tage*), markiert mit 🔁 und dem Rhythmus. Rote stehen unter „Sehr dringend“. Hakst du eine ab, steht sie sofort als erledigt in der Datei ihres Tages und wird dort nicht noch einmal eingetragen. Die Morgen-Benachrichtigung enthält die Routinen ihres Tages, auch wenn sie im Voraus geplant ist.
 - **Todos als „verpasst“ markieren:** Das neue ⊘-Symbol neben dem Stern markiert ein Todo als verpasst (`- [-]` in der Datei). Es wird durchgestrichen und blass angezeigt, verliert die Ampel-Leiste und zählt nicht mehr als offen. Ein zweiter Tipp macht es wieder offen; die Checkbox bleibt erledigt/offen. Im Filter des Todos-Tabs gibt es den Status „verpasst“.
 
 ### Changed

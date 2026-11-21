@@ -96,3 +96,20 @@ def test_tap_on_missed_text_marks_done(tmp_path: Path) -> None:
     tap = next(c for c in _walk_all(tabs.day_view(app)) if isinstance(c, ft.GestureDetector))
     asyncio.run(tap.on_tap(None))
     assert path.read_text(encoding="utf-8").splitlines()[1] == "- [x] spät"
+
+
+def test_preview_line_is_marked_and_checks_early(tmp_path: Path) -> None:
+    """W9: Vorschauzeile mit 🔁, ohne Stern-/⊘-/Verschieben-Knöpfe; Häkchen schreibt ``[x]`` in die Datei des Tages."""
+    from merkweiser.app.todo_list import DEFAULT_FILTER
+    from merkweiser.mobile.ui.routine_view import ROUTINE_MARK
+    app = fake(tmp_path, {"Routinen.md": "## wöchentlich Fr\n- [ ] ==Einkauf==\n"})
+    app._todo_filter = {**DEFAULT_FILTER, "zeitraum": "zukünftig"}
+    controls = tabs.todos_view(app)
+    texts = [c.value or "".join(s.text for s in c.spans or []) for c in _walk_all(controls) if isinstance(c, ft.Text)]
+    assert f"{ROUTINE_MARK} 2026-01-16 · wöchentlich Fr" in texts and "Einkauf #wdh" in texts  # Tag als Span
+    assert not [c for c in _walk_all(controls) if isinstance(c, ft.IconButton)
+                and c.icon in (ft.Icons.BLOCK, ft.Icons.EVENT, ft.Icons.STAR, ft.Icons.STAR_BORDER)]
+    checkbox = next(c for c in _walk_all(controls) if isinstance(c, ft.Checkbox))
+    checkbox.value = True
+    asyncio.run(checkbox.on_change(SimpleNamespace(control=checkbox)))
+    assert (app.service.root / "2026-01-16.md").read_bytes().decode() == "wöchentlich Fr\n- [x] ==Einkauf== #wdh\n"

@@ -18,6 +18,7 @@ from ..core.patch import Target
 from ..core.move_plan import MoveContext
 from ..core.query import STATUS_OF_FILTER, Filter, Hit
 from ..core.rhythm import WEEKDAYS
+from ..core.routines import Occurrence
 from ..core.tags import tag_from_input
 from ..core.topics import is_empty_topic
 
@@ -179,7 +180,10 @@ class HitRow:
         context: Kontextpfad (Thema › Eltern-Punkte).
         status: Todo-Zustand (offen/erledigt/verpasst) bei Todos, sonst ``None``.
         urgency: Dringlichkeitsstufe.
-        target: Adresse der Zeile.
+        target: Adresse der Zeile; ``None`` bei einer Vorschauzeile.
+        preview: Kommende Routinen-Instanz (W9), die noch in keiner Tagesdatei
+            steht, sonst ``None``. Die Oberfläche zeichnet solche Zeilen an
+            genau einer Stelle anders (``routine_view.preview_line``).
     """
 
     day: str
@@ -187,7 +191,8 @@ class HitRow:
     context: str
     status: TodoStatus | None
     urgency: Urgency
-    target: Target
+    target: Target | None
+    preview: Occurrence | None = None
 
     @property
     def done(self) -> bool | None:

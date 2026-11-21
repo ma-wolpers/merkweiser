@@ -23,6 +23,7 @@ from ...core.query import Filter, TextMode, TextQuery
 from .date_pick import open_date_picker
 from .note_dialogs import new_note_dialog
 from .note_view import note_card, todo_line
+from .routine_view import preview_line
 from .todo_filter import filter_button
 
 if TYPE_CHECKING:
@@ -167,7 +168,14 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
 
 
 def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
-    """Ein Treffer mit Datum und Kontext; Todos sind abhakbar und öffnen per Knopf ihre Notiz (W7)."""
+    """Ein Treffer mit Datum und Kontext; Todos sind abhakbar und öffnen per Knopf ihre Notiz (W7).
+
+    Vorschauzeilen kommender Routinen (W9, ``row.preview``) zeichnet
+    ``routine_view.preview_line`` – die einzige Sonderbehandlung.
+    """
+    if row.preview is not None:
+        return preview_line(app, row)
+
     def open_note() -> None:
         app.open_page(PageRef("notiz", note_arg(row.target)))
 

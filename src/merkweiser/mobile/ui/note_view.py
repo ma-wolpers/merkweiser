@@ -155,8 +155,22 @@ def todo_line(app: "MobileApp", text: str, status: TodoStatus, urgency: Urgency,
         *([ft.IconButton(icon=ft.Icons.ARTICLE_OUTLINED, on_click=lambda _e: open_note(), tooltip="Notiz öffnen")]
           if open_note else []),
     ])
-    bar = color if urgency and status is TodoStatus.OPEN else None
-    return ft.Container(content=line, border=ft.Border.only(left=ft.BorderSide(URGENCY_BAR, bar)) if bar else None)
+    return urgency_bar(line, urgency, status is TodoStatus.OPEN)
+
+
+def urgency_bar(content: ft.Control, urgency: Urgency, is_open: bool) -> ft.Container:
+    """Farbige Leiste links an offenen gelben bzw. roten Todos (einzige Stelle; auch für Vorschauzeilen, W9).
+
+    Args:
+        content: Die Todo-Zeile.
+        urgency: Dringlichkeitsstufe.
+        is_open: Nur offene Todos bekommen eine Leiste.
+
+    Returns:
+        Container um ``content``, mit Leiste in der Farbe aus ``style.URGENCY_STYLE``.
+    """
+    color = URGENCY_STYLE[int(urgency)][1] if urgency and is_open else None
+    return ft.Container(content=content, border=ft.Border.only(left=ft.BorderSide(URGENCY_BAR, color)) if color else None)
 
 
 def rich_text(app: "MobileApp", text: str, **style) -> ft.Text:

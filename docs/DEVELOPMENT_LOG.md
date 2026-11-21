@@ -2,6 +2,20 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W9 P5: Vorschau kommender Routinen, vorzeitig abhaken, Benachrichtigung
+
+- **Neu `app/routine_preview.py`:** `preview_rows` baut je Tag ein synthetisches Dokument im Format der Tagesdatei und filtert es mit `query.search`. So gibt es keine zweite Filter-Semantik. `HitRow` hat `target: Target | None` und `preview: Occurrence | None`.
+- **Eingebunden** in `todo_list.todo_sections` und `notify_content.content`. Die Benachrichtigung nutzt `last=day`, damit vorgeplante Tage ihre Routinen enthalten.
+- **Vorzeitig abhaken:** `routine_service.check_preview` schreibt `[x]` über `plan_day`. Am Tag selbst erkennt der Durchlauf die Instanz über `present`.
+- **Mobile:**
+  - Neu `mobile/ui/routine_view.preview_line`, mit einer einzigen Weiche in `tabs._hit`.
+  - Die Ampel-Leiste ist als `note_view.urgency_bar` extrahiert, statt sie in die Vorschauzeile zu kopieren.
+  - Flet 0.86.5 im Paket geprüft: `Icon.tooltip`, `Icon.color`, `Checkbox.tooltip`.
+- **Einstellung `Settings.routine_preview_days`** (1–31, Standard 7): Das Bedienelement kommt mit P6 auf die Routinen-Seite.
+- **Tests:**
+  - `tests/app/test_routine_preview.py` (7): Fenster, gleiche Filter, rote Vorschau unter „Sehr dringend“, Einstellung, „heute noch nicht eingetragen“, vorzeitig abhaken ohne Duplikat, Benachrichtigung, Prüfung der Einstellung.
+  - `test_ampel_ui` (Vorschauzeile); volle Suite grün.
+
 ## 2026-11-21 – W9 P4: Routinen-Durchlauf (Eintragen, Nachholen, Ablauf, Merkpunkt)
 
 - **Neue Module:**

@@ -39,6 +39,8 @@ class Settings:
         notify_escalate: Neutrale Erinnerungen eskalieren (Standard an).
         vacation_until: Urlaub bis einschließlich ``JJJJ-MM-TT`` oder ``None``.
         notify_horizon: Vorgeplante Termine (1–30, Standard 14).
+        routine_preview_days: Wie viele Tage voraus kommende Routinen im Tab
+            „Todos“ unter „Zukünftig“ erscheinen (1–31, Standard 7; W9).
     """
 
     vault: str | None = None
@@ -53,6 +55,7 @@ class Settings:
     notify_escalate: bool = True
     vacation_until: str | None = None
     notify_horizon: int = 14
+    routine_preview_days: int = 7
 
     def notify_at(self) -> time:
         """Uhrzeit der Benachrichtigung als ``time``."""
@@ -85,6 +88,8 @@ class Settings:
             raise ValueError("Uhrzeit als HH:MM, Urlaub als JJJJ-MM-TT") from exc
         if not 1 <= self.notify_horizon <= 30:
             raise ValueError("Vorplanung: 1 bis 30 Tage")
+        if not 1 <= self.routine_preview_days <= 31:
+            raise ValueError("Vorschau der Routinen: 1 bis 31 Tage")
         return self
 
 

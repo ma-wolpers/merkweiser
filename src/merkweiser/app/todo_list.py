@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 
 from ..core.query import Filter, StatusFilter, TagMode
 from .ordering import todo_groups
+from .routine_preview import preview_rows
 from .views import HitRow, hit_rows
 
 if TYPE_CHECKING:
@@ -86,7 +87,9 @@ def todo_sections(service: "NotesService", state: dict) -> list[tuple[str, list[
         ``[(„Heute (3)“, Zeilen), …]`` in fester Reihenfolge, leere entfallen.
     """
     today = service.clock.today()
-    groups = todo_groups(hit_rows(service.search(criteria(normalized(state), today))), today)
+    wanted = criteria(normalized(state), today)
+    rows = hit_rows(service.search(wanted)) + preview_rows(service, wanted, today)  # W9: kommende Routinen
+    groups = todo_groups(rows, today)
     sections = [("Sehr dringend", groups.red), ("Zukünftig", groups.future), ("Heute", groups.today),
                 ("Frühere Tage", groups.past)]
     return [(f"{title} ({len(rows)})", rows) for title, rows in sections if rows]
