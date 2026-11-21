@@ -6,6 +6,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Todos mit Unterpunkten einklappen:** Unter einem Todo mit Unterpunkten steht „▸ N weitere“. Eingeklappt (Standard) siehst du nur die offenen Unter-Todos; erledigte und verpasste Unter-Todos sowie Punkte ohne Checkbox erscheinen erst nach einem Tipp darauf, „▾ einklappen“ klappt wieder zu. Offene Todos werden nie versteckt. Unter-Todos sind mit ↳ gekennzeichnet. Das gilt im Tab *Tag*, in der Suche und auf der Notiz-Seite; Merkweiser merkt sich bis zum Schließen der App, was du aufgeklappt hast.
 - **Routinen (wiederkehrende Todos):** Lege im Notizordner eine Datei `Routinen.md` an. Jede Überschrift ist ein Rhythmus (`## täglich`, `## werktags`, `## wöchentlich Di, Do`, `## alle 2 Wochen Mo ab 16.11.2026`, `## monatlich 1., 15.`, `## jährlich 15.09.`), darunter stehen die Todos als `- [ ] Text` (mit Ampel und Tags). Merkweiser trägt sie am Fälligkeitstag mit `#wdh` in die Tagesdatei ein, unter dem Thema des Rhythmus, und setzt sie nach Ablauf der Frist auf verpasst. Unterstützt werden:
   - eine Frist (`(Frist 3 Tage)`, sonst gilt ein Todo bis zur nächsten Fälligkeit);
   - Pausen (`## Pausen` mit Zeiträumen; `(auch in Pausen)` nimmt eine Überschrift aus);

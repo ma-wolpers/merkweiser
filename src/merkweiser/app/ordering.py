@@ -22,12 +22,13 @@ Zwei Anwendungen:
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import TypeVar
 
 from ..core.document import Document, ParsedNote
 from ..core.inline import TodoStatus, Urgency
+from .todo_tree import Fold, flatten, outline_tree
 from .views import HitRow, Row, note_rows
 
 T = TypeVar("T")
@@ -71,31 +72,16 @@ def urgent_first(rows: Sequence[Row]) -> list[Row]:
     Returns:
         Neue Liste mit derselben Zeilenmenge.
     """
-    return [row for block in _blocks(list(rows), 0, len(rows)) for row in block]
+    return flatten(_sorted(outline_tree(rows)))
 
 
-def _blocks(rows: list[Row], start: int, end: int) -> list[list[Row]]:
-    """Zerlegt ``rows[start:end]`` in Geschwister-Teilbäume und sortiert sie stabil.
+def _sorted(folds: Sequence[Fold]) -> list[Fold]:
+    """Sortiert Geschwister-Teilbäume stabil nach dem Rang ihrer ersten Zeile, Kinder rekursiv.
 
-    Args:
-        rows: Alle Zeilen.
-        start: Erster Index.
-        end: Index hinter dem letzten.
-
-    Returns:
-        Teilbäume als Zeilenlisten, nach Rang, Kinder bereits sortiert.
+    Den Baum baut ``todo_tree.outline_tree`` (einzige Teilbaum-Zerlegung, W10).
     """
-    blocks: list[list[Row]] = []
-    i = start
-    while i < end:
-        head = rows[i]
-        j = i + 1
-        while j < end and rows[j].depth > head.depth:
-            j += 1
-        children = [row for block in _blocks(rows, i + 1, j) for row in block]
-        blocks.append([head, *children])
-        i = j
-    return by_rank(blocks, lambda block: rank(block[0]))
+    return by_rank([replace(fold, children=tuple(_sorted(fold.children))) for fold in folds],
+                   lambda fold: rank(fold.row))
 
 
 def note_rank(relpath: str, doc: Document, note: ParsedNote) -> int:

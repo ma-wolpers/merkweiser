@@ -19,13 +19,14 @@ sind fett in der Primärfarbe und öffnen per Tipp die Tag-Seite
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
 import flet as ft
 
 from ...app.ordering import urgent_first
 from ...app.tag_spans import text_parts
+from ...app.todo_tree import OPEN_ONLY, Fold, fold_key, fold_rows, hidden
 from ...app.views import NoteRef, Row, next_urgency, note_ref, note_rows
 from ...core.document import Document, ParsedNote
 from ...core.inline import TodoStatus, Urgency, strip_urgency
@@ -38,6 +39,10 @@ if TYPE_CHECKING:
 
 INDENT = 18
 MARKER_WIDTH = 40
+SUB_MARK = "↳"
+"""Kennzeichen eines Unter-Todos (W10), steht in der Einrückungslücke vor der Checkbox."""
+FOLD_CLOSED = "▸ {} weitere"
+FOLD_OPEN = "▾ einklappen"
 TAG_STYLE = ft.TextStyle(weight=ft.FontWeight.W_600, color=ft.Colors.PRIMARY)
 
 
@@ -65,21 +70,82 @@ def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
     ref = note_ref(relpath, doc, note)
     if not rows or ref is None:
         return None
-    column = ([header] if header is not None else []) + [note_row(app, r) for r in rows] + [note_actions(app, ref, extra(ref) if extra else ())]
+    column = ([header] if header is not None else []) + fold_view(app, rows) + [note_actions(app, ref, extra(ref) if extra else ())]
     return card(column)
 
 
-def note_row(app: "MobileApp", row: Row) -> ft.Control:
+def fold_view(app: "MobileApp", rows: Sequence[Row], keep: frozenset[TodoStatus] = OPEN_ONLY) -> list[ft.Control]:
+    """Zeilen als Baum mit einklappbaren Todos (W10; Faltregel ``todo_tree.fold_rows``).
+
+    Ein Teilbaum mit Kindern wird eine Spalte. Verborgene Kinder (nicht
+    ``pinned``) stecken je in einer eigenen Spalte, deren Sichtbarkeit die
+    Schalter-Zeile „▸ N weitere“ / „▾ einklappen“ unter den Kindern umschaltet –
+    direkt per ``update()``, ohne Neuzeichnen. Standard ist eingeklappt; der
+    Zustand liegt je Sitzung in ``app._folds`` (``todo_tree.fold_key``).
+
+    Args:
+        app: Die laufende App.
+        rows: Zeilen in Anzeigereihenfolge (z. B. nach ``urgent_first``).
+        keep: Todo-Zustände, die eingeklappt sichtbar bleiben.
+
+    Returns:
+        Ein Control je Wurzel.
+    """
+    expanded: set = app.__dict__.setdefault("_folds", set())
+    return [_fold_control(app, fold, expanded) for fold in fold_rows(rows, keep)]
+
+
+def _fold_control(app: "MobileApp", fold: Fold, expanded: set) -> ft.Control:
+    """Ein Teilbaum (siehe ``fold_view``)."""
+    row = note_row(app, fold.row, fold.sub_todo)
+    if not fold.children:
+        return row
+    key, count = fold_key(fold.row), hidden(fold)
+    folded: list[ft.Control] = []
+    children: list[ft.Control] = []
+    for child in fold.children:
+        control = _fold_control(app, child, expanded)
+        if not child.pinned:
+            control = ft.Column([control], visible=key in expanded)
+            folded.append(control)
+        children.append(control)
+    box = ft.Column([row, *children])
+    if not count:
+        return box
+    label = ft.Text(size=12, color=EXPLANATION)
+
+    def show(is_open: bool) -> None:
+        label.value = FOLD_OPEN if is_open else FOLD_CLOSED.format(count)
+        for control in folded:
+            control.visible = is_open
+
+    async def toggle(_e) -> None:
+        expanded.symmetric_difference_update({key})
+        show(key in expanded)
+        box.update()
+
+    show(key in expanded)
+    box.controls.append(ft.Container(content=label, on_click=toggle,
+                                     padding=ft.Padding.only(left=(fold.row.depth + 1) * INDENT)))
+    return box
+
+
+def note_row(app: "MobileApp", row: Row, sub_todo: bool = False) -> ft.Control:
     """Eine Notizzeile samt weiterer Zeilen (Erläuterung bzw. Fortsetzungen).
+
+    Ein Unter-Todo (W10) bekommt ``SUB_MARK`` in der Einrückungslücke vor der
+    Checkbox; Checkbox und Textkante bleiben dadurch an derselben Stelle.
 
     Args:
         app: Die laufende App.
         row: Anzeigezeile aus ``note_rows``.
+        sub_todo: Todo mit einem Todo als Vorfahr (``todo_tree.Fold.sub_todo``).
 
     Returns:
         Ein Control, eingerückt nach ``row.depth``.
     """
-    pad = ft.Padding.only(left=row.depth * INDENT)
+    lead = INDENT if sub_todo and row.depth else 0
+    pad = ft.Padding.only(left=row.depth * INDENT - lead)
     if row.kind == "topic":
         head = rich_text(app, row.text, italic=True, color=EXPLANATION) if row.empty_topic \
             else rich_text(app, row.text, weight=ft.FontWeight.BOLD)
@@ -88,11 +154,15 @@ def note_row(app: "MobileApp", row: Row) -> ft.Control:
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":
         head = todo_line(app, row.text, row.status, row.urgency, row.target)
+        if lead:
+            head = ft.Row([ft.Container(content=ft.Text(SUB_MARK, color=EXPLANATION), width=lead,
+                                        alignment=ft.Alignment.CENTER_RIGHT),
+                           ft.Container(content=head, expand=True)], spacing=0)
     elif row.kind == "item":
         head = marked(ft.Text("•", size=18), rich_text(app, row.text))
     else:
         return ft.Container(content=ft.Text("\n".join((row.text, *row.more))), padding=pad)
-    continuation = [ft.Container(content=rich_text(app, line), padding=ft.Padding.only(left=MARKER_WIDTH))
+    continuation = [ft.Container(content=rich_text(app, line), padding=ft.Padding.only(left=lead + MARKER_WIDTH))
                     for line in row.more]
     return ft.Container(content=ft.Column([head, *continuation], spacing=0), padding=pad)
 

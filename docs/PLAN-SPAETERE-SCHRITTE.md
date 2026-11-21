@@ -1225,5 +1225,5 @@ Nur die Anzeige ändert sich; Dateien bleiben unverändert.
 |---|---|---|
 | P0 | Dieser Plan | erledigt |
 | P1 | Engere Symbole | erledigt |
-| P2 | `todo_tree`, `fold_view`, ↳ und Schalter in Notizkarten | offen |
+| P2 | `todo_tree`, `fold_view`, ↳ und Schalter in Notizkarten | erledigt |
 | P3 | Tab „Todos“ als Bäume, Kurzanleitung | offen |

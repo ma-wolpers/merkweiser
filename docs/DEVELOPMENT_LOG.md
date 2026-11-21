@@ -2,6 +2,22 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W10 P2: einklappbare Todos in Notizkarten
+
+- **Neu `app/todo_tree.py`:** `outline_tree` ist die einzige Zerlegung flacher Zeilen in Teilbäume.
+  - `ordering.urgent_first` sortiert jetzt diesen Baum (`_sorted` + `flatten`). Die eigene Zerlegung `_blocks` ist entfallen (SSOT).
+  - `fold_rows` setzt `pinned`/`sub_todo` nach der Faltregel: Nur Todos falten, und ein Kind bleibt sichtbar, wenn sein Teilbaum ein Todo mit Status aus `keep` enthält.
+  - Dazu `hidden` und `fold_key`.
+- **`note_view.fold_view`:** ersetzt in `note_card` die flache Zeilenliste, gilt also für Tag, Suche und Notiz-Seite.
+  - Je Teilbaum eine Spalte; verborgene Kinder stecken je in einer eigenen Spalte.
+  - Die Schalter-Zeile (`Container.on_click`) schaltet `visible` um und ruft einmal `box.update()` auf.
+  - Der Zustand liegt je Sitzung in `app._folds`.
+- **`note_row(…, sub_todo)`:** ↳ (`SUB_MARK`) steht in der Einrückungslücke (Breite `INDENT`, Polsterung um `INDENT` kleiner), Fortsetzungen werden um denselben Betrag nachgerückt. Checkbox und Textkante bleiben an ihrer Stelle.
+- **Tests:**
+  - `tests/app/test_todo_tree.py`: Round-Trip; offen sichtbar, erledigt/verpasst/Punkt eingeklappt; offener Enkel unter erledigtem Kind; Punkt-Eltern; verschachtelt; `keep`; Schlüssel.
+  - `tests/mobile/test_fold_ui.py`: Standard eingeklappt, Umschalten an Ort und Stelle, Zustand über Neuzeichnen, Abhaken eines Unter-Todos.
+  - Volle Suite: 874 bestanden, 1 übersprungen.
+
 ## 2026-11-21 – W10 P1: engere Schnellaktionen
 
 - `note_view.action_button` ist die einzige Stelle für die Symbolknöpfe einer Todo-Zeile: `icon_size=ACTION_ICON` (20), `padding=4`, `VisualDensity.COMPACT`, `size_constraints` 32×32 (`style.ACTION_SIZE`). `todo_line` nutzt sie für Stern, ⊘, Verschieben und „Notiz öffnen“.
