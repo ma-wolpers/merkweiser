@@ -2,6 +2,10 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W10 P0: Plan „Unter-Todos einklappbar, engere Symbole“
+
+- W10 in `docs/PLAN-SPAETERE-SCHRITTE.md` aufgenommen: Nutzerentscheidungen, selbst festgelegte Punkte, Design (`app/todo_tree.py`, `HitRow.subtree`, `fold_view`, `action_button`) und Phasen.
+
 ## 2026-11-21 – W9: APK
 
 - Signierte APK aus `028874a` über `tools/build_apk.py` gebaut (sauberer Arbeitsbaum, `ANDROID_HOME` = `~/Android/sdk`). Der Fingerabdruck wurde per `apksigner` geprüft (SHA-256 `06e0555bc0c9b23f…`). Die APK liegt als `SyncSpike/merkweiser.apk` vor (ca. 136 MB). Stand: 864 Tests bestanden, 1 übersprungen.

@@ -1171,3 +1171,59 @@ Wiederkehrende Todos (täglich, werktags, wöchentlich, alle n Tage/Wochen, mona
 | P5 | Vorschau mit Einstellung, vorzeitiges Abhaken, Benachrichtigung | erledigt (Bedienelement der Einstellung kommt mit P6 auf die Routinen-Seite) |
 | P6 | Formular-Editor | erledigt |
 | P7 | Rohtext-Editor, Kurzanleitung | erledigt |
+
+## W10 – Unter-Todos einklappbar und erkennbar, engere Symbole (Planung 2026-11-21, freigegeben)
+
+### Context
+
+Rückmeldung zum Gerätetest W9:
+
+- Die Symbole einer Todo-Zeile brauchen zu viel Platz.
+- Todos mit Unterpunkten sollen ein- und ausklappbar sein.
+- Unter-Todos sollen als solche erkennbar sein. Bisher erscheinen sie im Tab „Todos“ als eigenständige Einträge.
+
+Nur die Anzeige ändert sich; Dateien bleiben unverändert.
+
+### Verbindliche Nutzerentscheidungen (2026-11-21)
+
+1. **Sichtbar bleiben:** Offene Unter-Todos sind immer sichtbar, auch eingeklappt.
+2. **Einklappbar:** Erledigte **und verpasste** Unter-Todos gehören zusammen mit den übrigen Unterpunkten zum einklappbaren Teil.
+3. **Tab „Todos“:** Ein Unter-Todo steht nur noch im Baum seines obersten Eltern-Todos.
+   - Das Eltern-Todo wird normal gezeigt, auch wenn es selbst nicht zum Filter passt.
+   - Der Baum steht im Abschnitt seines dringendsten offenen Todos.
+4. **Optik:** Ein Unter-Todo hat ein **↳** vor der Checkbox.
+5. **Schalter:** Eine kleine Zeile **„▸ N weitere“ / „▾ einklappen“** unter den sichtbaren Kindern.
+6. **Benachrichtigung:** bleibt unverändert (flache Liste).
+7. **Symbole:** stehen enger nebeneinander.
+
+### Selbst festgelegt (kippbar)
+
+- Einklappen gilt überall, wo Notizen oder Todos erscheinen (Tag, Suche, Notiz-Seite, Todos).
+- Nur Todos sind einklappbar.
+- Standard ist eingeklappt. Der Zustand gilt je Sitzung, Schlüssel ist Datei + Text ohne Checkbox.
+- Offene Todos werden nie versteckt: Ein Kind bleibt sichtbar, wenn sein Teilbaum ein offenes Todo enthält.
+- Bei Filter „erledigt“, „verpasst“ oder „alle“ bleiben zusätzlich die Todos mit dem gefilterten Status sichtbar.
+- Fortsetzungszeilen bleiben sichtbar.
+- Ein Unter-Todo ist ein Todo mit einem Todo-Vorfahr. Im Tab „Todos“ hat es weder Datumszeile noch „Notiz öffnen“.
+- Die Abschnittszahl zählt Bäume.
+
+### Design
+
+- **`app/todo_tree.py`:** `Fold`, `outline_tree` (Baum nach `Row.depth`), `fold_rows` (Faltregel), `hidden`, `fold_key`.
+  - `ordering.urgent_first` sortiert diesen Baum; die eigene Zerlegung `_blocks` entfällt (SSOT).
+- **Tab „Todos“:**
+  - `HitRow.subtree` enthält die Nachfahren mit relativer Tiefe.
+  - `todo_trees` ordnet Treffer ihrem obersten Todo-Vorfahren zu. Für eine Wurzel ohne eigenen Treffer wird der Treffer über `query.node_hit` gebaut (bisher `_hit`).
+  - `ordering.rank` berücksichtigt die offenen Todos des Teilbaums.
+- **Mobile:**
+  - `note_view.fold_view` schaltet die Sichtbarkeit direkt um, ohne Neuzeichnen, und speichert den Zustand an der App.
+  - `note_view.action_button` erzeugt die kompakten Symbolknöpfe (`style.ACTION_ICON`/`ACTION_SIZE`).
+
+### Commits
+
+| # | Inhalt | Stand |
+|---|---|---|
+| P0 | Dieser Plan | erledigt |
+| P1 | Engere Symbole | offen |
+| P2 | `todo_tree`, `fold_view`, ↳ und Schalter in Notizkarten | offen |
+| P3 | Tab „Todos“ als Bäume, Kurzanleitung | offen |
