@@ -20,7 +20,7 @@ import re
 
 from .document import Document, ParsedNote
 from .inline import (MARK, RED_MARK, STATUS_CHAR, ListItem, TodoStatus, Urgency, find_tags, leading_whitespace,
-                     parse_list_item, project_name, urgency_span)
+                     parse_list_item, project_name, urgency, urgency_span)
 from .outline import Node
 from .patch import LineEdit, Target, apply_edits, resolve_line
 
@@ -97,26 +97,44 @@ def set_urgency(doc: Document, target: Target, level: Urgency) -> bytes:
     if item.urgency == level:
         return doc.source.to_bytes()
     text = doc.line_text(line_no)
-    body_start = item.body_start
-    span = urgency_span(text[body_start:])
+    new_text = text[:item.body_start] + with_urgency(text[item.body_start:], level)
+    return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (new_text,))])
+
+
+def with_urgency(body: str, level: Urgency) -> str:
+    """Setzt die Ampel-Stufe eines Todo-Inhalts (Text hinter der Checkbox); reiner Textkern von ``set_urgency``.
+
+    Regeln wie bei ``set_urgency``: Tags am Ende bleiben außerhalb der
+    Markierung, der markierte Text bleibt zeichengenau. Auch der Regel-Dialog
+    der Routinen nutzt es (W9).
+
+    Args:
+        body: Inhalt hinter der Checkbox.
+        level: Gewünschte Stufe.
+
+    Returns:
+        Der neue Inhalt (unverändert, wenn die Stufe schon stimmt).
+
+    Raises:
+        ValueError: leerer Inhalt bzw. Inhalt mit ``==``.
+    """
+    span = urgency_span(body)
+    if (span is None and level is Urgency.NONE) or (span is not None and urgency(body) == level):
+        return body
     if span is None:
-        start = body_start + len(leading_whitespace(text[body_start:]))
-        end = _content_end(text, start)
+        start = len(leading_whitespace(body))
+        end = _content_end(body, start)
         if end <= start:
             raise ValueError("leerer Inhalt kann nicht dringend markiert werden")
-        before, inner, after = text[:start], text[start:end], text[end:]
+        before, inner, after = body[:start], body[start:end], body[end:]
         if MARK in inner:
             raise ValueError("Text mit „==“ kann nicht dringend markiert werden")
     else:
-        before = text[:body_start + span.start]
-        inner = text[body_start + span.inner_start:body_start + span.inner_end]
-        after = text[body_start + span.end:]
+        before, inner, after = body[:span.start], body[span.inner_start:span.inner_end], body[span.end:]
     if level is Urgency.NONE:
-        new_text = before + inner + after
-    else:
-        red = RED_MARK + (" " if inner.startswith(" ") else "") if level is Urgency.ROT else ""
-        new_text = before + MARK + red + inner + MARK + after
-    return apply_edits(doc.source, [LineEdit(line_no, line_no + 1, (new_text,))])
+        return before + inner + after
+    red = RED_MARK + (" " if inner.startswith(" ") else "") if level is Urgency.ROT else ""
+    return before + MARK + red + inner + MARK + after
 
 
 def set_project(doc: Document, target: Target, name: str | None, prefix: str) -> bytes:

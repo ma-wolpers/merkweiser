@@ -2,6 +2,26 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W9 P6: Formular-Editor der Routinen
+
+- **Neue Module:**
+  - `core/routine_edit.py`: minimale Zeilen-Edits, Abschnittswahl nach Bedeutung, leere Abschnitte verschwinden.
+  - `app/routine_views.py`: Formularmodell. Rhythmus und Optionen entstehen über den kanonischen Text und `parse_rhythm`/`parse_options`, es gibt also keine zweite Validierung.
+  - `mobile/ui/routine_dialog.py`: Dialog.
+  - `routine_view.routines_page`: Seite mit `BUILDERS["routinen"]` und 🔁 im Todos-Kopf.
+- **Schreibwege in `routine_service`:** `save_rule`, `delete_rule_at`, `add_pause_range`, `delete_pause`, gemeinsam über `_edit_routines`. Den Schreibweg einer Instanz teilen sich `check_preview` und „Heute schon eintragen“ (`_write_instance`).
+- **Extrahiert:** `edits.with_urgency` als Textkern von `set_urgency`, damit der Dialog dieselbe Ampel-Logik nutzt.
+- **Abweichungen vom Plan:**
+  - Ein Tipp auf eine Vorschauzeile öffnet den Dialog direkt über dem Tab *Todos*, statt über ein Seitenargument (`nav.routine_arg` entfällt). Das ist einfacher, und die Regel wird trotzdem frisch über `find_rule` gesucht.
+  - Löschen gibt es nur im Dialog, nicht als Knopf in der Liste, gegen versehentliches Tippen.
+  - Die Vorschau-Länge ist ein Dropdown auf der Routinen-Seite.
+- **Flet 0.86.5 im Paket geprüft:** `SegmentedButton.allow_multiple_selection`/`show_selected_icon`, `Dropdown.on_select`, `DropdownOption`, `TextButton.content` (kein `text`), `KeyboardType.NUMBER`.
+- **Tests:**
+  - `tests/core/test_routine_edit.py` (7, byte-genau, CRLF);
+  - `tests/app/test_routine_editor.py` (7: Formular-Round-Trip für jeden Abschnitt, Meldungen, „Nächste“, `due_today`, `text_problems`/`find_rule`, Anlegen samt „Heute schon eintragen“, Ändern/Löschen/Pausen, Schreibschutz);
+  - `tests/mobile/test_routine_ui.py` (3: Seite, Dialog mit Feldwechsel und Prüfung, Kopf-Knopf und Vorschau-Tipp);
+  - `test_package` (neue App-Module ohne UI-Importe); volle Suite grün.
+
 ## 2026-11-21 – W9 P5: Vorschau kommender Routinen, vorzeitig abhaken, Benachrichtigung
 
 - **Neu `app/routine_preview.py`:** `preview_rows` baut je Tag ein synthetisches Dokument im Format der Tagesdatei und filtert es mit `query.search`. So gibt es keine zweite Filter-Semantik. `HitRow` hat `target: Target | None` und `preview: Occurrence | None`.

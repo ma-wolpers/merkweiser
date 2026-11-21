@@ -27,7 +27,7 @@ import flet as ft
 from ...app.nav import PageRef, parse_note_arg
 from ...app.ordering import by_rank, note_rank
 from ...core.query import Filter
-from . import backup_view, conflict_view, time_view
+from . import backup_view, conflict_view, routine_view, time_view
 from .duplicate_view import duplicate_controls
 from .interrupted_view import interrupted_controls
 from .move_dialog import show_note_move_dialog
@@ -141,8 +141,14 @@ def note_page(app: "MobileApp", arg: str) -> list[ft.Control]:
     return controls + ([card] if card is not None else [ft.Text("Diese Notiz ist leer.")])
 
 
+def routines_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
+    """Routinen (W9)."""
+    return [page_header(app, "Routinen"), *routine_view.routines_page(app, _arg)]
+
+
 BUILDERS = {"tag": tag_page, "konflikte": conflicts_page, "backups": backups_page, "backup_datei": backup_file_page,
-            "taetigkeiten": activities_page, "benachrichtigungen": notifications_page, "notiz": note_page}
+            "taetigkeiten": activities_page, "benachrichtigungen": notifications_page, "notiz": note_page,
+            "routinen": routines_page}
 
 
 def build_page(app: "MobileApp", page: PageRef) -> list[ft.Control]:

@@ -156,7 +156,9 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
     """
     state = normalized(app.__dict__.setdefault("_todo_filter", dict(DEFAULT_FILTER)))
     head = ft.Row([filter_button(app, state, changed_count(state)),
-                   ft.Text(filter_summary(state), size=13, expand=True)], spacing=4)
+                   ft.Text(filter_summary(state), size=13, expand=True),
+                   ft.IconButton(icon=ft.Icons.REPEAT, tooltip="Routinen",
+                                 on_click=lambda _e: app.open_page(PageRef("routinen")))], spacing=4)
     sections = todo_sections(app.service, state)
     controls: list[ft.Control] = [head]
     if not sections:

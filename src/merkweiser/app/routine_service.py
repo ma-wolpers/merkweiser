@@ -25,7 +25,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ..core.document import Document
 from ..core.frontmatter import set_keys
@@ -33,13 +33,16 @@ from ..core.inline import TodoStatus, parse_list_item
 from ..core.patch import StaleTargetError, Target
 from ..core.query import Filter, StatusFilter
 from ..core.routine_days import expire_lines, missing, plan_day
-from ..core.routines import (ROUTINES_FILE, UNTIL_KEY, WDH_TAG, Occurrence, RoutineFile, expiry_for, occurrences,
-                             parse_routines)
+from ..core.routine_edit import add_pause, add_rule, delete_line, delete_rule, update_rule
+from ..core.routines import (ROUTINES_FILE, UNTIL_KEY, WDH_TAG, Occurrence, RoutineFile, expiry_for, instance_key,
+                             occurrences, parse_routines)
 from ..core.safe_write import WriteResult
 from ..core.step_ops import run_step
 from ..core.topics import topic_line
 from ..core.vault import AmbiguousDayFile, write_target
 from ..core.watch import Changes
+
+from .routine_views import RuleForm
 
 if TYPE_CHECKING:
     from .notes_service import NotesService
@@ -137,8 +140,70 @@ def check_preview(service: "NotesService", occ: Occurrence) -> WriteResult | Non
         AmbiguousDayFile: mehrere Dateien für den Tag, keine eindeutig.
     """
     service.check_writable()
+    return _write_instance(service, occ, TodoStatus.DONE)
+
+
+def save_rule(service: "NotesService", original: Target | None, form: RuleForm, enter_today: bool = False) -> str:
+    """Legt eine Regel an bzw. ändert sie (Formular-Editor); ``Routinen.md`` entsteht bei Bedarf.
+
+    Args:
+        service: Geöffneter, beschreibbarer Service.
+        original: Bisherige Regelzeile (``Target`` auf ``Routinen.md``) oder ``None`` für eine neue.
+        form: Formular.
+        enter_today: Heutige Instanz sofort eintragen, wenn die Regel heute fällig ist und der
+            heutige Tag schon bearbeitet wurde (sonst erledigt das der nächste Durchlauf).
+
+    Returns:
+        Meldung für die Oberfläche.
+
+    Raises:
+        ReadOnlyVaultError: im Schreibschutz.
+        RhythmError, ValueError: Formular ungültig (nichts geschrieben).
+        StaleTargetError: Regel inzwischen verändert.
+    """
+    service.check_writable()
+    rhythm, options, tags, line = form.rhythm(), form.options(), form.tag_tuple(), form.line()
+    _edit_routines(service, lambda doc: add_rule(doc, rhythm, options, tags, line) if original is None
+                   else update_rule(doc, original, rhythm, options, tags, line))
+    rf, today = load(service), service.clock.today()
+    if enter_today and rf is not None and rf.until is not None and rf.until >= today:
+        for occ in (o for o in occurrences(rf, today) if instance_key(o.body) == instance_key(form.body)):
+            _write_instance(service, occ, TodoStatus.OPEN)
+    return "Routine gespeichert."
+
+
+def delete_rule_at(service: "NotesService", target: Target) -> str:
+    """Löscht eine Regel (schon eingetragene Instanzen bleiben in den Tagesdateien)."""
+    service.check_writable()
+    _edit_routines(service, lambda doc: delete_rule(doc, target))
+    return "Routine gelöscht; schon eingetragene Todos bleiben."
+
+
+def add_pause_range(service: "NotesService", start: date, end: date) -> str:
+    """Fügt eine Pause hinzu (``## Pausen`` entsteht bei Bedarf)."""
+    service.check_writable()
+    _edit_routines(service, lambda doc: add_pause(doc, start, end))
+    return "Pause gespeichert."
+
+
+def delete_pause(service: "NotesService", target: Target) -> str:
+    """Entfernt eine Pause."""
+    service.check_writable()
+    _edit_routines(service, lambda doc: delete_line(doc, target))
+    return "Pause entfernt."
+
+
+def _edit_routines(service: "NotesService", build: Callable[[Document], bytes]) -> None:
+    """Ein Schreibvorgang auf ``Routinen.md`` über ``run_step`` (frisch planen, Backup, Konflikt statt Verlust)."""
+    run_step(service.writer, None, ROUTINES_FILE, service.settings.project_prefix, lambda doc, _raw: build(doc))
+    service.cache.forget(ROUTINES_FILE)
+    service.rescan()
+
+
+def _write_instance(service: "NotesService", occ: Occurrence, status: TodoStatus) -> WriteResult | None:
+    """Schreibt eine Instanz sofort in die Datei ihres Tages (gleiche Platzierung wie beim Eintragen)."""
     relpath = write_target(service.index, service.pattern, occ.day)
-    entry = [(occ.topic, occ.body, occ.line(TodoStatus.DONE))]
+    entry = [(occ.topic, occ.body, occ.line(status))]
     result = run_step(service.writer, None, relpath, service.settings.project_prefix,
                       lambda doc, _raw: plan_day(doc, entry))
     service.cache.forget(relpath)

@@ -1169,5 +1169,5 @@ Wiederkehrende Todos (täglich, werktags, wöchentlich, alle n Tage/Wochen, mona
 | P3 | Reiner Kern: `rhythm`, `routines`, `set_keys`, `topic_notes`, `insert_under_topic` | erledigt |
 | P4 | Durchlauf: Eintragen, Nachholen, Ablauf, Merkpunkt | erledigt |
 | P5 | Vorschau mit Einstellung, vorzeitiges Abhaken, Benachrichtigung | erledigt (Bedienelement der Einstellung kommt mit P6 auf die Routinen-Seite) |
-| P6 | Formular-Editor | offen |
+| P6 | Formular-Editor | erledigt |
 | P7 | Rohtext-Editor, Kurzanleitung | offen |
