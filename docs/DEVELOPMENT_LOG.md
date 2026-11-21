@@ -2,6 +2,15 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W9: APK
+
+- Signierte APK aus `028874a` über `tools/build_apk.py` gebaut (sauberer Arbeitsbaum, `ANDROID_HOME` = `~/Android/sdk`). Der Fingerabdruck wurde per `apksigner` geprüft (SHA-256 `06e0555bc0c9b23f…`). Die APK liegt als `SyncSpike/merkweiser.apk` vor (ca. 136 MB). Stand: 864 Tests bestanden, 1 übersprungen.
+- Diesmal keine Sichtprüfung am Desktop, weil sie ein sichtbares Fenster öffnen würde. Der Gerätetest ist offen. Zu prüfen:
+  - Breite der Todo-Zeile mit vier Symbolen;
+  - Durchstreichung bei Texten mit Tags (Spans);
+  - Regel-Dialog mit offener Tastatur;
+  - Eintragen nach Mitternacht bei offener App.
+
 ## 2026-11-21 – W9 P7: Rohtext-Editor und SSOT-Bereinigung der Routinen
 
 - **„Als Text bearbeiten“:**
