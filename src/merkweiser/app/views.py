@@ -203,6 +203,9 @@ class HitRow:
         preview: Kommende Routinen-Instanz (W9), die noch in keiner Tagesdatei
             steht, sonst ``None``. Die Oberfläche zeichnet solche Zeilen an
             genau einer Stelle anders (``routine_view.preview_line``).
+        tree: Tab „Todos“ (W10): Zeilen des Todo-Baums ab diesem Todo
+            (es selbst mit Tiefe 0, darunter seine Nachfahren), aus
+            ``todo_list.todo_trees``; leer bei anderen Treffern.
     """
 
     day: str
@@ -212,6 +215,7 @@ class HitRow:
     urgency: Urgency
     target: Target | None
     preview: Occurrence | None = None
+    tree: tuple[Row, ...] = ()
 
     @property
     def done(self) -> bool | None:

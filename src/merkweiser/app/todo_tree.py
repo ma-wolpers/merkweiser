@@ -22,7 +22,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
+from ..core.document import ParsedNote
 from ..core.inline import TodoStatus
+from ..core.outline import Node
 from .views import Row
 
 OPEN_ONLY: frozenset[TodoStatus] = frozenset({TodoStatus.OPEN})
@@ -105,6 +107,50 @@ def _keeps(fold: Fold, keep: frozenset[TodoStatus]) -> bool:
 def hidden(fold: Fold) -> int:
     """Anzahl der Kinder, die eingeklappt verborgen sind (für „▸ N weitere“)."""
     return sum(1 for child in fold.children if not child.pinned)
+
+
+def top_todo(note: ParsedNote, node: Node) -> Node:
+    """Oberstes Todo unter den Vorfahren eines Knotens (Wurzel seines Baums im Tab „Todos“).
+
+    Args:
+        note: Die Notiz.
+        node: Ein Knoten der Notiz.
+
+    Returns:
+        Der oberste Todo-Vorfahr oder ``node`` selbst, wenn es keinen gibt.
+    """
+    top, parent = node, node.parent
+    while parent is not None:
+        ancestor = note.outline.nodes[parent]
+        if ancestor.item is not None and ancestor.item.is_todo:
+            top = ancestor
+        parent = ancestor.parent
+    return top
+
+
+def tree_rows(rows: Sequence[Row], line_no: int) -> tuple[Row, ...]:
+    """Teilbaum ab der Zeile ``line_no``, mit Tiefe relativ zu ihr (sie selbst: 0).
+
+    Args:
+        rows: Zeilen einer Notiz (``views.note_rows``, ggf. sortiert).
+        line_no: Erste Zeile der Wurzel.
+
+    Returns:
+        Wurzel samt Nachfahren in Anzeigereihenfolge; leer, wenn ``line_no`` fehlt.
+    """
+    for fold in outline_tree(rows):
+        found = _find(fold, line_no)
+        if found is not None:
+            base = found.row.depth
+            return tuple(replace(row, depth=row.depth - base) for row in flatten([found]))
+    return ()
+
+
+def _find(fold: Fold, line_no: int) -> Fold | None:
+    """Teilbaum, dessen Zeile bei ``line_no`` beginnt."""
+    if fold.row.target is not None and fold.row.target.line_no == line_no:
+        return fold
+    return next((found for child in fold.children if (found := _find(child, line_no)) is not None), None)
 
 
 def fold_key(row: Row) -> tuple[str, str]:

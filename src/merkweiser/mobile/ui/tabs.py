@@ -17,12 +17,13 @@ from ...app.interrupted import open_issue_count
 from ...app.list_editing import INDENT_WIDTHS
 from ...app.nav import PageRef, note_arg
 from ...app.ordering import by_rank, note_rank
-from ...app.todo_list import DEFAULT_FILTER, changed_count, filter_summary, normalized, todo_sections
+from ...app.todo_list import DEFAULT_FILTER, changed_count, filter_summary, fold_keep, normalized, todo_sections
 from ...app.views import HitRow, day_label, hit_heading
+from ...core.inline import TodoStatus
 from ...core.query import Filter, TextMode, TextQuery
 from .date_pick import open_date_picker
 from .note_dialogs import new_note_dialog
-from .note_view import note_card, todo_line
+from .note_view import fold_view, note_card
 from .routine_view import preview_line
 from .todo_filter import filter_button
 
@@ -160,20 +161,23 @@ def todos_view(app: "MobileApp") -> list[ft.Control]:
                    ft.IconButton(icon=ft.Icons.REPEAT, tooltip="Routinen",
                                  on_click=lambda _e: app.open_page(PageRef("routinen")))], spacing=4)
     sections = todo_sections(app.service, state)
+    keep = fold_keep(state)
     controls: list[ft.Control] = [head]
     if not sections:
         controls.append(ft.Text("Keine Todos."))
     for title, rows in sections:
         controls += [ft.Divider(height=8), ft.Text(title, size=16, weight=ft.FontWeight.BOLD),
-                     *[_hit(app, row) for row in rows]]
+                     *[_hit(app, row, keep) for row in rows]]
     return controls
 
 
-def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
-    """Ein Treffer mit Datum und Kontext; Todos sind abhakbar und öffnen per Knopf ihre Notiz (W7).
+def _hit(app: "MobileApp", row: HitRow, keep: frozenset[TodoStatus]) -> ft.Control:
+    """Ein Todo-Baum mit Datum und Kontext (W10); abhakbar, die Wurzel öffnet per Knopf ihre Notiz (W7).
 
-    Vorschauzeilen kommender Routinen (W9, ``row.preview``) zeichnet
-    ``routine_view.preview_line`` – die einzige Sonderbehandlung.
+    Der Baum (``row.tree``) läuft über denselben Weg wie die Notizkarten
+    (``note_view.fold_view``): Unter-Todos mit ↳, einklappbar, ohne eigene
+    Kopfzeile. Vorschauzeilen kommender Routinen (W9, ``row.preview``)
+    zeichnet ``routine_view.preview_line`` – die einzige Sonderbehandlung.
     """
     if row.preview is not None:
         return preview_line(app, row)
@@ -182,9 +186,7 @@ def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
         app.open_page(PageRef("notiz", note_arg(row.target)))
 
     head = ft.Text(hit_heading(row), size=11)
-    body = todo_line(app, row.text, row.status, row.urgency, row.target, open_note) if row.status is not None \
-        else ft.Text(row.text)
-    return ft.Column([head, body], spacing=0)
+    return ft.Column([head, *fold_view(app, row.tree, keep, open_note)], spacing=0)
 
 
 def search_view(app: "MobileApp") -> list[ft.Control]:

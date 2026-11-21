@@ -74,7 +74,8 @@ def note_card(app: "MobileApp", relpath: str, doc: Document, note: ParsedNote,
     return card(column)
 
 
-def fold_view(app: "MobileApp", rows: Sequence[Row], keep: frozenset[TodoStatus] = OPEN_ONLY) -> list[ft.Control]:
+def fold_view(app: "MobileApp", rows: Sequence[Row], keep: frozenset[TodoStatus] = OPEN_ONLY,
+              open_note: Callable[[], None] | None = None) -> list[ft.Control]:
     """Zeilen als Baum mit einklappbaren Todos (W10; Faltregel ``todo_tree.fold_rows``).
 
     Ein Teilbaum mit Kindern wird eine Spalte. Verborgene Kinder (nicht
@@ -87,17 +88,18 @@ def fold_view(app: "MobileApp", rows: Sequence[Row], keep: frozenset[TodoStatus]
         app: Die laufende App.
         rows: Zeilen in Anzeigereihenfolge (z. B. nach ``urgent_first``).
         keep: Todo-Zustände, die eingeklappt sichtbar bleiben.
+        open_note: Nur Tab „Todos“: Knopf „Notiz öffnen“ an den Wurzel-Todos.
 
     Returns:
         Ein Control je Wurzel.
     """
     expanded: set = app.__dict__.setdefault("_folds", set())
-    return [_fold_control(app, fold, expanded) for fold in fold_rows(rows, keep)]
+    return [_fold_control(app, fold, expanded, open_note) for fold in fold_rows(rows, keep)]
 
 
-def _fold_control(app: "MobileApp", fold: Fold, expanded: set) -> ft.Control:
-    """Ein Teilbaum (siehe ``fold_view``)."""
-    row = note_row(app, fold.row, fold.sub_todo)
+def _fold_control(app: "MobileApp", fold: Fold, expanded: set, open_note: Callable[[], None] | None = None) -> ft.Control:
+    """Ein Teilbaum (siehe ``fold_view``); ``open_note`` nur an der Wurzel."""
+    row = note_row(app, fold.row, fold.sub_todo, open_note)
     if not fold.children:
         return row
     key, count = fold_key(fold.row), hidden(fold)
@@ -130,7 +132,8 @@ def _fold_control(app: "MobileApp", fold: Fold, expanded: set) -> ft.Control:
     return box
 
 
-def note_row(app: "MobileApp", row: Row, sub_todo: bool = False) -> ft.Control:
+def note_row(app: "MobileApp", row: Row, sub_todo: bool = False,
+             open_note: Callable[[], None] | None = None) -> ft.Control:
     """Eine Notizzeile samt weiterer Zeilen (Erläuterung bzw. Fortsetzungen).
 
     Ein Unter-Todo (W10) bekommt ``SUB_MARK`` in der Einrückungslücke vor der
@@ -140,6 +143,7 @@ def note_row(app: "MobileApp", row: Row, sub_todo: bool = False) -> ft.Control:
         app: Die laufende App.
         row: Anzeigezeile aus ``note_rows``.
         sub_todo: Todo mit einem Todo als Vorfahr (``todo_tree.Fold.sub_todo``).
+        open_note: An ``todo_line`` weitergereicht (Tab „Todos“, nur Wurzel).
 
     Returns:
         Ein Control, eingerückt nach ``row.depth``.
@@ -153,7 +157,7 @@ def note_row(app: "MobileApp", row: Row, sub_todo: bool = False) -> ft.Control:
         lines += [rich_text(app, line, color=EXPLANATION) for line in row.more]
         return ft.Container(content=ft.Column(lines, spacing=2), padding=pad)
     if row.kind == "todo":
-        head = todo_line(app, row.text, row.status, row.urgency, row.target)
+        head = todo_line(app, row.text, row.status, row.urgency, row.target, open_note)
         if lead:
             head = ft.Row([ft.Container(content=ft.Text(SUB_MARK, color=EXPLANATION), width=lead,
                                         alignment=ft.Alignment.CENTER_RIGHT),

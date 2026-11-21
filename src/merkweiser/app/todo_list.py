@@ -13,17 +13,26 @@ Zeitraum:
 
 Die Reihenfolge stammt aus ``ordering.todo_groups`` (gemeinsam mit der
 Benachrichtigung); leere Abschnitte entfallen.
+
+W10: Ein Eintrag ist ein **Todo-Baum** (``todo_trees``): Unter-Todos stehen
+nicht mehr als eigene Einträge da, sondern unter ihrem obersten Eltern-Todo;
+eingeklappt sichtbar bleiben offene Todos und Todos mit dem gefilterten
+Status (``fold_keep``). Die Abschnittszahl zählt Bäume. Die Benachrichtigung
+bleibt eine flache Liste (Nutzerentscheidung 2026-11-21).
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
-from ..core.query import Filter, StatusFilter, TagMode
-from .ordering import todo_groups
+from ..core.inline import TodoStatus
+from ..core.query import STATUS_OF_FILTER, Filter, Hit, StatusFilter, TagMode, node_hit
+from .ordering import todo_groups, urgent_first
 from .routine_preview import preview_rows
-from .views import HitRow, hit_rows, tag_list
+from .todo_tree import OPEN_ONLY, top_todo, tree_rows
+from .views import HitRow, hit_rows, note_rows, tag_list
 
 if TYPE_CHECKING:
     from .notes_service import NotesService
@@ -77,11 +86,56 @@ def todo_sections(service: "NotesService", state: dict) -> list[tuple[str, list[
     """
     today = service.clock.today()
     wanted = criteria(normalized(state), today)
-    rows = hit_rows(service.search(wanted)) + preview_rows(service, wanted, today)  # W9: kommende Routinen
+    rows = todo_trees(service, service.search(wanted)) + preview_rows(service, wanted, today)  # W9: kommende Routinen
     groups = todo_groups(rows, today)
     sections = [("Sehr dringend", groups.red), ("Zukünftig", groups.future), ("Heute", groups.today),
                 ("Frühere Tage", groups.past)]
     return [(f"{title} ({len(rows)})", rows) for title, rows in sections if rows]
+
+
+def todo_trees(service: "NotesService", hits: list[Hit]) -> list[HitRow]:
+    """Treffer als Todo-Bäume (W10): ein Eintrag je oberstem Todo, Unter-Todos stehen in seinem ``tree``.
+
+    Jeder Treffer gehört zum Baum seines obersten Todo-Vorfahren
+    (``todo_tree.top_todo``). Die Wurzel erscheint auch, wenn sie selbst nicht
+    zum Filter passt (z. B. schon erledigt; Treffer über ``query.node_hit``).
+    Reihenfolge: erster Treffer je Baum; die Abschnitte ordnet danach
+    ``ordering.todo_groups`` (Rang über den ganzen Baum, ``ordering.rank``).
+
+    Args:
+        service: Geöffneter Service (Dokumente aus dem Cache).
+        hits: Treffer aus ``service.search``.
+
+    Returns:
+        Eine Trefferzeile je Baum mit ``tree`` (Wurzel mit Tiefe 0, nach ``urgent_first``).
+    """
+    roots: dict[tuple[str, int, int], Hit] = {}
+    for hit in hits:
+        doc = service.cache.get(hit.relpath)
+        note = doc.notes[hit.note_index]
+        top = top_todo(note, note.outline.nodes[hit.node_index])
+        key = (hit.relpath, hit.note_index, top.index)
+        if key not in roots:
+            roots[key] = hit if top.index == hit.node_index else node_hit(hit.relpath, hit.day, doc, note, top)
+    rows = []
+    for (relpath, note_index, _top), root in roots.items():
+        doc = service.cache.get(relpath)
+        lines = urgent_first(note_rows(relpath, doc, doc.notes[note_index]))
+        rows += [replace(row, tree=tree_rows(lines, root.line_no)) for row in hit_rows([root])]
+    return rows
+
+
+def fold_keep(state: dict) -> frozenset[TodoStatus]:
+    """Todo-Zustände, die im Tab „Todos“ eingeklappt sichtbar bleiben: offen plus der gefilterte Status (W10).
+
+    Args:
+        state: Filterzustand.
+
+    Returns:
+        Bei „alle“ alle Todo-Zustände, sonst ``OPEN_ONLY`` plus den Status des Filters.
+    """
+    wanted = STATUS_OF_FILTER.get(StatusFilter(normalized(state)["status"]))
+    return frozenset(STATUS_OF_FILTER.values()) if wanted is None else OPEN_ONLY | {wanted}
 
 
 def changed_count(state: dict) -> int:

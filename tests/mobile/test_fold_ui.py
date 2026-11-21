@@ -71,3 +71,16 @@ def test_ticking_a_sub_todo_keeps_the_fold_state(tmp_path: Path) -> None:
     app.service.set_status(Target("2026-01-15.md", 2, "  - [ ] offen"), TodoStatus.DONE)
     shown = texts(tabs.day_view(app))
     assert "offen" not in shown and FOLD_CLOSED.format(4) in shown and SUB_MARK not in shown
+
+
+def test_todos_tab_shows_sub_todos_inside_their_root(tmp_path: Path) -> None:
+    """Tab „Todos“: ein Eintrag je Baum, eine Kopfzeile, ↳ am Unter-Todo, „Notiz öffnen“ nur an der Wurzel."""
+    app = fake(tmp_path, {"2026-01-15.md": DAY})
+    app.open_page = lambda _ref: None
+    controls = tabs.todos_view(app)
+    shown = texts(controls)
+    assert shown.count("2026-01-15 · Heute") == 2  # „Eltern“ (mit Unter-Todo) und „allein“
+    assert "Heute (2)" in shown and "offen" in shown and SUB_MARK in shown and FOLD_CLOSED.format(3) in shown
+    notes = [c for root in controls for c in visible(root) if isinstance(c, ft.IconButton)
+             and c.icon == ft.Icons.ARTICLE_OUTLINED]
+    assert len(notes) == 2

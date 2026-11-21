@@ -37,12 +37,19 @@ T = TypeVar("T")
 def rank(row: Row | HitRow) -> int:
     """Rang einer Zeile: Stufe bei offenen Todos, sonst 0.
 
+    Eine Trefferzeile mit Todo-Baum (``HitRow.tree``, Tab „Todos“, W10) hat den
+    höchsten Rang ihrer Baumzeilen: Ein rotes offenes Unter-Todo bringt den
+    ganzen Baum nach „Sehr dringend“. Ohne Baum (Benachrichtigung, Vorschau)
+    zählt nur die Zeile selbst.
+
     Args:
         row: Notizzeile oder Trefferzeile.
 
     Returns:
         2 (Rot), 1 (Gelb) oder 0.
     """
+    if isinstance(row, HitRow) and row.tree:
+        return max(rank(line) for line in row.tree)
     return int(row.urgency) if row.status is TodoStatus.OPEN else 0
 
 

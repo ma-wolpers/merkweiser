@@ -180,7 +180,7 @@ def search(documents: Iterable[tuple[str, date, Document]], criteria: Filter) ->
                 if node.implicit or not node.lines:
                     continue
                 if _matches(doc, note, node, criteria, text_ok, wanted_tags):
-                    hits.append(_hit(relpath, day, doc, note, node))
+                    hits.append(node_hit(relpath, day, doc, note, node))
     return hits
 
 
@@ -219,8 +219,8 @@ def _matches(doc: Document, note: ParsedNote, node: Node, criteria: Filter,
     return text_ok is None or text_ok("\n".join(doc.line_text(no) for no in node.lines))
 
 
-def _hit(relpath: str, day: date, doc: Document, note: ParsedNote, node: Node) -> Hit:
-    """Baut einen Treffer mit Kontextpfad.
+def node_hit(relpath: str, day: date, doc: Document, note: ParsedNote, node: Node) -> Hit:
+    """Baut einen Treffer mit Kontextpfad (auch für Baum-Wurzeln ohne eigenen Treffer, W10).
 
     Args:
         relpath: Dateipfad.

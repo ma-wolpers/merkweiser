@@ -2,6 +2,19 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W10 P3: Tab „Todos“ als Todo-Bäume
+
+- **`todo_list.todo_trees`:**
+  - Ordnet jeden Treffer seinem obersten Todo-Vorfahren zu (`todo_tree.top_todo`) und erzeugt je Baum einen Eintrag.
+  - Für eine Wurzel ohne eigenen Treffer wird der Treffer über `query.node_hit` gebaut (vorher privat `_hit`, eine Quelle für Kontextpfad und Status).
+  - `HitRow.tree` enthält Wurzel + Nachfahren aus `note_rows` → `urgent_first` → `todo_tree.tree_rows` (relative Tiefe).
+- **`todo_list.fold_keep`:** offen plus gefilterter Status (bei „alle“ alle Todo-Zustände) als `keep` für `fold_view`.
+- **`ordering.rank`:** Eine `HitRow` mit Baum hat den höchsten Rang ihrer Baumzeilen, sodass „Sehr dringend“ und Gelb-zuerst ohne eigene Logik stimmen. Benachrichtigung und Vorschauzeilen haben keinen Baum und bleiben unverändert.
+- **`tabs._hit`:** Kopfzeile + `note_view.fold_view(row.tree, keep, open_note)`. Das ist derselbe Weg wie bei den Notizkarten; `todo_line` wird hier nicht mehr direkt aufgerufen. `fold_view`/`note_row` reichen `open_note` nur an die Wurzel weiter.
+- **Tests:**
+  - `tests/app/test_todo_trees.py`: erledigte Wurzel mit offenen Kindern, rotes Enkel-Todo → „Sehr dringend“, erledigtes Kind im Baum, Filter „erledigt“, `fold_keep`, Benachrichtigung flach.
+  - `test_fold_ui.test_todos_tab_shows_sub_todos_inside_their_root`.
+
 ## 2026-11-21 – W10 P2: einklappbare Todos in Notizkarten
 
 - **Neu `app/todo_tree.py`:** `outline_tree` ist die einzige Zerlegung flacher Zeilen in Teilbäume.
