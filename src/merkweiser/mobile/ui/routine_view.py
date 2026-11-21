@@ -33,7 +33,7 @@ from .date_pick import open_date_picker
 from .note_dialogs import editor_dialog
 from .note_view import marked, rich_text, urgency_bar
 from .routine_dialog import show_rule_dialog
-from .style import EXPLANATION, URGENCY_STYLE, card
+from .style import ACTION_ICON, ACTION_SIZE, EXPLANATION, URGENCY_STYLE, card
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -170,6 +170,8 @@ def preview_line(app: "MobileApp", row: HitRow) -> ft.Control:
 
     text = ft.GestureDetector(content=rich_text(app, strip_urgency(row.text)), on_tap=edit)
     line = marked(checkbox, text, [
-        ft.Icon(icon, color=color or EXPLANATION, tooltip="Routine – Ampel nach dem Eintragen änderbar"),
+        ft.Container(content=ft.Icon(icon, color=color or EXPLANATION, size=ACTION_ICON,
+                                     tooltip="Routine – Ampel nach dem Eintragen änderbar"),
+                     width=ACTION_SIZE, alignment=ft.Alignment.CENTER),
     ])
     return ft.Column([head, urgency_bar(line, row.urgency, True)], spacing=0)

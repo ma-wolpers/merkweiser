@@ -31,7 +31,7 @@ from ...core.document import Document, ParsedNote
 from ...core.inline import TodoStatus, Urgency, strip_urgency
 from .note_dialogs import note_actions
 from .tag_dialog import show_move_flow
-from .style import EXPLANATION, MISSED_STYLE, MISSED_TEXT, URGENCY_BAR, URGENCY_STYLE, card
+from .style import ACTION_ICON, ACTION_SIZE, EXPLANATION, MISSED_STYLE, MISSED_TEXT, URGENCY_BAR, URGENCY_STYLE, card
 
 if TYPE_CHECKING:
     from .app import MobileApp
@@ -149,13 +149,32 @@ def todo_line(app: "MobileApp", text: str, status: TodoStatus, urgency: Urgency,
     label = rich_text(app, strip_urgency(text), style=MISSED_TEXT, color=EXPLANATION) if missed \
         else rich_text(app, strip_urgency(text))
     line = marked(checkbox, ft.GestureDetector(content=label, on_tap=tap), [
-        ft.IconButton(icon=icon, icon_color=color, on_click=cycle, tooltip=tooltip),
-        ft.IconButton(icon=miss_icon, icon_color=miss_color, on_click=miss, tooltip=miss_tip),
-        ft.IconButton(icon=ft.Icons.EVENT, on_click=move, tooltip="verschieben …"),
-        *([ft.IconButton(icon=ft.Icons.ARTICLE_OUTLINED, on_click=lambda _e: open_note(), tooltip="Notiz öffnen")]
-          if open_note else []),
+        action_button(icon, cycle, tooltip, color),
+        action_button(miss_icon, miss, miss_tip, miss_color),
+        action_button(ft.Icons.EVENT, move, "verschieben …"),
+        *([action_button(ft.Icons.ARTICLE_OUTLINED, lambda _e: open_note(), "Notiz öffnen")] if open_note else []),
     ])
     return urgency_bar(line, urgency, status is TodoStatus.OPEN)
+
+
+def action_button(icon, on_click, tooltip: str, color=None) -> ft.IconButton:
+    """Kompakter Symbolknopf am Ende einer Todo-Zeile (einzige Stelle für Größe und Abstand, W10).
+
+    Kleiner als der Flet-Standard (``style.ACTION_ICON``/``ACTION_SIZE``), damit
+    vier Knöpfe neben dem Text Platz lassen.
+
+    Args:
+        icon: Symbol.
+        on_click: Handler.
+        tooltip: Tooltip (trägt die Bedeutung zusätzlich zur Farbe).
+        color: Symbolfarbe oder ``None`` (Themenfarbe).
+
+    Returns:
+        Der Knopf.
+    """
+    return ft.IconButton(icon=icon, icon_color=color, on_click=on_click, tooltip=tooltip, icon_size=ACTION_ICON,
+                         padding=ft.Padding.all(4), visual_density=ft.VisualDensity.COMPACT,
+                         size_constraints=ft.BoxConstraints(min_width=ACTION_SIZE, min_height=ACTION_SIZE))
 
 
 def urgency_bar(content: ft.Control, urgency: Urgency, is_open: bool) -> ft.Container:

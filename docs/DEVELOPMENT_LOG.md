@@ -2,6 +2,12 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W10 P1: engere Schnellaktionen
+
+- `note_view.action_button` ist die einzige Stelle für die Symbolknöpfe einer Todo-Zeile: `icon_size=ACTION_ICON` (20), `padding=4`, `VisualDensity.COMPACT`, `size_constraints` 32×32 (`style.ACTION_SIZE`). `todo_line` nutzt sie für Stern, ⊘, Verschieben und „Notiz öffnen“.
+- `routine_view.preview_line`: Das reine Anzeige-Symbol (Ampel) sitzt in einem Container der Breite `ACTION_SIZE` und hat die Größe `ACTION_ICON`, damit es bündig mit den Knöpfen echter Todos steht.
+- Test: `test_ampel_ui.test_todo_actions_are_compact_buttons`.
+
 ## 2026-11-21 – W10 P0: Plan „Unter-Todos einklappbar, engere Symbole“
 
 - W10 in `docs/PLAN-SPAETERE-SCHRITTE.md` aufgenommen: Nutzerentscheidungen, selbst festgelegte Punkte, Design (`app/todo_tree.py`, `HitRow.subtree`, `fold_view`, `action_button`) und Phasen.

@@ -20,6 +20,7 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Changed
 
+- **Kompaktere Todo-Zeilen:** Stern, ⊘, Verschieben und „Notiz öffnen“ sind kleiner und stehen enger nebeneinander, sodass mehr Platz für den Text bleibt.
 - **`- [-]` ist jetzt ein Todo** (verpasst). Bisher galt es als normaler Listenpunkt. Enter am Ende einer `[-]`-Zeile setzt die Liste mit einem offenen Todo fort; „Checkbox umschalten“ im Editor behandelt `[-]` wie ein abgehaktes Todo.
 - **Sync-Konflikte:** Unterscheiden sich zwei Fassungen nur im Häkchen, gilt automatisch **erledigt > verpasst > offen** (bisher nur „erledigt gewinnt“). Im Konfliktdialog wählst du je Todo zwischen ☑ erledigt, ⊘ verpasst und ☐ offen.
 

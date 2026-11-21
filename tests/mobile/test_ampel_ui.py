@@ -113,3 +113,15 @@ def test_preview_line_is_marked_and_checks_early(tmp_path: Path) -> None:
     checkbox.value = True
     asyncio.run(checkbox.on_change(SimpleNamespace(control=checkbox)))
     assert (app.service.root / "2026-01-16.md").read_bytes().decode() == "wöchentlich Fr\n- [x] ==Einkauf== #wdh\n"
+
+
+def test_todo_actions_are_compact_buttons(tmp_path: Path) -> None:
+    """W10: Alle Schnellaktionen einer Todo-Zeile (auch „Notiz öffnen“) sind kompakt und gleich groß."""
+    from merkweiser.mobile.ui.style import ACTION_ICON, ACTION_SIZE
+    app = fake(tmp_path, {"2026-01-15.md": "Heute\n- [ ] Antrag\n"})
+    buttons = [c for c in _walk_all(tabs.todos_view(app)) if isinstance(c, ft.IconButton)
+               and c.icon in (ft.Icons.STAR_BORDER, ft.Icons.BLOCK, ft.Icons.EVENT, ft.Icons.ARTICLE_OUTLINED)]
+    assert len(buttons) == 4
+    for button in buttons:
+        assert button.icon_size == ACTION_ICON and button.visual_density == ft.VisualDensity.COMPACT
+        assert button.size_constraints.min_width == ACTION_SIZE == button.size_constraints.min_height

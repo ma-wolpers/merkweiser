@@ -44,6 +44,14 @@ MISSED_STYLE = {
 #: Text verpasster Todos: durchgestrichen (Farbe zusätzlich ``EXPLANATION``).
 MISSED_TEXT = ft.TextStyle(decoration=ft.TextDecoration.LINE_THROUGH)
 
+#: Symbolgröße der Schnellaktionen am Zeilenende einer Todo-Zeile (W10: enger als
+#: der Flet-Standard 24, Gerätebefund 2026-11-21).
+ACTION_ICON = 20
+
+#: Kantenlänge (Tippfläche) eines Schnellaktions-Knopfs; auch die Breite des
+#: reinen Anzeige-Symbols einer Vorschauzeile, damit die Spalten bündig bleiben.
+ACTION_SIZE = 32
+
 
 def card(controls: list[ft.Control], spacing: float | None = None) -> ft.Container:
     """Karte im einheitlichen Stil (Notizkarten, Notizen im Konfliktdialog).
