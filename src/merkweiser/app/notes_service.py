@@ -7,7 +7,8 @@ danach ``StaleTargetError`` (die UI lädt neu und meldet es).
 
 ``start()`` führt die feste Startreihenfolge aus: Tausch-Wiederherstellung →
 Resolve-Ops → Moves → Aufbewahrung → leere Tagesdateien entfernen → Scan →
-Auto-Merge.
+Auto-Merge → Routinen (W9, ``routine_service.run_due``; auch bei jedem Poll
+mit Änderungen oder neuem Tag).
 """
 
 from __future__ import annotations
@@ -49,6 +50,7 @@ from ..core.step_ops import run_step
 from ..core.vault import DayPattern, VaultIndex, scan, write_target
 from ..core.watch import Changes, State, observe, poll
 from ..ports.clock import Clock
+from .routine_service import RoutineReport, on_poll, run_due
 from .settings import Settings
 from .time_state import load_state
 from .views import NoteRef
@@ -113,6 +115,7 @@ class StartReport:
     automerges: list[str] = field(default_factory=list)
     removed_empty: list[str] = field(default_factory=list)
     discarded_empty: list[str] = field(default_factory=list)
+    routines: RoutineReport = field(default_factory=RoutineReport)
 
 
 @dataclass(frozen=True)
@@ -179,6 +182,7 @@ class NotesService:
         self.index: VaultIndex = scan(root, self.pattern)
         self.busy: set[str] = set()
         self._watch: State = {}
+        self.routines = RoutineReport()  # letzter Routinen-Durchlauf (W9)
 
     # --- Start und Beobachtung ----------------------------------------------------
 
@@ -208,6 +212,7 @@ class NotesService:
         report.removed_empty = self._remove_empty_day_files()
         report.discarded_empty = self._discard_empty_versions()
         report.automerges = self.auto_merge_all()
+        report.routines = self.routines = run_due(self)  # W9: nach Merges, damit Tagesdateien bereinigt sind
         self._watch = observe(self.root)
         return report
 
@@ -231,12 +236,22 @@ class NotesService:
         return self.index
 
     def poll(self) -> Changes:
-        """Prüft auf Änderungen und schließt fällige Quarantänen ab (nicht im Schreibschutz)."""
+        """Prüft auf Änderungen, schließt fällige Quarantänen ab und trägt Routinen ein (nicht im Schreibschutz).
+
+        Der Routinen-Durchlauf (``routine_service.on_poll``) läuft bei Änderungen
+        oder wenn seit dem letzten Durchlauf ein neuer Tag begonnen hat; sein
+        Bericht steht danach in ``self.routines``. Eigene Schreibvorgänge
+        erscheinen erst beim nächsten Poll als Änderung.
+
+        Returns:
+            Die beobachteten Änderungen.
+        """
         if not self.read_only:
             self.writer.finish_due()
         changes, self._watch = poll(self.root, self._watch)
         if changes.any:
             self.rescan()
+        self.routines = on_poll(self, changes) or self.routines  # W9: neuer Tag oder geänderte Dateien
         return changes
 
     # --- Ansichten ------------------------------------------------------------------

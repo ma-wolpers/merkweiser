@@ -159,3 +159,15 @@ def test_undo_conflict_is_never_automatic_even_if_merge_is_clean(tmp_path: Path)
     cf.write_sidecar(env.data, rel, cf.sha1(BODY + b"- [ ] b\n"), MAIN, basis.id, cf.sha1(BODY), cf.UNDO_ORIGIN)
     [found] = env.cases()
     assert found.kind is CaseKind.MANUAL and "Rückgängig" in found.reason
+
+
+def test_routine_mark_later_date_wins_in_sync_merge() -> None:
+    """W9: ``eingetragen_bis`` – beim Sync-Merge gewinnt der spätere Tag; ungültig bzw. Rückgängig → Konflikt."""
+    early, late = fm(b"eingetragen_bis: 2026-11-17\n"), fm(b"eingetragen_bis: 2026-11-20\n")
+    for a, b in ((early, late), (late, early)):
+        merged = merge_frontmatter(split(a)[0], split(b)[0])
+        assert merged.conflicts == [] and "eingetragen_bis: 2026-11-20" in merged.resolve()
+    one_sided = merge_frontmatter(split(early)[0], split(fm(b"x: 1\n"))[0])
+    assert one_sided.conflicts == [] and "eingetragen_bis: 2026-11-17" in one_sided.resolve()
+    assert merge_frontmatter(split(early)[0], split(fm(b"eingetragen_bis: kaputt\n"))[0]).conflicts
+    assert merge_frontmatter(split(early)[0], split(late)[0], reverse=True).conflicts

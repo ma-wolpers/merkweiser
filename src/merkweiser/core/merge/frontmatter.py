@@ -14,6 +14,8 @@ Der Rumpf wird wie bisher zeilenweise zusammengeführt; der YAML-Kopf hier,
   gleich → übernehmen; mit Basis diff3 auf dem Datensatz; sonst
   ``StampConflict`` (einseitig, zwei verschiedene oder beschädigt) mit den
   erlaubten Optionen (``StampConflict.options``).
+* **``eingetragen_bis``** (Merkpunkt der Routinen, W9): Sync-Merge = späteres
+  Datum; beim Rückgängig und bei ungültigen Werten die Regel für fremde Schlüssel.
 * **Undurchsichtiger** Kopf auf einer Seite: als Block, gleich oder (mit Basis
   eindeutig) übernehmen, sonst ``BlockConflict`` (Wahl A oder B).
 
@@ -27,10 +29,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import timezone
+from datetime import date, timezone
 
 from ..activities import same_name
-from ..frontmatter import (ACTIVITY, NONE, OK, OPAQUE, OPEN, START, ZEIT, Damaged, Frontmatter, Stamp, minutes,
+from ..frontmatter import (ACTIVITY, NONE, OK, OPAQUE, OPEN, START, UNTIL, ZEIT, Damaged, Frontmatter, Stamp, minutes,
                            parse, stamp_of)
 from ..source import SourceText
 
@@ -252,7 +254,10 @@ def _merge_keys(a: Head, b: Head, base: Head | None, result: FmMerge, renames, r
                     if ZEIT + new not in result.order:
                         result.order.append(ZEIT + new)
     for key in [k for k in seen if k != STAMP_SLOT]:
-        if not key.startswith(ZEIT):
+        later = _later_until(a, b) if key == UNTIL and not reverse else None
+        if later is not None:
+            result.values[key] = later
+        elif not key.startswith(ZEIT):
             values = (a.entry_lines(key), b.entry_lines(key), base.entry_lines(key) if base else None)
             result.values[key] = _pick(*values[:2], values[2] if base else None, result,
                                        lambda x, y, k=key: PropertyConflict(k, x, y), base is not None)
@@ -274,6 +279,30 @@ def _merge_keys(a: Head, b: Head, base: Head | None, result: FmMerge, renames, r
         result.stamp = sa
     else:
         result.stamp = _conflict(result, StampConflict(sa, sb))
+
+
+def _later_until(a: Head, b: Head) -> tuple[str, ...] | None:
+    """``eingetragen_bis`` (W9): beim Sync-Merge die Zeile mit dem späteren Datum.
+
+    Der Merkpunkt läuft nur vorwärts; das spätere Datum heißt „bis dahin hat
+    ein Gerät alles eingetragen“. Fehlt er auf einer Seite oder ist ein Wert
+    kein ISO-Datum, gilt die allgemeine Regel (``None``).
+
+    Args:
+        a: Kopf der Hauptdatei.
+        b: Kopf der anderen Fassung.
+
+    Returns:
+        Die Zeilen der späteren Seite oder ``None``.
+    """
+    lines = (a.entry_lines(UNTIL), b.entry_lines(UNTIL))
+    if None in lines or any(len(entry) != 1 for entry in lines):  # type: ignore[arg-type]
+        return None
+    try:
+        days = [date.fromisoformat(entry[0].split(":", 1)[1].strip()) for entry in lines]  # type: ignore[index]
+    except ValueError:
+        return None
+    return lines[0] if days[0] >= days[1] else lines[1]
 
 
 def _merge_minutes(name: str, a: int | None, b: int | None, base: int | None, has_base: bool, reverse: bool,

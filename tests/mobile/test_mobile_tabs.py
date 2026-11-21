@@ -87,17 +87,21 @@ def test_note_layout_topic_explanation_continuation() -> None:
 
 
 def test_start_hint_reports_limited_write_guarantee() -> None:
+    from merkweiser.app.routine_service import RoutineReport
     report = SimpleNamespace(recovery=SimpleNamespace(not_applied=[]), moves=[], automerges=[], removed_empty=[],
-                             discarded_empty=[])
+                             discarded_empty=[], routines=RoutineReport())
     assert tabs.start_hint(report, "voll") == ""
     assert "eingeschränkt" in tabs.start_hint(report, "eingeschränkt (A1–A3)")
 
 
 def test_start_hint_reports_automerge() -> None:
     """Start-Hinweis nennt automatisch zusammengeführte Konflikte, entfernte leere Dateien und verworfene Versionen."""
+    from merkweiser.app.routine_service import RoutineReport
     report = SimpleNamespace(recovery=SimpleNamespace(not_applied=[]), moves=[], automerges=["x"],
-                             removed_empty=["2026-01-01.md"], discarded_empty=["a.sync-conflict-x.md"])
+                             removed_empty=["2026-01-01.md"], discarded_empty=["a.sync-conflict-x.md"],
+                             routines=RoutineReport(written=2, expired=1, problems=["Routinen.md hat einen Konflikt."]))
     assert "automatisch zusammengeführt" in tabs.start_hint(report)
+    assert "Routinen: 2 eingetragen, 1 abgelaufen. Routinen.md hat einen Konflikt." in tabs.start_hint(report)
     assert "1 leere Datumsdatei(en) entfernt." in tabs.start_hint(report)
     assert "1 leere Konfliktversion(en) verworfen (Hauptdatei fehlte)." in tabs.start_hint(report)
 

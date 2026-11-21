@@ -50,8 +50,8 @@ ROUTINES_FILE = "Routinen.md"
 """Fester Name der Routinen-Datei im Vault-Root."""
 WDH_TAG = "wdh"
 """Tag, der eine Zeile als Routinen-Instanz kennzeichnet (nur solche laufen automatisch ab)."""
-UNTIL_KEY = "eingetragen_bis"
-"""Frontmatter-Schlüssel des Merkpunkts."""
+UNTIL_KEY = fmx.UNTIL
+"""Frontmatter-Schlüssel des Merkpunkts (Quelle: ``frontmatter.UNTIL``)."""
 PAUSES_HEADING = "Pausen"
 HEADING = "## "
 

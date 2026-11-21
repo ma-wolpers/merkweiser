@@ -2,6 +2,29 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W9 P4: Routinen-Durchlauf (Eintragen, Nachholen, Ablauf, Merkpunkt)
+
+- **Neue Module:**
+  - `core/routine_days.py`: `present`, `missing`, `plan_day`, `expire_lines`; reine `build`-Funktionen für `run_step`.
+  - `app/routine_service.py`: `load` mit Memo, `run_due`, `on_poll`, `RoutineReport`.
+- **Hooks in `NotesService`:**
+  - In `start()` nach `auto_merge_all` läuft `StartReport.routines`.
+  - In `poll()` nach dem Rescan läuft `on_poll`, wenn sich Dateien geändert haben oder ein neuer Tag begonnen hat. Der Bericht steht in `self.routines`.
+  - `tabs.start_hint` zeigt `RoutineReport.summary`.
+- **Merkpunkt:**
+  - Der Schlüssel liegt als `frontmatter.UNTIL` neben den übrigen eigenen Schlüsseln; `routines.UNTIL_KEY` verweist darauf.
+  - Merge-Regel „späteres Datum“ in `merge/frontmatter._later_until`; beim Rückgängig und bei ungültigen Werten gilt die Regel für fremde Schlüssel.
+- **Sicherheit:**
+  - Jeder Schreibvorgang läuft über `run_step`, also frisch planen, Backup und Konfliktdatei statt Überschreiben.
+  - `present` macht das Eintragen idempotent: bei vorzeitigem Abhaken und bei einem Abbruch zwischen Tagesdatei und Merkpunkt.
+  - Der Merkpunkt wird nur vorwärts und nur bei `same_rules` geschrieben.
+  - `AmbiguousDayFile` stoppt das Eintragen vor diesem Tag.
+  - Ein Fehler im Durchlauf bricht Start und Poll nie ab (`GRENZE(W9)`, Meldung in `problems`).
+- **Tests:**
+  - `tests/app/test_routine_service.py` (14): erster Start, Idempotenz, Nachholen mit `[-]` bzw. offen innerhalb der Frist, vorzeitig abgehakt, gelöschte Instanz, Abbruch-Fall, Mitternacht per Poll, Ablauf nur bei `#wdh` unter Rhythmus-Thema, Schreibschutz, mehrdeutige Tagesdatei, Regeländerung während des Laufs, undurchsichtiger Kopf und offener Konflikt (inkl. `classify`), Abschnitte zu 31 Tagen, keine Datei.
+  - `tests/core/test_routine_days.py` (3) und `test_frontmatter_merge` (Merkpunkt); volle Suite grün.
+- Ablauf beim Umsetzen: Ein versehentlicher Aufruf `python -` (wartet auf stdin) hing und wurde abgebrochen; es wurde nichts verändert.
+
 ## 2026-11-20 – W9 P3: Reiner Kern der Routinen
 
 - Neu `core/rhythm.py` (Grammatik, `is_due`, `next_due`, kanonische Schreibweise mit Round-Trip) und `core/routines.py` (Parser von `Routinen.md`, `occurrences` als einzige Quelle der fälligen Instanzen, `expires_on`/`expiry_for`, `instance_line`/`instance_key`, `same_rules`). Noch ohne Schreibzugriff; den Durchlauf bringt P4.

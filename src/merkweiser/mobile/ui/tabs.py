@@ -50,6 +50,8 @@ def start_hint(report, guarantee: str = "voll", open_issues: int = 0) -> str:
         parts.append(f"{len(report.discarded_empty)} leere Konfliktversion(en) verworfen (Hauptdatei fehlte).")
     if report.automerges:
         parts.append(f"{len(report.automerges)} Sync-Konflikt(e) automatisch zusammengeführt.")
+    if report.routines.summary:
+        parts.append(report.routines.summary)
     if open_issues:
         parts.append(f"{open_issues} offene(r) Konflikt(e) bzw. Vorgang/Vorgänge – Einstellungen → Konflikte.")
     return " ".join(parts)

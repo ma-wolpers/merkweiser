@@ -309,6 +309,15 @@ Todos können Projekten zugeordnet werden und danach nach Projekt gefiltert werd
 
 Die konkrete Markdown-Syntax für Projekte muss mit den übrigen Markdown-Regeln kompatibel sein und wird so gewählt, dass die Projektzugehörigkeit auch außerhalb der Anwendung eindeutig lesbar und bearbeitbar bleibt.
 
+#### Routinen (W9, ergänzt am 2026-11-18 auf Nutzerwunsch)
+
+Wiederkehrende Todos stehen in der Markdown-Datei `Routinen.md` im Notizordner: Jede Überschrift ist ein Rhythmus (täglich, werktags, wöchentlich, alle n Tage/Wochen, monatlich, jährlich), darunter stehen die Todos.
+
+* Am Fälligkeitstag trägt die Anwendung jede fällige Routine als gewöhnliches Todo mit dem Tag `#wdh` in die Tagesdatei ein. Ab dann ist es ein normales Todo.
+* Läuft die Frist ab, ohne dass es erledigt wurde, wird es als verpasst markiert (`[-]`).
+* Bis zu welchem Tag eingetragen wurde, steht sichtbar im Frontmatter von `Routinen.md` (`eingetragen_bis`). Auch hier gibt es keinen internen Zustand: Alles ist aus den Markdown-Dateien rekonstruierbar.
+* Die genaue Grammatik steht in `docs/FORMAT.md`, Abschnitt „Routinen“.
+
 ---
 
 ## 3. Notizen durchsuchen und filtern

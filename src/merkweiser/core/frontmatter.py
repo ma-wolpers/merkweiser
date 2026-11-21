@@ -48,6 +48,8 @@ from .source import SourceText
 ZEIT = "zeit_"
 START = "messung_start"
 ACTIVITY = "messung_taetigkeit"
+UNTIL = "eingetragen_bis"
+"""Merkpunkt der Routinen in ``Routinen.md`` (W9); beim Sync-Merge gewinnt der spätere Tag."""
 KEEP = object()
 """``set_own(stamp=KEEP)``: Stempel unverändert lassen."""
 

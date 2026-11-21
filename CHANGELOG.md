@@ -6,6 +6,13 @@ Alle sichtbaren Änderungen an Merkweiser stehen hier (Format: Keep a Changelog)
 
 ### Added
 
+- **Routinen (wiederkehrende Todos):** Lege im Notizordner eine Datei `Routinen.md` an. Jede Überschrift ist ein Rhythmus (`## täglich`, `## werktags`, `## wöchentlich Di, Do`, `## alle 2 Wochen Mo ab 16.11.2026`, `## monatlich 1., 15.`, `## jährlich 15.09.`), darunter stehen die Todos als `- [ ] Text` (mit Ampel und Tags). Merkweiser trägt sie am Fälligkeitstag mit `#wdh` in die Tagesdatei ein, unter dem Thema des Rhythmus, und setzt sie nach Ablauf der Frist auf verpasst. Unterstützt werden:
+  - eine Frist (`(Frist 3 Tage)`, sonst gilt ein Todo bis zur nächsten Fälligkeit);
+  - Pausen (`## Pausen` mit Zeiträumen; `(auch in Pausen)` nimmt eine Überschrift aus);
+  - Tags in der Überschrift, die für alle Todos darunter gelten;
+  - `- [x]`, um eine Regel zu pausieren.
+
+  War die App ein paar Tage zu, trägt Merkweiser die verpassten Tage lückenlos nach. Der Start-Hinweis nennt, was passiert ist. Bis zu welchem Tag eingetragen ist, steht als `eingetragen_bis` oben in `Routinen.md`. Die Grammatik steht in `docs/FORMAT.md`. Einen Editor in der App gibt es noch nicht.
 - **Todos als „verpasst“ markieren:** Das neue ⊘-Symbol neben dem Stern markiert ein Todo als verpasst (`- [-]` in der Datei). Es wird durchgestrichen und blass angezeigt, verliert die Ampel-Leiste und zählt nicht mehr als offen. Ein zweiter Tipp macht es wieder offen; die Checkbox bleibt erledigt/offen. Im Filter des Todos-Tabs gibt es den Status „verpasst“.
 
 ### Changed
