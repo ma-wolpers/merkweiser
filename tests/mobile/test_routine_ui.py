@@ -95,3 +95,21 @@ def test_header_button_and_preview_tap(tmp_path: Path) -> None:
     body = next(c for c in _walk_all([dialog.content]) if isinstance(c, ft.TextField) and c.label == "Todo")
     assert body.value == "Einkauf" and dialog.title == "Routine bearbeiten"
     assert routine_view.ROUTINE_MARK == "🔁"
+
+
+def test_text_editor_warns_then_saves_anyway(tmp_path: Path) -> None:
+    """„Als Text bearbeiten“: Fehler → Hinweis und „Trotzdem speichern“; zweiter Tipp speichert."""
+    app = ui(tmp_path, {"Routinen.md": "## täglich\n- [ ] a\n"})
+    routine_view.show_text_editor(app)
+    [dialog] = app.page.dialogs
+    field = next(c for c in _walk_all([dialog.content]) if isinstance(c, ft.TextField))
+    assert field.value.endswith("## täglich\n- [ ] a\n")
+    field.value = "## stündlich\n- [ ] b\n"
+    save, hint = dialog.actions[-1], dialog.content.controls[-1]
+    save.update = hint.update = lambda: None  # ohne Seite kein Update möglich (wie in test_mobile_tabs)
+    asyncio.run(save.on_click(None))
+    assert app.page.dialogs and "unbekannt" in hint.value and save.content == "Trotzdem speichern"
+    asyncio.run(save.on_click(None))
+    assert not app.page.dialogs
+    saved = (app.service.root / "Routinen.md").read_bytes().decode()  # Stil der Datei bleibt (hier CRLF)
+    assert saved.replace("\r\n", "\n").endswith("## stündlich\n- [ ] b\n")

@@ -1170,4 +1170,4 @@ Wiederkehrende Todos (täglich, werktags, wöchentlich, alle n Tage/Wochen, mona
 | P4 | Durchlauf: Eintragen, Nachholen, Ablauf, Merkpunkt | erledigt |
 | P5 | Vorschau mit Einstellung, vorzeitiges Abhaken, Benachrichtigung | erledigt (Bedienelement der Einstellung kommt mit P6 auf die Routinen-Seite) |
 | P6 | Formular-Editor | erledigt |
-| P7 | Rohtext-Editor, Kurzanleitung | offen |
+| P7 | Rohtext-Editor, Kurzanleitung | erledigt |

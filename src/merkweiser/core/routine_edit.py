@@ -22,8 +22,8 @@ from datetime import date
 from .document import Document, parse_document
 from .note_ops import append_note
 from .patch import LineEdit, Target, apply_edits, resolve_line
-from .rhythm import Options, Rhythm, format_date_de, options_text, rhythm_text
-from .routines import DEFAULT_TEXT, HEADING, PAUSES_HEADING, RoutineFile, Section, parse_routines
+from .rhythm import Options, Rhythm, options_text, rhythm_text
+from .routines import DEFAULT_TEXT, HEADING, PAUSES_HEADING, RoutineFile, Section, parse_routines, pause_text
 
 
 def heading_line(rhythm: Rhythm, options: Options, tags: tuple[str, ...] = ()) -> str:
@@ -131,7 +131,7 @@ def add_pause(doc: Document, start: date, end: date) -> bytes:
     """
     if end < start:
         raise ValueError("Pause endet vor ihrem Beginn")
-    line = f"- {format_date_de(start)}" + ("" if end == start else f" bis {format_date_de(end)}")
+    line = f"- {pause_text(start, end)}"
     if not doc.source.lines or not doc.source.to_bytes().strip():
         doc = parse_document(new_file())
     rf = parse_routines(doc)

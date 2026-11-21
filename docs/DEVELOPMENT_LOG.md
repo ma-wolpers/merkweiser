@@ -2,6 +2,24 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W9 P7: Rohtext-Editor und SSOT-Bereinigung der Routinen
+
+- **„Als Text bearbeiten“:**
+  - `note_dialogs.editor_dialog(…, validate=)` bietet „Trotzdem speichern“; die übrigen Aufrufer sind unverändert.
+  - `routine_service.raw_text` und `replace_text`: Der Stil bleibt über `replace_all`. Hat sich die Datei seit dem Öffnen geändert, entsteht über `create_own_conflict` aus P1 eine eigene Konfliktdatei mit Sidecar.
+  - `routine_view.show_text_editor`.
+- **SSOT-Durchsicht nach Nutzerhinweis** („denk weiterhin an SSOTs“), zusammengeführt:
+  - `RuleForm.rhythm()`/`options()` bauten Texte je Art selbst; jetzt `parse_rhythm(rhythm_text(Rhythm(…)))` bzw. `parse_options(options_text(Options(…)))`.
+  - `RuleForm.tag_tuple` = `views.tag_list` (zieht von `todo_list` nach `views`, um einen Import-Zyklus zu vermeiden).
+  - Pausen-Format: `routines.pause_text` für Schreiben (`add_pause`) und Anzeige.
+  - Fehlerzeilen: `routine_views.problem_lines` für Seite und Rohtext-Prüfung.
+  - Felder je Rhythmus-Art: `routine_views.FIELDS_BY_KIND` für Dialog und `rhythm()`.
+  - Kopfzeile „Datum · Kontext“: `views.hit_heading` für `tabs._hit` und `preview_line`.
+  - Synthetisches Vorschau-Dokument: `plan_day` auf leerer Datei statt nachgebautem Layout.
+  - Zählung nachgetragener `[-]` über den Parser statt `startswith("- [-]")`.
+  - `raw_text` decodiert über `SourceText`.
+- **Tests:** `test_routine_editor` (Rohtext mit CRLF+BOM, Konflikt bei paralleler Änderung, fehlende Datei, Abstand/Frist-Meldungen) und `test_routine_ui` („Trotzdem speichern“); volle Suite grün (864).
+
 ## 2026-11-21 – W9 P6: Formular-Editor der Routinen
 
 - **Neue Module:**

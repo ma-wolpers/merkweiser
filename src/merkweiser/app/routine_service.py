@@ -27,16 +27,18 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import TYPE_CHECKING, Callable
 
-from ..core.document import Document
+from ..core.document import Document, parse_document
 from ..core.frontmatter import set_keys
 from ..core.inline import TodoStatus, parse_list_item
 from ..core.patch import StaleTargetError, Target
 from ..core.query import Filter, StatusFilter
 from ..core.routine_days import expire_lines, missing, plan_day
-from ..core.routine_edit import add_pause, add_rule, delete_line, delete_rule, update_rule
-from ..core.routines import (ROUTINES_FILE, UNTIL_KEY, WDH_TAG, Occurrence, RoutineFile, expiry_for, instance_key,
-                             occurrences, parse_routines)
+from ..core.conflict_files import create_own_conflict
+from ..core.routine_edit import add_pause, add_rule, delete_line, delete_rule, replace_all, update_rule
+from ..core.routines import (DEFAULT_TEXT, ROUTINES_FILE, UNTIL_KEY, WDH_TAG, Occurrence, RoutineFile, expiry_for,
+                             instance_key, occurrences, parse_routines)
 from ..core.safe_write import WriteResult
+from ..core.source import SourceText
 from ..core.step_ops import run_step
 from ..core.topics import topic_line
 from ..core.vault import AmbiguousDayFile, write_target
@@ -193,6 +195,56 @@ def delete_pause(service: "NotesService", target: Target) -> str:
     return "Pause entfernt."
 
 
+def raw_text(service: "NotesService") -> tuple[bytes | None, str]:
+    """Rohinhalt von ``Routinen.md`` für den Texteditor: ``(bytes_beim_öffnen, text)``.
+
+    Fehlt die Datei, ist der Text der Doku-Block (``DEFAULT_TEXT``), die Bytes ``None``.
+    """
+    path = service.root / ROUTINES_FILE
+    if not path.exists():
+        return None, DEFAULT_TEXT
+    raw = path.read_bytes()
+    return raw, SourceText.from_bytes(raw).text.replace("\r\n", "\n").replace("\r", "\n")  # Decodierung: eine Quelle
+
+
+def replace_text(service: "NotesService", planned_raw: bytes | None, text: str) -> WriteResult | None:
+    """Ersetzt ``Routinen.md`` durch den Rohtext; bei zwischenzeitlicher Änderung → eigene Konfliktdatei.
+
+    Zeilenende-Stil, BOM und Schluss-Umbruch der Datei bleiben (``routine_edit.replace_all``).
+    Hat sich die Datei seit dem Öffnen geändert (``planned_raw``), wird nichts
+    überschrieben: Der neue Text landet über ``conflict_files.create_own_conflict``
+    mit Sidecar-Basis als Konfliktdatei und wird unter Einstellungen → Konflikte
+    entschieden.
+
+    Args:
+        service: Geöffneter, beschreibbarer Service.
+        planned_raw: Dateiinhalt beim Öffnen (``None`` = Datei fehlte).
+        text: Neuer Text.
+
+    Returns:
+        Ergebnis des Schreibvorgangs (``CONFLICTED`` bei Konfliktdatei) oder ``None`` (unverändert).
+
+    Raises:
+        ReadOnlyVaultError: im Schreibschutz.
+    """
+    service.check_writable()
+    ours = replace_all(parse_document(planned_raw), text) if planned_raw else (text.rstrip("\n") + "\n").encode()
+
+    def build(doc: Document, raw: bytes | None) -> bytes:
+        if raw != planned_raw:
+            raise StaleTargetError("Routinen.md wurde seit dem Öffnen geändert")
+        return ours
+
+    try:
+        result = run_step(service.writer, None, ROUTINES_FILE, service.settings.project_prefix, build)
+    except StaleTargetError:
+        rel, base_id = create_own_conflict(service.writer, ROUTINES_FILE, ours, planned_raw)
+        result = WriteResult(base_id or "", "CONFLICTED", [rel])
+    service.cache.forget(ROUTINES_FILE)
+    service.rescan()
+    return result
+
+
 def _edit_routines(service: "NotesService", build: Callable[[Document], bytes]) -> None:
     """Ein Schreibvorgang auf ``Routinen.md`` über ``run_step`` (frisch planen, Backup, Konflikt statt Verlust)."""
     run_step(service.writer, None, ROUTINES_FILE, service.settings.project_prefix, lambda doc, _raw: build(doc))
@@ -256,8 +308,8 @@ def _materialize(service: "NotesService", rf: RoutineFile, today: date, report: 
 
             run_step(service.writer, None, relpath, service.settings.project_prefix, build)
             service.cache.forget(relpath)
-            report.missed += sum(1 for _t, _b, line in new if line.startswith("- [-]"))
-            report.written += sum(1 for _t, _b, line in new if not line.startswith("- [-]"))
+            missed = sum(1 for _t, _b, line in new if parse_list_item(line).status is TodoStatus.MISSED)
+            report.missed, report.written = report.missed + missed, report.written + len(new) - missed
             wrote = wrote or bool(new)
         done, day = day, day + timedelta(days=1)
     if wrote:

@@ -2,6 +2,7 @@
 
 **Seite „Routinen“** (🔁 im Tab „Todos“): je Rhythmus eine Karte mit ihren
 Regeln (Antippen öffnet den Dialog ``routine_dialog``), „Neue Routine“,
+„Als Text bearbeiten“ (Rohtext mit Prüfung, ``show_text_editor``),
 Pausen mit Hinzufügen und Entfernen, die Vorschau-Länge (Einstellung),
 nicht lesbare Zeilen der Datei und der letzte Durchlauf.
 
@@ -23,12 +24,13 @@ import flet as ft
 
 
 from ...app import routine_service
-from ...app.routine_views import find_rule, section_title
-from ...app.views import HitRow
+from ...app.routine_views import find_rule, problem_lines, section_title, text_problems
+from ...app.views import HitRow, hit_heading
 from ...core.inline import strip_urgency, urgency
 from ...core.patch import Target
-from ...core.routines import ROUTINES_FILE, RoutineFile
+from ...core.routines import ROUTINES_FILE, RoutineFile, pause_text
 from .date_pick import open_date_picker
+from .note_dialogs import editor_dialog
 from .note_view import marked, rich_text, urgency_bar
 from .routine_dialog import show_rule_dialog
 from .style import EXPLANATION, URGENCY_STYLE, card
@@ -53,8 +55,10 @@ def routines_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
         Die Controls der Seite (ohne Kopfzeile).
     """
     rf = routine_service.load(app.service)
-    controls: list[ft.Control] = [ft.Row([ft.Button("Neue Routine", icon=ft.Icons.ADD,
-                                                    on_click=lambda _e: show_rule_dialog(app))], wrap=True)]
+    controls: list[ft.Control] = [ft.Row([
+        ft.Button("Neue Routine", icon=ft.Icons.ADD, on_click=lambda _e: show_rule_dialog(app)),
+        ft.TextButton("Als Text bearbeiten", icon=ft.Icons.EDIT_NOTE, on_click=lambda _e: show_text_editor(app)),
+    ], wrap=True)]
     if app.service.routines.summary:
         controls.append(ft.Text(app.service.routines.summary, size=12, color=EXPLANATION))
     if rf is None:
@@ -64,6 +68,21 @@ def routines_page(app: "MobileApp", _arg: str) -> list[ft.Control]:
         rows = [_rule_row(app, section, item) for item in section.items]
         controls.append(card([ft.Text(section_title(section), weight=ft.FontWeight.BOLD), *rows], spacing=2))
     return controls + [_pauses_card(app, rf), _preview_setting(app)]
+
+
+def show_text_editor(app: "MobileApp") -> None:
+    """„Als Text bearbeiten“: der Notiz-Editor auf dem Rohtext von ``Routinen.md``, mit Prüfung.
+
+    Nicht lesbare Zeilen werden vor dem Speichern gemeldet („Trotzdem speichern“
+    möglich, ``routine_views.text_problems``). Hat sich die Datei seit dem
+    Öffnen geändert, entsteht eine Konfliktdatei statt eines Überschreibens.
+    """
+    planned_raw, text = routine_service.raw_text(app.service)
+
+    async def save(new_text: str) -> None:
+        await app.act(lambda s: routine_service.replace_text(s, planned_raw, new_text))
+
+    app.page.show_dialog(editor_dialog(app, text, save, "Der Text ist leer.", validate=text_problems))
 
 
 def _rule_row(app: "MobileApp", section, item) -> ft.Control:
@@ -76,9 +95,8 @@ def _rule_row(app: "MobileApp", section, item) -> ft.Control:
 
 
 def _error_card(rf: RoutineFile) -> list[ft.Control]:
-    """Karte mit nicht lesbaren Zeilen (leer, wenn alles lesbar ist)."""
-    problems = ([rf.until_error] if rf.until_error else []) + [
-        f"Zeile {e.line_no + 1}: {e.line.strip()} – {e.message}" for e in rf.errors]
+    """Karte mit nicht lesbaren Zeilen (leer, wenn alles lesbar ist; Texte aus ``problem_lines``)."""
+    problems = problem_lines(rf)
     if not problems:
         return []
     return [card([ft.Text("Nicht lesbar (wird übersprungen)", color=ft.Colors.ERROR, weight=ft.FontWeight.BOLD),
@@ -103,7 +121,7 @@ def _pauses_card(app: "MobileApp", rf: RoutineFile) -> ft.Control:
             await app.act(lambda s: routine_service.delete_pause(s, Target(ROUTINES_FILE, pause.line_no, pause.line)))
         return remove
 
-    rows = [ft.Row([ft.Text(pause.line.strip()[2:], expand=True),
+    rows = [ft.Row([ft.Text(pause_text(pause.start, pause.end), expand=True),
                     ft.IconButton(icon=ft.Icons.DELETE, tooltip="Pause entfernen", on_click=remover(pause))])
             for pause in rf.pauses]
     return card([ft.Text("Pausen", weight=ft.FontWeight.BOLD), *rows,
@@ -138,8 +156,7 @@ def preview_line(app: "MobileApp", row: HitRow) -> ft.Control:
             await app.act(lambda s: routine_service.check_preview(s, occurrence))
 
     icon, color, _tooltip = URGENCY_STYLE[int(row.urgency)]
-    head = ft.Text(f"{ROUTINE_MARK} {row.day} · {row.context}" if row.context else f"{ROUTINE_MARK} {row.day}",
-                   size=11)
+    head = ft.Text(f"{ROUTINE_MARK} {hit_heading(row)}", size=11)
     checkbox = ft.Checkbox(value=False, on_change=check, visual_density=ft.VisualDensity.COMPACT,
                            tooltip="schon jetzt erledigen")
 

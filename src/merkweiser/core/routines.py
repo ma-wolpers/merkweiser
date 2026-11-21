@@ -42,8 +42,8 @@ from . import frontmatter as fmx
 from .document import Document
 from .edits import tagged_line
 from .inline import STATUS_CHAR, TodoStatus, find_tags, parse_list_item, strip_urgency
-from .rhythm import (Options, Rhythm, RhythmError, is_due, next_due, parse_date_de, parse_options, parse_rhythm,
-                     rhythm_text, split_heading)
+from .rhythm import (Options, Rhythm, RhythmError, format_date_de, is_due, next_due, parse_date_de, parse_options,
+                     parse_rhythm, rhythm_text, split_heading)
 from .topics import without_tags
 
 ROUTINES_FILE = "Routinen.md"
@@ -193,6 +193,11 @@ class Occurrence:
     def line(self, status: TodoStatus) -> str:
         """Instanzzeile für die Tagesdatei (``instance_line``)."""
         return instance_line(self.body, self.tags, status)
+
+
+def pause_text(start: date, end: date) -> str:
+    """Anzeige- und Schreibform einer Pause: ``TT.MM.JJJJ`` bzw. ``TT.MM.JJJJ bis TT.MM.JJJJ`` (einzige Quelle)."""
+    return format_date_de(start) + ("" if end == start else f" bis {format_date_de(end)}")
 
 
 def parse_routines(doc: Document) -> RoutineFile:

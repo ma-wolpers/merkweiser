@@ -43,7 +43,7 @@ Sechs Nutzerwünsche, ausgearbeitet in [PLAN-SPAETERE-SCHRITTE.md](PLAN-SPAETERE
 | 11 | W6a Wechsel nachtragen | erledigt (Dialog-Knopf + Mini-Knopf; bewusst kein Start nachtragen) |
 | 12 | W7 Ampel-Dringlichkeit, Todos-Tab mit Filter-Knopf, Notiz-Unterseite, ganze Notiz verschieben, Tag-Picker (Plan: `PLAN-SPAETERE-SCHRITTE.md` W7) | umgesetzt (Phasen 0–7, signierte APK 2026-10-26); Gerätetest offen |
 | 13 | W8 Konflikte notizweise, Todo-Häkchen direkt, Versionen verwerfen, leere Versionen automatisch (Plan: `PLAN-SPAETERE-SCHRITTE.md` W8) | umgesetzt (C0–C6, kompakte Karten mit Farbfeldern, signierte APK 2026-11-13); Gerätetest offen |
-| 14 | W9 Routinen (`Routinen.md`, Eintragen am Fälligkeitstag mit `#wdh`, Vorschau, Editor) und Status „verpasst“ `[-]` für alle Todos (Plan: `PLAN-SPAETERE-SCHRITTE.md` W9) | in Arbeit (P0) |
+| 14 | W9 Routinen (`Routinen.md`, Eintragen am Fälligkeitstag mit `#wdh`, Vorschau, Editor) und Status „verpasst“ `[-]` für alle Todos (Plan: `PLAN-SPAETERE-SCHRITTE.md` W9) | umgesetzt (P0–P7, 2026-11-21); APK und Gerätetest offen |
 
 ## Context
 

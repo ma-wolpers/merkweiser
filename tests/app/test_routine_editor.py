@@ -55,8 +55,12 @@ def test_upcoming_and_due_today() -> None:
 def test_text_problems_find_rule_and_title() -> None:
     """Rohtext-Prüfung nennt Zeilen; ``find_rule`` findet die Regel auch nach verschobenen Zeilen."""
     assert text_problems(EXAMPLE) is None and text_problems(DEFAULT_TEXT) is None
-    assert text_problems("## stündlich\n") == "Zeile 1: Rhythmus „stündlich“ unbekannt (täglich, werktags, " \
-        "wöchentlich …, alle …, monatlich …, jährlich …)"
+    assert text_problems("## stündlich\n") == "Zeile 1: ## stündlich – Rhythmus „stündlich“ unbekannt (täglich, " \
+        "werktags, wöchentlich …, alle …, monatlich …, jährlich …)"
+    with pytest.raises(RhythmError, match="Abstand"):
+        RuleForm(body="x", kind=Kind.TAGE, start=TODAY, interval="zwei").rhythm()
+    with pytest.raises(RhythmError, match="mindestens"):
+        RuleForm(body="x", frist="0").options()
     rf = parse_routines(parse_document(EXAMPLE.encode()))
     section, item = find_rule(rf, 999, "- [ ] Mails checken")
     assert item.body == "Mails checken" and section_title(rf.sections[1]) == "werktags #schule (Frist 2 Tage)"
@@ -97,3 +101,32 @@ def test_editor_refuses_read_only(tmp_path: Path) -> None:
     service.read_only = True
     with pytest.raises(ReadOnlyVaultError):
         rs.save_rule(service, None, RuleForm(body="x"))
+
+
+def test_replace_text_keeps_style_or_creates_conflict(tmp_path: Path) -> None:
+    """Rohtext: CRLF und BOM bleiben; geänderte Datei seit dem Öffnen → Konfliktdatei mit Sidecar, nichts überschrieben."""
+    from merkweiser.core import conflict_files as cf
+    original = b"\xef\xbb\xbf## t\xc3\xa4glich\r\n- [ ] Mails\r\n"
+    service = make(tmp_path, {})
+    (service.root / "Routinen.md").write_bytes(original)
+    service.rescan()
+    planned, text = rs.raw_text(service)
+    assert planned == original and text == "## täglich\n- [ ] Mails\n"
+    rs.replace_text(service, planned, "## werktags\n- [ ] Mails\n")
+    assert (service.root / "Routinen.md").read_bytes() == b"\xef\xbb\xbf## werktags\r\n- [ ] Mails\r\n"
+    stale, _text = rs.raw_text(service)
+    (service.root / "Routinen.md").write_bytes(b"## t\xc3\xa4glich\n- [ ] extern\n")
+    result = rs.replace_text(service, stale, "## werktags\n- [ ] meins\n")
+    assert result.state == "CONFLICTED" and read(service, "Routinen.md") == "## täglich\n- [ ] extern\n"
+    [conflict] = result.conflicts
+    assert b"meins" in (service.root / conflict).read_bytes()
+    assert cf.read_sidecar(service.data, conflict, cf.sha1((service.root / conflict).read_bytes())) is not None
+
+
+def test_replace_text_creates_missing_file(tmp_path: Path) -> None:
+    """Fehlt die Datei, ist der Editortext der Doku-Block; Speichern legt sie an."""
+    service = make(tmp_path, {})
+    planned, text = rs.raw_text(service)
+    assert planned is None and text == DEFAULT_TEXT
+    rs.replace_text(service, None, text + "\n## täglich\n- [ ] a")
+    assert read(service, "Routinen.md") == DEFAULT_TEXT + "\n## täglich\n- [ ] a\n"

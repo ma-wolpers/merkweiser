@@ -53,7 +53,7 @@ def note_actions(app: "MobileApp", ref: NoteRef, extra: Sequence[ft.Control] = (
 
 
 def editor_dialog(app: "MobileApp", text: str, on_save: Callable[[str], Awaitable[None]],
-                  empty_hint: str) -> ft.AlertDialog:
+                  empty_hint: str, validate: Callable[[str], str | None] | None = None) -> ft.AlertDialog:
     """Der eine Notiz-Editor (SSOT für „Bearbeiten“ und „Neue Notiz“).
 
     Ohne Titel, damit mit offener Tastatur mehr Platz für das Feld bleibt;
@@ -66,12 +66,17 @@ def editor_dialog(app: "MobileApp", text: str, on_save: Callable[[str], Awaitabl
         text: Anfangstext (leer für eine neue Notiz).
         on_save: Wird mit dem nicht leeren Text aufgerufen, nachdem der Dialog geschlossen ist.
         empty_hint: Meldung bei leerem Text (der Dialog bleibt dann offen).
+        validate: Optionale Prüfung (W9, Rohtext von ``Routinen.md``): liefert
+            Meldungen oder ``None``. Bei Meldungen bleibt der Dialog offen, zeigt
+            sie und heißt der Knopf „Trotzdem speichern“; ein zweiter Tipp mit
+            unverändertem Text speichert trotzdem.
 
     Returns:
         Der (noch nicht geöffnete) Dialog.
     """
     field = ft.TextField(value=text, multiline=True, min_lines=3, max_lines=9, autofocus=True)
     hint = ft.Text("", size=12, color=ft.Colors.ERROR)
+    accepted: list[str] = []  # Text, für den „Trotzdem speichern“ angeboten wurde
 
     async def save(_e) -> None:
         value = field.value or ""
@@ -79,17 +84,26 @@ def editor_dialog(app: "MobileApp", text: str, on_save: Callable[[str], Awaitabl
             hint.value = empty_hint
             hint.update()
             return
+        problems = validate(value) if validate is not None and value not in accepted else None
+        if problems:
+            accepted[:] = [value]
+            hint.value = problems + "\nNochmal tippen speichert trotzdem; diese Zeilen werden dann übersprungen."
+            save_button.content = "Trotzdem speichern"
+            hint.update()
+            save_button.update()
+            return
         app.page.pop_dialog()
         await on_save(value)
 
     async def cancel(_e) -> None:
         app.page.pop_dialog()
 
+    save_button = ft.Button("Speichern", on_click=save)
     return ft.AlertDialog(modal=True, scrollable=True,
                           content=ft.Column([editor_toolbar(field, app.settings.indent_width,
                                                             lambda initial, pick: show_tag_picker(app, initial, pick)),
                                              field, hint], tight=True),
-                          actions=[ft.TextButton("Abbrechen", on_click=cancel), ft.Button("Speichern", on_click=save)])
+                          actions=[ft.TextButton("Abbrechen", on_click=cancel), save_button])
 
 
 def _edit_dialog(app: "MobileApp", ref: NoteRef) -> ft.AlertDialog:

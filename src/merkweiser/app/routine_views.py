@@ -13,10 +13,11 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from ..core.document import parse_document
-from ..core.rhythm import (WEEKDAYS, Kind, Options, Rhythm, RhythmError, format_date_de, is_due, next_due,
-                           parse_options, parse_rhythm)
+from ..core.rhythm import (WEEKDAYS, Kind, Options, Rhythm, RhythmError, is_due, next_due, options_text,
+                           parse_options, parse_rhythm, rhythm_text)
 from ..core.routine_edit import heading_line, rule_line
 from ..core.routines import RoutineFile, RuleItem, Section, parse_routines
+from .views import tag_list
 
 KIND_LABELS: dict[Kind, str] = {
     Kind.TAEGLICH: "täglich", Kind.WERKTAGS: "werktags (Mo–Fr)", Kind.WOECHENTLICH: "wöchentlich",
@@ -25,6 +26,13 @@ KIND_LABELS: dict[Kind, str] = {
 """Anzeigenamen der Rhythmus-Arten im Dialog (Reihenfolge = Auswahlliste)."""
 
 UPCOMING_COUNT = 3
+
+FIELDS_BY_KIND: dict[Kind, frozenset[str]] = {
+    Kind.WOECHENTLICH: frozenset({"weekdays"}), Kind.WOCHEN: frozenset({"weekdays", "interval", "start"}),
+    Kind.TAGE: frozenset({"interval", "start"}), Kind.MONATLICH: frozenset({"month_days"}),
+    Kind.JAEHRLICH: frozenset({"yearly"}),
+}
+"""Welche Formularfelder je Rhythmus-Art gelten (einzige Quelle; Dialog-Sichtbarkeit und ``RuleForm.rhythm``)."""
 
 
 @dataclass
@@ -58,25 +66,34 @@ class RuleForm:
     active: bool = True
 
     def rhythm(self) -> Rhythm:
-        """Rhythmus aus den Feldern (über ``parse_rhythm``).
+        """Rhythmus aus den Feldern.
+
+        Baut ein ``Rhythm``, schreibt es mit ``rhythm_text`` (einzige
+        Schreibweise) und liest es mit ``parse_rhythm`` (einzige Prüfung)
+        zurück. Monatstage liest dieselbe Grammatik aus dem Textfeld.
 
         Raises:
             RhythmError: Felder unvollständig oder ungültig.
         """
-        days = ", ".join(WEEKDAYS[i] for i in sorted(self.weekdays))
-        if self.kind in (Kind.TAGE, Kind.WOCHEN) and self.start is None:
+        kind, every = self.kind, self.uses("start")
+        if every and self.start is None:
             raise RhythmError("Starttag fehlt")
-        if self.kind is Kind.JAEHRLICH and self.yearly is None:
+        if every and not self.interval.strip().isdigit():
+            raise RhythmError("Abstand bitte als Zahl")
+        if self.uses("yearly") and self.yearly is None:
             raise RhythmError("Datum fehlt")
-        text = {
-            Kind.TAEGLICH: "täglich", Kind.WERKTAGS: "werktags", Kind.WOECHENTLICH: f"wöchentlich {days}",
-            Kind.MONATLICH: f"monatlich {self.month_days}",
-            Kind.TAGE: f"alle {self.interval.strip()} Tage ab {format_date_de(self.start)}" if self.start else "",
-            Kind.WOCHEN: f"alle {self.interval.strip()} Wochen {days} ab {format_date_de(self.start)}"
-            if self.start else "",
-            Kind.JAEHRLICH: f"jährlich {self.yearly:%d.%m.}" if self.yearly else "",
-        }[self.kind]
-        return parse_rhythm(text)
+        yearly = self.yearly if self.uses("yearly") else None
+        days = parse_rhythm(f"{Kind.MONATLICH.value} {self.month_days}").days if self.uses("month_days") \
+            else ((yearly.day,) if yearly else ())
+        weekly = self.uses("weekdays")
+        candidate = Rhythm(kind, weekdays=tuple(sorted(set(self.weekdays))) if weekly else (),
+                           interval=int(self.interval) if every else 1, start=self.start if every else None,
+                           days=days, month=yearly.month if yearly else None)
+        return parse_rhythm(rhythm_text(candidate))
+
+    def uses(self, name: str) -> bool:
+        """Gilt das Feld ``name`` für die gewählte Art (``FIELDS_BY_KIND``)?"""
+        return name in FIELDS_BY_KIND.get(self.kind, frozenset())
 
     def options(self) -> Options:
         """Optionen aus den Feldern (über ``parse_options``).
@@ -87,12 +104,11 @@ class RuleForm:
         frist = self.frist.strip()
         if frist and not frist.isdigit():
             raise RhythmError("Frist bitte als Zahl von Tagen (leer = bis zur nächsten Fälligkeit)")
-        parts = ([f"Frist {frist} Tage"] if frist else []) + (["auch in Pausen"] if self.in_pauses else [])
-        return parse_options(", ".join(parts) or None)
+        return parse_options(options_text(Options(int(frist) if frist else None, self.in_pauses)) or None)
 
     def tag_tuple(self) -> tuple[str, ...]:
-        """Tags der Überschrift ohne ``#``."""
-        return tuple(part.lstrip("#") for part in self.tags.split() if part.strip("#"))
+        """Tags der Überschrift ohne ``#`` (``views.tag_list``)."""
+        return tag_list(self.tags)
 
     def line(self) -> str:
         """Regelzeile.
@@ -185,8 +201,17 @@ def text_problems(text: str) -> str | None:
     Returns:
         Fehlermeldungen je Zeile (eine pro Zeile) oder ``None``.
     """
-    rf = parse_routines(parse_document(text.encode("utf-8")))
-    problems = [f"Zeile {e.line_no + 1}: {e.message}" for e in rf.errors]
-    if rf.until_error:
-        problems.insert(0, rf.until_error)
-    return "\n".join(problems) or None
+    return "\n".join(problem_lines(parse_routines(parse_document(text.encode("utf-8"))))) or None
+
+
+def problem_lines(rf: RoutineFile) -> list[str]:
+    """Meldungen zu nicht lesbaren Teilen (einzige Formulierung; Seite und Rohtext-Editor).
+
+    Args:
+        rf: Gelesene Routinen-Datei.
+
+    Returns:
+        Merkpunkt-Fehler und je nicht lesbarer Zeile ``Zeile N: Text – Meldung``.
+    """
+    return ([rf.until_error] if rf.until_error else []) + [
+        f"Zeile {e.line_no + 1}: {e.line.strip()} – {e.message}" for e in rf.errors]

@@ -29,12 +29,6 @@ from .style import URGENCY_STYLE
 if TYPE_CHECKING:
     from .app import MobileApp
 
-_FIELDS_BY_KIND = {
-    Kind.WOECHENTLICH: {"weekdays"}, Kind.WOCHEN: {"weekdays", "interval", "start"}, Kind.TAGE: {"interval", "start"},
-    Kind.MONATLICH: {"month_days"}, Kind.JAEHRLICH: {"yearly"},
-}
-"""Welche Rhythmus-Felder je Art sichtbar sind (übrige Arten: keine)."""
-
 
 def show_rule_dialog(app: "MobileApp", found: tuple[Section, RuleItem] | None = None) -> None:
     """Öffnet den Dialog für eine neue (``found=None``) oder vorhandene Regel.
@@ -62,9 +56,8 @@ def show_rule_dialog(app: "MobileApp", found: tuple[Section, RuleItem] | None = 
 
     def refresh(_e=None) -> None:
         current = read()
-        visible = _FIELDS_BY_KIND.get(current.kind, set())
         for name in ("weekdays", "interval", "start", "month_days", "yearly"):
-            fields[name].visible = name in visible
+            fields[name].visible = current.uses(name)
         fields["start"].content = f"ab {current.start:%d.%m.%Y}" if current.start else "Starttag wählen"
         fields["yearly"].content = f"am {current.yearly:%d.%m.}" if current.yearly else "Datum wählen"
         _icon, color, tooltip = URGENCY_STYLE[int(urgency(current.body))]

@@ -4,9 +4,9 @@ Eine Instanz, die noch in keiner Tagesdatei steht, erscheint im Tab „Todos“
 (unter „Zukünftig“, bei Rot unter „Sehr dringend“) und in der
 Morgen-Benachrichtigung ihres Tages. Damit Status-, Tag-, Ampel- und
 Datumsfilter **genau dieselbe** Semantik haben wie bei echten Todos, wird je
-Tag ein synthetisches Dokument gebaut, das so aussieht, wie die Instanzen
-später in der Tagesdatei stehen würden (``Thema`` + ``- [ ] Text #wdh``), und
-mit ``query.search`` gefiltert. Die Treffer werden über ihre Zeilennummer
+Tag ein synthetisches Dokument gebaut – mit ``routine_days.plan_day`` auf einer
+leeren Datei, also genau so, wie der Durchlauf die Instanzen schreiben würde –
+und mit ``query.search`` gefiltert. Die Treffer werden über ihre Zeilennummer
 ihrer ``Occurrence`` zugeordnet (``HitRow.preview``, ``target = None``).
 
 Nicht angezeigt werden Instanzen, die schon in der Tagesdatei stehen (z. B.
@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 from ..core.document import parse_document
 from ..core.inline import TodoStatus
 from ..core.query import Filter, search
-from ..core.routine_days import present
+from ..core.routine_days import plan_day, present
 from ..core.routines import ROUTINES_FILE, Occurrence, occurrences
 from .routine_service import load
 from .views import HitRow, hit_rows
@@ -67,14 +67,13 @@ def _day_rows(service: "NotesService", criteria: Filter, today: date, day: date,
             and not any(present(doc, o.topic, o.body) for doc in documents)]
     if not occs:
         return []
-    lines: list[str] = []
-    by_line: dict[int, Occurrence] = {}
-    for topic in dict.fromkeys(o.topic for o in occs):
-        lines += [""] if lines else []
-        lines.append(topic)
-        for occ in (o for o in occs if o.topic == topic):
-            by_line[len(lines)] = occ
-            lines.append(occ.line(TodoStatus.OPEN))
-    doc = parse_document("\n".join(lines).encode("utf-8"), service.settings.project_prefix)
+    entries = [(o.topic, o.body, o.line(TodoStatus.OPEN)) for o in occs]
+    doc = parse_document(plan_day(parse_document(b""), entries), service.settings.project_prefix)  # wie eingetragen
+    pending, by_line = list(occs), {}
+    for line in doc.source.lines:
+        match = next((o for o in pending if o.line(TodoStatus.OPEN) == line.text), None)
+        if match is not None:
+            pending.remove(match)
+            by_line[line.no] = match
     hits = [hit for hit in search([(ROUTINES_FILE, day, doc)], criteria) if hit.line_no in by_line]
     return [replace(row, target=None, preview=by_line[hit.line_no]) for hit, row in zip(hits, hit_rows(hits))]

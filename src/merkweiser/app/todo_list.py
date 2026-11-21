@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from ..core.query import Filter, StatusFilter, TagMode
 from .ordering import todo_groups
 from .routine_preview import preview_rows
-from .views import HitRow, hit_rows
+from .views import HitRow, hit_rows, tag_list
 
 if TYPE_CHECKING:
     from .notes_service import NotesService
@@ -48,17 +48,6 @@ def normalized(state: dict) -> dict:
         state.setdefault(key, value)
     return state
 
-
-def tag_list(text: str) -> tuple[str, ...]:
-    """Tags aus der Eingabe (Leerzeichen getrennt, ``#`` optional).
-
-    Args:
-        text: Eingabe im Filter.
-
-    Returns:
-        Tag-Namen ohne ``#``; leere Teile entfallen.
-    """
-    return tuple(part.lstrip("#") for part in text.split() if part.strip("#"))
 
 
 def criteria(state: dict, today: date) -> Filter:

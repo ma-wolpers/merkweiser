@@ -18,7 +18,7 @@ from ...app.list_editing import INDENT_WIDTHS
 from ...app.nav import PageRef, note_arg
 from ...app.ordering import by_rank, note_rank
 from ...app.todo_list import DEFAULT_FILTER, changed_count, filter_summary, normalized, todo_sections
-from ...app.views import HitRow, day_label
+from ...app.views import HitRow, day_label, hit_heading
 from ...core.query import Filter, TextMode, TextQuery
 from .date_pick import open_date_picker
 from .note_dialogs import new_note_dialog
@@ -181,7 +181,7 @@ def _hit(app: "MobileApp", row: HitRow) -> ft.Control:
     def open_note() -> None:
         app.open_page(PageRef("notiz", note_arg(row.target)))
 
-    head = ft.Text(f"{row.day} · {row.context}" if row.context else row.day, size=11)
+    head = ft.Text(hit_heading(row), size=11)
     body = todo_line(app, row.text, row.status, row.urgency, row.target, open_note) if row.status is not None \
         else ft.Text(row.text)
     return ft.Column([head, body], spacing=0)

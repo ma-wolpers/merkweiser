@@ -59,6 +59,11 @@ class Row:
         return checkbox_value(self.status)
 
 
+def hit_heading(row: "HitRow") -> str:
+    """Kopfzeile einer Trefferzeile: ``Datum · Kontext`` (einzige Formulierung; Todos-, Such- und Vorschauzeilen)."""
+    return f"{row.day} · {row.context}" if row.context else row.day
+
+
 def checkbox_value(status: TodoStatus | None) -> bool | None:
     """Checkbox-Wert eines Todo-Zustands: erledigt → ``True``, offen/verpasst → ``False``.
 
@@ -82,6 +87,20 @@ STATE_WORD: dict[TodoStatus, str] = {status: f.value for f, status in STATUS_OF_
 
 STATE_CHOICES: tuple[TodoStatus, ...] = (TodoStatus.DONE, TodoStatus.MISSED, TodoStatus.OPEN)
 """Wählbare Todo-Zustände in Anzeigereihenfolge (Konfliktdialog W8/W9)."""
+
+
+def tag_list(text: str) -> tuple[str, ...]:
+    """Tags aus einer Eingabe (Leerzeichen getrennt, ``#`` optional); einzige Quelle für Tag-Eingabefelder.
+
+    Genutzt vom Filter des Todos-Tabs und vom Routinen-Dialog (Tags der Überschrift).
+
+    Args:
+        text: Eingabe.
+
+    Returns:
+        Tag-Namen ohne ``#``; leere Teile entfallen.
+    """
+    return tuple(part.lstrip("#") for part in text.split() if part.strip("#"))
 
 
 EMPTY_TOPIC_LABEL = "kein Thema"
