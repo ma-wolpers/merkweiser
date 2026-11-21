@@ -2,6 +2,15 @@
 
 Verlauf aller relevanten Änderungen, auch interner. Neueste Einträge oben.
 
+## 2026-11-21 – W10: APK
+
+- Signierte APK aus `5c77106` über `tools/build_apk.py` gebaut (sauberer Arbeitsbaum). Signatur per `apksigner` geprüft (SHA-256 `06e0555bc0c9b23f…`, derselbe Keystore). Die APK liegt als `SyncSpike/merkweiser.apk` vor. Stand: 880 Tests bestanden, 1 übersprungen.
+- Gerätetest offen. Zu prüfen:
+  - Zeilenbreite und Tippbarkeit der 32-px-Knöpfe;
+  - Ein- und Ausklappen ohne Flackern (Tab „Tag“ und Tab „Todos“);
+  - ↳ bei tiefer Verschachtelung;
+  - offene Punkte aus W9 (Durchstreichung mit Tags, Regel-Dialog mit Tastatur, Eintragen nach Mitternacht).
+
 ## 2026-11-21 – W10 P3: Tab „Todos“ als Todo-Bäume
 
 - **`todo_list.todo_trees`:**
